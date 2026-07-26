@@ -88,6 +88,19 @@ Every screen in §5 is built and runs against the demo account.
 10. No text below 11px — measured in the running app, including the bulk
     postmark, which is computed in JS and so invisible to the type-floor test.
 
+## Rules with a gate behind them
+
+Four house rules are enforced mechanically rather than by memory, because each
+was broken by applying it one file at a time:
+
+- `src/test/copy.test.ts` — §7's banned words and exclamation marks.
+- `src/test/motion.test.ts` — every transform animation has a reduced-motion
+  fallback (§8.5 item 5).
+- `src/test/typeFloor.test.ts` — nothing renders below 11px (§8.5 item 10).
+- `src/test/disabledStyling.test.ts` — every `:disabled` rule has an
+  `[aria-disabled='true']` twin, since offline controls use the latter.
+- `src/test/skeletonMinimum.test.ts` — C-21's 200ms minimum, everywhere.
+
 ## Keeping the two providers honest
 
 `src/data/__tests__/providerContract.test.ts` runs the same assertions against
@@ -304,6 +317,16 @@ found by driving the running app, not by reading the code.
 - Four smaller ones: the body's own newlines went out without CRLF, the
   HTML-escaped snippet was rendered raw, the Screener sorted by each sender's
   oldest held message, and the archive query excluded the wrong things.
+- **Four surfaces described the symptom rather than the cause.** Each catch
+  discarded the `MailError` and hardcoded one §7.6 line, so a revoked token was
+  reported as a rejected message, a failed contacts read, or an attachment that
+  wouldn't download — telling the user to fix something that wasn't wrong. Two
+  of the four only became wrong when the provider started distinguishing the
+  cases earlier the same day.
+- **Four skeletons never got C-21's 200ms minimum** — including the Screener
+  card, the largest one in the product. `src/test/skeletonMinimum.test.ts` now
+  fails if a component renders a skeleton without the hook, or exempts one
+  without a reason.
 - **Two fixes that stopped one layer short of the user.** The Screener ordering
   was corrected in the Gmail provider and left wrong in the demo — so the fix
   landed only on the path nobody can run, and every screenshot would have shown
