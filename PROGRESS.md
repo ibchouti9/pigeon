@@ -73,8 +73,9 @@ Every screen in §5 is built and runs against the demo account.
 7. No banned words or exclamation marks — enforced by `src/test/copy.test.ts`.
 8. Undo or confirm, never neither — D11's two dialogs plus 8s undo elsewhere,
    and a burst of undos no longer evicts the earlier ones from the store.
-9. Usable at 720px, no horizontal scroll to 2560px — verified at 720, 820, 900,
-   1280, 1440, 2560 after fixing the breakpoint bug below.
+9. Usable at 720px, no horizontal scroll to 2560px — **measured**, not eyeballed:
+   `scrollWidth - clientWidth` on every screen at 720, 760, 880, 1079, 1280 and
+   2560. Two overflows found and fixed this way, both at breakpoint boundaries.
 10. No text below 11px — measured in the running app, including the bulk
     postmark, which is computed in JS and so invisible to the type-floor test.
 
@@ -216,6 +217,18 @@ found by driving the running app, not by reading the code.
   "Stored in this browser only" note (3.43:1).
 - **Route-change focus fired on sub-routes**, so opening a thread yanked focus
   off the row the user had just opened.
+- **The held sheet showed "This message didn't load." over the user's own
+  approve.** `decide` removes the sender optimistically, so the entry vanished
+  for the whole round-trip; the buttons rendered in that state called `decide`
+  on a sender no longer held and silently did nothing.
+- **Search's "Try again" could never retry** — it re-set the query to a trimmed
+  copy of itself, and the debounce trims before searching, so React bailed out.
+- **A failed send's banner outlived its draft**, appearing on the next composer
+  about a message the user had never tried to send.
+- **`decideMany` had no `providerEpoch` guard** and re-read the provider each
+  iteration, so a swap mid-batch would split the decisions across two accounts.
+- **A search at 720px scrolled the page sideways by 537px**, and at exactly
+  880px the reader's 480px floor overflowed the remainder by 37px.
 
 ## Deliberate deviations from the spec
 
