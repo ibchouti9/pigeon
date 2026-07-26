@@ -82,9 +82,18 @@ account, and nothing above `AiClient` knows which model provider is connected.
 ## Connecting Gmail
 
 Pigeon is a pure browser client, so it needs a Google OAuth **client ID** of your
-own — there is no shared one, by design. Create a Web application client in the
-[Google Cloud console](https://console.cloud.google.com/apis/credentials), add
-your origin to the authorised JavaScript origins, and put the ID in `.env.local`:
+own — there is no shared one, by design.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/apis/library),
+   enable **both** the Gmail API and the **People API**. They are separate
+   steps, and Pigeon needs both: contacts are half of how it decides who you
+   already know. If the People API is missing you'll see "Pigeon couldn't read
+   your contacts" on the known-senders step.
+2. Create a **Web application** OAuth client under
+   [Credentials](https://console.cloud.google.com/apis/credentials) and add your
+   origin (`http://localhost:5173` for the dev server) to the authorised
+   JavaScript origins.
+3. Put the ID in `.env.local`:
 
 ```
 VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
@@ -92,6 +101,13 @@ VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 
 Pigeon requests four scopes: read your mail, send on your behalf, modify labels,
 and read your contacts. It never sends anything you haven't seen.
+
+Two things to expect while the client is unverified. `gmail.modify` and
+`gmail.send` are restricted scopes, so until Google verifies the OAuth client the
+project stays in Testing: you must list yourself as a test user, and **a test
+user's grant expires after seven days**, after which the first request fails and
+Pigeon shows the reconnect screen. That is the app behaving correctly — connect
+again.
 
 With no client ID configured, "Connect Gmail" says so and connects the demo
 account instead, so the whole product is walkable out of the box. The token
