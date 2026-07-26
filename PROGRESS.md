@@ -469,6 +469,25 @@ found by driving the running app, not by reading the code.
     never shown again; only `/welcome` was gated, so the four `/setup` routes
     stayed open by URL and by pressing Back from the inbox.
   - **A blocked Send had no tooltip**, only the helper text below it (§3.5 3e).
+- **Both of §2.3's reversal rules were broken, on both providers.** The spec
+  states them "explicitly for the coding agent", and both turn on what the
+  sender was *before* the decision — which neither provider looked at.
+  Measured on the demo before the fix: declining a held sender left the inbox
+  at 13 and reversing that decline took it to 14, the old held message pushed
+  back in as though it had just arrived; and approving a sender took the inbox
+  to 14, after which declining them dropped it to 13, taking away mail the user
+  had been reading. Both now branch on the previous status, and Gmail's inbox
+  filter asks whether a thread arrived *after* a decline rather than whether
+  the sender is declined at all — which is what "silences future mail" means.
+  D7 still applies to mail that was only ever waiting: `silence()` archives
+  that at the moment of the decision. Verified in the app afterwards: approve
+  takes the inbox 13 → 14, and declining that sender in Settings leaves it at
+  14.
+- **A contract fixture that could not fail.** The Gmail stub had no label API,
+  so `silence()` was a no-op there and the two reversal tests passed against a
+  provider that honoured the rules and one that didn't, identically. The stub
+  now archives what it is told to archive. A fixture too thin to express the
+  behaviour is worse than no test: it reports success either way.
 
 ## Deliberate deviations from the spec
 
