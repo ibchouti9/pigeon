@@ -1166,8 +1166,12 @@ describe('a declined sender appears in neither place', () => {
       }
 
       if (/threads\?/.test(href)) {
-        // Gmail's own split: the archive query is `-in:inbox`, so a thread that
-        // `silence()` archived stops matching the inbox and starts matching it.
+        // Gmail's own split: the walk asks for `in:inbox` or `-in:inbox`, so a
+        // thread `silence()` archived stops matching one and starts matching
+        // the other. A *search* is neither — Gmail searches archived mail too,
+        // which is exactly why D7 has to be enforced on those results.
+        const isWalk = /in%3Ainbox|in:inbox/.test(href);
+        if (!isWalk) return json({ threads: threads.map((t) => ({ id: t.id, historyId: '1' })) });
         const wantsArchive = /-in%3Ainbox|-in:inbox/.test(href);
         const visible = threads.filter((t) => archivedIds.has(t.id) === wantsArchive);
         return json({ threads: visible.map((t) => ({ id: t.id, historyId: '1' })) });
@@ -1205,6 +1209,19 @@ describe('a declined sender appears in neither place', () => {
    * that builds the Screener never sees them again. The undo the toast offers
    * silently restored nothing.
    */
+  it('keeps a declined sender out of search too', async () => {
+    stubMailbox('Recruiter <recruiter@example.com>');
+    const provider = new GmailMailProvider();
+    await provider.listHeld();
+
+    await provider.decideSender('recruiter@example.com', 'declined');
+
+    // D7 — "never appears in Pigeon". Typing a word from their mail found it.
+    const results = await provider.search('Hello', false);
+    expect(results.inbox).toEqual([]);
+    expect(results.archive).toEqual([]);
+  });
+
   it('puts the sender back when the decline is undone', async () => {
     stubMailbox('Recruiter <recruiter@example.com>');
     const provider = new GmailMailProvider();

@@ -1117,6 +1117,14 @@ export class GmailMailProvider implements MailProvider {
     for (const thread of threads) {
       if (!thread) continue;
       const sender = this.threadSender(thread);
+
+      /*
+       * D7 — "never appears in Pigeon" is three places, not two. Search reached
+       * straight past the filter the Inbox and Archive share, so anything from
+       * a declined sender was listed and openable by typing a word from it.
+       */
+      if (sender && this.hiddenByDecision(thread, sender.email)) continue;
+
       const unknown = sender ? !this.isKnown(sender.email) && !this.isDeclined(sender.email) : false;
 
       if (unknown) {
