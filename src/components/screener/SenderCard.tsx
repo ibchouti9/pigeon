@@ -63,6 +63,16 @@ export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function Send
   const heldMany = messages.length > 1;
   const showRead = Boolean(aiRead);
 
+  /*
+   * §8.4 — "the top card is the only focusable region". A card rendered with
+   * `interactive={false}` is already `aria-hidden` and out of the tab order,
+   * but its three buttons stayed enabled: during a `j`/`k` cycle that left
+   * three operable controls inside an aria-hidden subtree for the length of
+   * the animation, which is content a screen reader is told does not exist and
+   * can still tab into.
+   */
+  const inert = Boolean(disabled) || Boolean(deciding) || !interactive;
+
   return (
     <article
       ref={ref}
@@ -121,12 +131,12 @@ export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function Send
         <div className={styles.actions}>
           <Button
             variant="secondary-destructive"
-            disabled={disabled || Boolean(deciding)}
+            disabled={inert}
             onClick={onDecline}
           >
             Decline sender
           </Button>
-          <Button variant="primary" disabled={disabled || Boolean(deciding)} onClick={onApprove}>
+          <Button variant="primary" disabled={inert} onClick={onApprove}>
             Approve sender
           </Button>
         </div>
@@ -134,7 +144,7 @@ export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function Send
           variant="tertiary"
           fullWidth
           className={styles.readMessage}
-          disabled={Boolean(deciding)}
+          disabled={inert}
           onClick={onRead}
         >
           {heldMany ? `Read ${plural(messages.length, 'message')}` : 'Read message'}

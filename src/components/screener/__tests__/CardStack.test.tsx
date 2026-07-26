@@ -134,3 +134,45 @@ describe('CardStack — decisions', () => {
     expect(decide).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * §8.4 — "the top card is the only focusable region", and the cards behind it
+ * are aria-hidden. The overlay card rendered during a `j`/`k` cycle was
+ * aria-hidden and out of the tab order, but its three buttons stayed enabled:
+ * three operable controls inside a subtree a screen reader is told does not
+ * exist, for the length of the animation.
+ */
+describe('CardStack — nothing operable inside aria-hidden (§8.4)', () => {
+  function operableInsideHidden(): HTMLElement[] {
+    return Array.from(document.querySelectorAll('[aria-hidden="true"]')).flatMap((host) =>
+      Array.from(
+        host.querySelectorAll<HTMLButtonElement>('button, [href], input, select, textarea'),
+      ).filter((el) => !el.disabled),
+    );
+  }
+
+  it('leaves nothing operable behind the live card at rest', () => {
+    renderStack(5);
+    expect(operableInsideHidden()).toEqual([]);
+  });
+
+  it('leaves nothing operable in the overlay while cycling', async () => {
+    const user = userEvent.setup();
+    renderStack(5);
+
+    await user.keyboard('j');
+
+    // The overlay is mounted for the length of the cycle animation.
+    expect(document.querySelectorAll('[aria-hidden="true"] button').length).toBeGreaterThan(0);
+    expect(operableInsideHidden()).toEqual([]);
+  });
+
+  it('leaves nothing operable in the overlay while a decision departs', async () => {
+    const user = userEvent.setup();
+    renderStack(5);
+
+    await user.keyboard('a');
+
+    expect(operableInsideHidden()).toEqual([]);
+  });
+});
