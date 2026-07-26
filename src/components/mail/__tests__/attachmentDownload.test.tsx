@@ -87,8 +87,10 @@ describe('downloading an attachment (D20)', () => {
 
   it('offers a retry when the download fails, and says where the file still is', async () => {
     const user = userEvent.setup();
+    // The real provider throws this text; the fixture used to carry a
+    // placeholder, which hid the fact that the message was being discarded.
     vi.spyOn(useMail.getState().provider, 'downloadAttachment').mockRejectedValue(
-      new MailError('nope', 'not-found'),
+      new MailError("This attachment didn't download. It's still in Gmail.", 'not-found'),
     );
     const chip = renderBlock();
 
@@ -99,6 +101,33 @@ describe('downloading an attachment (D20)', () => {
     expect(toast.message).toBe("This attachment didn't download. It's still in Gmail.");
     expect(toast.action?.label).toBe('Try again');
     expect(clicked).toHaveLength(0);
+  });
+
+  it('names the real cause when it is not the attachment', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(useMail.getState().provider, 'downloadAttachment').mockRejectedValue(
+      new MailError(
+        "Pigeon lost access to your mail. Google revoked Pigeon's permission. Connect your account again to keep using Pigeon.",
+        'revoked',
+      ),
+    );
+
+    await user.click(renderBlock());
+
+    await waitFor(() => expect(useToasts.getState().toasts).toHaveLength(1));
+    expect(useToasts.getState().toasts[0].message).toContain('lost access to your mail');
+  });
+
+  it('falls back to the attachment copy for anything that is not a MailError', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(useMail.getState().provider, 'downloadAttachment').mockRejectedValue(new Error('x'));
+
+    await user.click(renderBlock());
+
+    await waitFor(() => expect(useToasts.getState().toasts).toHaveLength(1));
+    expect(useToasts.getState().toasts[0].message).toBe(
+      "This attachment didn't download. It's still in Gmail.",
+    );
   });
 
   it('ignores a second click while the first is still running', async () => {

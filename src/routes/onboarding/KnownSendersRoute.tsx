@@ -9,6 +9,7 @@ import { Monogram } from '../../components/primitives/Monogram';
 import { SkeletonRows } from '../../components/primitives/Feedback';
 import { cn } from '../../lib/cn';
 import { formatCount, plural } from '../../lib/format';
+import { MailError } from '../../data/provider';
 import { useMail } from '../../store/mail';
 import type { Sender } from '../../types';
 import styles from './KnownSendersRoute.module.css';
@@ -32,6 +33,9 @@ export function KnownSendersRoute() {
   const navigate = useNavigate();
 
   const [status, setStatus] = useState<LoadStatus>('loading');
+  const [errorText, setErrorText] = useState(
+    "Pigeon couldn't read your contacts. You can approve senders one at a time in the Screener instead.",
+  );
   const [senders, setSenders] = useState<Sender[]>([]);
   const [ticked, setTicked] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('');
@@ -48,7 +52,20 @@ export function KnownSendersRoute() {
       setSenders(known);
       setTicked(new Set(known.map((s) => s.id)));
       setStatus('ready');
-    } catch {
+    } catch (error) {
+      /*
+       * `getKnownSenders` can now fail for more than one reason — a contacts
+       * read that Google refused, a revoked token, an unreachable Gmail — and
+       * each carries its own §7.6 line. Showing the contacts copy for all of
+       * them would tell a user with an expired token to try their address book
+       * again. Both actions still fit either way: try again, or continue and
+       * approve people one at a time in the Screener.
+       */
+      setErrorText(
+        error instanceof MailError
+          ? error.message
+          : "Pigeon couldn't read your contacts. You can approve senders one at a time in the Screener instead.",
+      );
       setStatus('error');
     }
   }
@@ -176,10 +193,7 @@ export function KnownSendersRoute() {
 
       {status === 'error' && (
         <div className={styles.stateBlock}>
-          <p className="t-md ink-secondary">
-            Pigeon couldn&apos;t read your contacts. You can approve senders one at a time in the
-            Screener instead.
-          </p>
+          <p className="t-md ink-secondary">{errorText}</p>
           <div className={styles.stateActions}>
             <Button variant="secondary" onClick={load}>
               Try again

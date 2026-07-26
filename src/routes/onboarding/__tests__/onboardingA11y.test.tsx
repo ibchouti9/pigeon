@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { useMail } from '../../../store/mail';
 import { MockMailProvider } from '../../../data/mock/mockProvider';
+import { MailError } from '../../../data/provider';
 import { StepList, type Step } from '../../../components/onboarding/StepList';
 import { KnownSendersRoute } from '../KnownSendersRoute';
 
@@ -90,5 +91,58 @@ describe('O4 range selection (§5.3)', () => {
     // Cursor started at row 0 and extended through row 2.
     expect(tickedCount()).toBe(3);
     expect(before).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * `getKnownSenders` can fail for more than one reason — a contacts read Google
+ * refused, a revoked token, an unreachable Gmail — and each carries its own
+ * §7.6 line. O4 showed the contacts copy for all of them, which would tell a
+ * user with an expired token to try their address book again.
+ */
+describe('O4 says which failure it was (§7.6)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    MockMailProvider.reset();
+    useMail.getState().setProvider(new MockMailProvider());
+  });
+
+  afterEach(cleanup);
+
+  async function renderWithFailure(error: unknown) {
+    vi.spyOn(useMail.getState().provider, 'getKnownSenders').mockRejectedValue(error);
+    render(
+      <MemoryRouter>
+        <KnownSendersRoute />
+      </MemoryRouter>,
+    );
+    return screen.findByRole('button', { name: 'Try again' }, { timeout: 3000 });
+  }
+
+  it('shows the contacts line when contacts are what failed', async () => {
+    await renderWithFailure(
+      new MailError(
+        "Pigeon couldn't read your contacts. You can approve senders one at a time in the Screener instead.",
+        'unreachable',
+      ),
+    );
+    expect(screen.getByText(/couldn't read your contacts/)).toBeInTheDocument();
+  });
+
+  it('names a revoked token rather than blaming the address book', async () => {
+    await renderWithFailure(
+      new MailError(
+        "Pigeon lost access to your mail. Google revoked Pigeon's permission. Connect your account again to keep using Pigeon.",
+        'revoked',
+      ),
+    );
+    expect(screen.getByText(/lost access to your mail/)).toBeInTheDocument();
+    expect(screen.queryByText(/couldn't read your contacts/)).not.toBeInTheDocument();
+  });
+
+  it('keeps both actions whichever it was', async () => {
+    await renderWithFailure(new Error('boom'));
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
   });
 });

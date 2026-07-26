@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MailError } from '../../data/provider';
 import { useMail } from '../../store/mail';
 import { toast } from '../../store/toast';
 import { downloadBase64 } from '../../lib/download';
@@ -59,11 +60,16 @@ export function MessageBlock({
     try {
       const base64 = await provider.downloadAttachment(message.id, attachment.id);
       downloadBase64(base64, attachment.filename, attachment.mimeType);
-    } catch {
-      toast.error("This attachment didn't download. It's still in Gmail.", {
-        label: 'Try again',
-        run: () => void download(attachment),
-      });
+    } catch (error) {
+      // A revoked token and an unreachable Gmail each have their own §7.6 line;
+      // saying "this attachment didn't download" for all of them describes the
+      // symptom rather than the cause.
+      toast.error(
+        error instanceof MailError
+          ? error.message
+          : "This attachment didn't download. It's still in Gmail.",
+        { label: 'Try again', run: () => void download(attachment) },
+      );
     } finally {
       setDownloading(null);
     }
