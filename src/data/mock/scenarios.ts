@@ -100,11 +100,14 @@ class ScenarioProvider implements MailProvider {
     return this.inner.approveKnownSenders(ids);
   }
 
-  listThreads(place: 'inbox' | 'archive'): Promise<Thread[]> {
+  listThreads(
+    place: 'inbox' | 'archive',
+    onPage?: (threads: Thread[]) => void,
+  ): Promise<Thread[]> {
     if (this.scenario === 'loading') return never();
     if (this.scenario === 'empty') return Promise.resolve([]);
     const failure = this.failRead();
-    return failure ? Promise.reject(failure) : this.inner.listThreads(place);
+    return failure ? Promise.reject(failure) : this.inner.listThreads(place, onPage);
   }
 
   getThread(threadId: string): Promise<Thread> {

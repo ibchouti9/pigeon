@@ -1035,3 +1035,94 @@ describe('progress from a shared walk', () => {
     expect(ticks.length).toBeGreaterThan(1);
   });
 });
+
+/**
+ * `loadThreads` awaited the whole walk before the screen left its skeleton. On
+ * a real 2,000-thread archive that is ~50 seconds at best, and around thirteen
+ * minutes once Gmail's 6,000-units-a-minute budget throttles it — threads.get
+ * costs 40 units apiece. The Inbox is walked during onboarding behind §5.2b's
+ * progress bar; the Archive is walked the first time someone clicks it, with
+ * nothing to look at.
+ */
+describe('a long walk fills the screen as it goes', () => {
+  function stubPages(pageCount: number, perPage: number) {
+    let served = 0;
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
+
+      if (/users\/me\/profile/.test(href)) return json(PROFILE.body);
+      if (/people\/me\?/.test(href)) return json(PEOPLE_ME.body);
+      if (/people\/me\/connections/.test(href)) return json({ connections: [] });
+      if (/messages\?/.test(href)) return json({ messages: [] });
+
+      if (/threads\?/.test(href)) {
+        served += 1;
+        const start = (served - 1) * perPage;
+        return json({
+          threads: Array.from({ length: perPage }, (_, i) => ({
+            id: `p${start + i}`,
+            historyId: '1',
+          })),
+          nextPageToken: served < pageCount ? `page${served}` : undefined,
+        });
+      }
+
+      const id = href.match(/threads\/([^?/]+)/)?.[1] ?? 'x';
+      return json({
+        id,
+        messages: [
+          {
+            id: `m-${id}`,
+            threadId: id,
+            internalDate: '1750000000000',
+            labelIds: [],
+            payload: {
+              headers: [
+                { name: 'From', value: 'Dana <dana@lumen.com>' },
+                { name: 'Subject', value: 'Hello' },
+              ],
+              mimeType: 'text/plain',
+              body: { data: encodeBase64Url('Body.') },
+            },
+          },
+        ],
+      });
+    });
+  }
+
+  it('publishes partial results long before the walk finishes', async () => {
+    stubPages(1, 50);
+    const sizes: number[] = [];
+
+    const all = await new GmailMailProvider().listThreads('archive', (threads) =>
+      sizes.push(threads.length),
+    );
+
+    // Batched ten at a time, so a fifty-thread page reports five times over.
+    expect(sizes.length).toBeGreaterThan(1);
+    expect(sizes[0]).toBeLessThan(all.length);
+    expect(sizes[sizes.length - 1]).toBe(all.length);
+  });
+
+  it('only ever grows the list it publishes', async () => {
+    stubPages(2, 30);
+    const sizes: number[] = [];
+    await new GmailMailProvider().listThreads('archive', (t) => sizes.push(t.length));
+
+    for (let i = 1; i < sizes.length; i++) {
+      expect(sizes[i], `page ${i} shrank`).toBeGreaterThanOrEqual(sizes[i - 1]);
+    }
+  });
+
+  it('publishes newest first, so the list never reorders under the reader', async () => {
+    stubPages(1, 30);
+    let lastPage: { lastMessageAt: string }[] = [];
+    await new GmailMailProvider().listThreads('archive', (t) => {
+      lastPage = t;
+    });
+
+    const dates = lastPage.map((t) => t.lastMessageAt);
+    expect(dates).toEqual([...dates].sort().reverse());
+  });
+});

@@ -134,6 +134,25 @@ describe.each(IMPLEMENTATIONS)('$name honours the provider contract', ({ make })
     expect(account.email).toMatch(/@/);
   });
 
+  it('reports each page as it lands, not only the finished walk', async () => {
+    const pages: number[] = [];
+    const all = await provider.listThreads('inbox', (threads) => pages.push(threads.length));
+
+    // A caller that passes onPage hears from it. Otherwise a consumer comes to
+    // depend on the final resolution alone, and the screen that has no progress
+    // bar behind it sits on a skeleton for the length of the whole walk.
+    expect(pages.length).toBeGreaterThan(0);
+    expect(pages[pages.length - 1]).toBe(all.length);
+  });
+
+  it('resolves with the same list it last published', async () => {
+    let last: number | null = null;
+    const all = await provider.listThreads('archive', (threads) => {
+      last = threads.length;
+    });
+    expect(last).toBe(all.length);
+  });
+
   it('refuses to download an attachment that does not exist', async () => {
     await expect(provider.downloadAttachment('no-such-message', 'no-such-file')).rejects.toThrow();
   });

@@ -194,12 +194,22 @@ export class MockMailProvider implements MailProvider {
     return delay(undefined);
   }
 
-  async listThreads(place: 'inbox' | 'archive'): Promise<Thread[]> {
+  async listThreads(
+    place: 'inbox' | 'archive',
+    onPage?: (threads: Thread[]) => void,
+  ): Promise<Thread[]> {
     const threads = this.state.threads
       .filter((t) => t.place === place)
       .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
       .map((t) => ({ ...t }));
-    return delay(threads);
+
+    const all = await delay(threads);
+    // The demo holds everything in memory, so its one page is the whole list.
+    // Called anyway: the contract is that a caller passing `onPage` hears from
+    // it, and a provider that stays silent would let a consumer come to depend
+    // on the final resolution alone.
+    onPage?.(all);
+    return all;
   }
 
   async getThread(threadId: string): Promise<Thread> {

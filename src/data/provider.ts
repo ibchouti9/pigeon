@@ -30,7 +30,17 @@ export interface MailProvider {
   /** Records the O4 decision: everything ticked becomes approved. */
   approveKnownSenders(senderIds: string[]): Promise<void>;
 
-  listThreads(place: 'inbox' | 'archive'): Promise<Thread[]>;
+  /**
+   * @param onPage called with everything fetched so far, each time a page
+   * lands. A real mailbox can hold thousands of threads and each body is its
+   * own request, so waiting for the whole walk leaves the screen on a skeleton
+   * for minutes. The inbox has §5.2b's progress bar behind it during
+   * onboarding; the Archive has nothing but this.
+   */
+  listThreads(
+    place: 'inbox' | 'archive',
+    onPage?: (threads: Thread[]) => void,
+  ): Promise<Thread[]>;
   getThread(threadId: string): Promise<Thread>;
   markRead(threadId: string, read: boolean): Promise<void>;
 

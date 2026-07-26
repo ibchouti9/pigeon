@@ -172,12 +172,24 @@ export const useMail = create<MailState>((set, get) => ({
     const epoch = get().providerEpoch;
     set((s) => ({ status: { ...s.status, [place]: 'loading' } }));
     try {
-      const threads = await get().provider.listThreads(place);
+      /*
+       * Each page as it lands, not just the finished walk. A real mailbox holds
+       * thousands of threads and every body is its own request, so waiting for
+       * all of them leaves the screen on a skeleton for minutes — the Inbox has
+       * §5.2b's progress bar behind it during onboarding, but the Archive is
+       * walked the first time someone clicks it, with nothing to look at.
+       */
+      const publish = (threads: Thread[]) => {
+        if (get().providerEpoch !== epoch) return;
+        set((s) => ({
+          [place]: threads,
+          status: { ...s.status, [place]: 'ready' },
+        }) as Partial<MailState>);
+      };
+
+      const threads = await get().provider.listThreads(place, publish);
       if (get().providerEpoch !== epoch) return;
-      set((s) => ({
-        [place]: threads,
-        status: { ...s.status, [place]: 'ready' },
-      }) as Partial<MailState>);
+      publish(threads);
     } catch (error) {
       if (get().providerEpoch !== epoch) return;
       set((s) => ({

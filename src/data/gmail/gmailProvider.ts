@@ -125,7 +125,11 @@ export class GmailMailProvider implements MailProvider {
   private historyIds = new Map<string, string>();
   private hydrating = new Map<
     string,
-    { promise: Promise<Thread[]>; listeners: Set<(done: number, listed?: number) => void> }
+    {
+      promise: Promise<Thread[]>;
+      listeners: Set<(done: number, listed?: number) => void>;
+      pageListeners: Set<(threads: Thread[]) => void>;
+    }
   >();
   private buildingKnown: Promise<void> | null = null;
   /** §7.6's "Contacts unreadable" — O4 has a state for it and needs telling. */
@@ -466,6 +470,7 @@ export class GmailMailProvider implements MailProvider {
   private hydrate(
     place: 'inbox' | 'archive',
     onProgress?: (done: number, listed?: number) => void,
+    onPage?: (threads: Thread[]) => void,
   ): Promise<Thread[]> {
     /*
      * The shell fires loadThreads, loadHeld and loadSenders together on mount,
@@ -483,23 +488,33 @@ export class GmailMailProvider implements MailProvider {
     const existing = this.hydrating.get(place);
     if (existing) {
       if (onProgress) existing.listeners.add(onProgress);
+      if (onPage) existing.pageListeners.add(onPage);
       return existing.promise;
     }
 
     const listeners = new Set<(done: number, listed?: number) => void>();
     if (onProgress) listeners.add(onProgress);
+    const pageListeners = new Set<(threads: Thread[]) => void>();
+    if (onPage) pageListeners.add(onPage);
 
-    const promise = this.walk(place, (done, listed) => {
-      for (const listener of listeners) listener(done, listed);
-    }).finally(() => this.hydrating.delete(place));
+    const promise = this.walk(
+      place,
+      (done, listed) => {
+        for (const listener of listeners) listener(done, listed);
+      },
+      (partial) => {
+        for (const listener of pageListeners) listener(partial);
+      },
+    ).finally(() => this.hydrating.delete(place));
 
-    this.hydrating.set(place, { promise, listeners });
+    this.hydrating.set(place, { promise, listeners, pageListeners });
     return promise;
   }
 
   private async walk(
     place: 'inbox' | 'archive',
     onProgress?: (done: number, listed?: number) => void,
+    onPage?: (threads: Thread[]) => void,
   ): Promise<Thread[]> {
     await this.getAccount();
 
@@ -569,6 +584,9 @@ export class GmailMailProvider implements MailProvider {
 
       done += batch.length;
       onProgress?.(done, listed.length);
+      // Newest first, same as the finished list, so the screen never reorders
+      // under the reader as later pages land.
+      onPage?.([...out].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt)));
     }
 
     return out.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
@@ -580,13 +598,24 @@ export class GmailMailProvider implements MailProvider {
     return incoming?.from ?? null;
   }
 
-  async listThreads(place: 'inbox' | 'archive'): Promise<Thread[]> {
-    const all = await this.hydrate(place);
-    return all.filter((thread) => {
+  async listThreads(
+    place: 'inbox' | 'archive',
+    onPage?: (threads: Thread[]) => void,
+  ): Promise<Thread[]> {
+    const all = await this.hydrate(
+      place,
+      undefined,
+      onPage && ((partial: Thread[]) => onPage(this.visible(partial, place))),
+    );
+    return this.visible(all, place);
+  }
+
+  /** §2.3 — unknown senders belong in the Screener, declined ones nowhere. */
+  private visible(threads: Thread[], place: 'inbox' | 'archive'): Thread[] {
+    return threads.filter((thread) => {
       const sender = this.threadSender(thread);
       if (!sender) return true; // A thread the user started stays visible.
       if (this.isDeclined(sender.email)) return false;
-      // Unknown senders belong in the Screener, not the Inbox (§2.3).
       return place === 'archive' || this.isKnown(sender.email);
     });
   }
