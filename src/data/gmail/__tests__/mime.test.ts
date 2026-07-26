@@ -157,4 +157,79 @@ describe('buildRawMessage', () => {
     });
     expect(decodeBase64Url(raw)).toContain('=?UTF-8?B?');
   });
+
+  it('wraps the body and files in multipart/mixed when attaching (D20)', () => {
+    const raw = buildRawMessage({
+      from: { name: 'Marc Ferrum', email: 'marc@ferrum.dev' },
+      to: [{ name: '', email: 'dana@lumenpartners.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Redlines',
+      body: 'Attached.',
+      attachments: [
+        {
+          id: 'a1',
+          filename: 'contract-v3.pdf',
+          size: 9,
+          mimeType: 'application/pdf',
+          data: btoa('some bytes'),
+        },
+      ],
+    });
+
+    const decoded = decodeBase64Url(raw);
+    const boundary = decoded.match(/boundary="([^"]+)"/)?.[1];
+    expect(boundary).toBeTruthy();
+
+    // Header, body part, file part, closing delimiter — in that order.
+    expect(decoded).toContain(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+    expect(decoded).toContain('Content-Type: text/plain; charset="UTF-8"');
+    expect(decoded).toContain('Attached.');
+    expect(decoded).toContain('Content-Type: application/pdf; name="contract-v3.pdf"');
+    expect(decoded).toContain(
+      'Content-Disposition: attachment; filename="contract-v3.pdf"',
+    );
+    expect(decoded).toContain('Content-Transfer-Encoding: base64');
+    expect(decoded).toContain(btoa('some bytes'));
+    expect(decoded.trimEnd().endsWith(`--${boundary}--`)).toBe(true);
+  });
+
+  it('stays a plain text/plain message when nothing is attached', () => {
+    const raw = buildRawMessage({
+      from: { name: '', email: 'marc@ferrum.dev' },
+      to: [{ name: '', email: 'dana@lumenpartners.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'No files',
+      body: 'Just words.',
+      attachments: [],
+    });
+    expect(decodeBase64Url(raw)).not.toContain('multipart/mixed');
+  });
+
+  it('wraps long base64 payloads at 76 characters (RFC 2045)', () => {
+    const raw = buildRawMessage({
+      from: { name: '', email: 'marc@ferrum.dev' },
+      to: [{ name: '', email: 'dana@lumenpartners.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Big',
+      body: 'See attached.',
+      attachments: [
+        {
+          id: 'a1',
+          filename: 'big.bin',
+          size: 600,
+          mimeType: 'application/octet-stream',
+          data: 'A'.repeat(600),
+        },
+      ],
+    });
+
+    const payloadLines = decodeBase64Url(raw)
+      .split('\r\n')
+      .filter((line) => /^A+$/.test(line));
+    expect(payloadLines.length).toBe(8);
+    expect(payloadLines.every((line) => line.length <= 76)).toBe(true);
+  });
 });

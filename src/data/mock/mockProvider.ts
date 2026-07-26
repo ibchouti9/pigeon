@@ -3,6 +3,7 @@ import type {
   Address,
   HeldSender,
   Message,
+  OutgoingAttachment,
   Sender,
   SyncProgress,
   Thread,
@@ -332,6 +333,7 @@ export class MockMailProvider implements MailProvider {
     subject: string;
     body: string;
     threadId?: string;
+    attachments?: OutgoingAttachment[];
   }): Promise<Message> {
     if (draft.to.length === 0) {
       throw new MailError(
@@ -349,7 +351,12 @@ export class MockMailProvider implements MailProvider {
       subject: draft.subject,
       body: draft.body,
       date: new Date().toISOString(),
-      attachments: [],
+      attachments: (draft.attachments ?? []).map((a) => ({
+        id: a.id,
+        filename: a.filename,
+        size: a.size,
+        mimeType: a.mimeType,
+      })),
       isFromUser: true,
     };
 

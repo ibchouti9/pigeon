@@ -1,6 +1,6 @@
 /** Gmail message payloads in, Pigeon domain objects out. */
 
-import type { Address, Attachment, Message } from '../../types';
+import type { Address, Attachment, Message, OutgoingAttachment } from '../../types';
 
 export interface GmailHeader {
   name: string;
@@ -201,6 +201,11 @@ function formatAddress(a: Address): string {
   return a.name ? `${encodeHeaderValue(a.name)} <${a.email}>` : a.email;
 }
 
+/** Wraps base64 at 76 characters, as RFC 2045 requires. */
+function wrapBase64(data: string): string {
+  return (data.match(/.{1,76}/g) ?? []).join('\r\n');
+}
+
 /** Builds the RFC 5322 message Gmail's send endpoint expects. */
 export function buildRawMessage(input: {
   from: Address;
@@ -209,6 +214,7 @@ export function buildRawMessage(input: {
   bcc: Address[];
   subject: string;
   body: string;
+  attachments?: OutgoingAttachment[];
   inReplyTo?: string;
   references?: string;
 }): string {
@@ -222,10 +228,41 @@ export function buildRawMessage(input: {
   if (input.inReplyTo) lines.push(`In-Reply-To: ${input.inReplyTo}`);
   if (input.references) lines.push(`References: ${input.references}`);
   lines.push('MIME-Version: 1.0');
+
+  const attachments = input.attachments ?? [];
+
+  if (attachments.length === 0) {
+    lines.push('Content-Type: text/plain; charset="UTF-8"');
+    lines.push('Content-Transfer-Encoding: 8bit');
+    lines.push('');
+    lines.push(input.body);
+    return encodeBase64Url(lines.join('\r\n'));
+  }
+
+  // Fixed boundary token: it only has to be absent from the parts, and the
+  // parts are either UTF-8 text or base64, neither of which can contain it.
+  const boundary = `----pigeon-${attachments.length}-${input.subject.length}-boundary`;
+
+  lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  lines.push('');
+  lines.push(`--${boundary}`);
   lines.push('Content-Type: text/plain; charset="UTF-8"');
   lines.push('Content-Transfer-Encoding: 8bit');
   lines.push('');
   lines.push(input.body);
+
+  for (const file of attachments) {
+    lines.push('');
+    lines.push(`--${boundary}`);
+    lines.push(`Content-Type: ${file.mimeType}; name="${file.filename}"`);
+    lines.push(`Content-Disposition: attachment; filename="${file.filename}"`);
+    lines.push('Content-Transfer-Encoding: base64');
+    lines.push('');
+    lines.push(wrapBase64(file.data));
+  }
+
+  lines.push('');
+  lines.push(`--${boundary}--`);
 
   return encodeBase64Url(lines.join('\r\n'));
 }

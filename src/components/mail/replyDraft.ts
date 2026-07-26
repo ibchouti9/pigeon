@@ -34,6 +34,7 @@ export function buildReplyDraft(
     body: '',
     threadId: thread.id,
     mode,
+    attachments: [],
     aiState: 'none',
   };
 }

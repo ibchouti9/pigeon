@@ -58,6 +58,7 @@ export function ComposeDock() {
         subject: draft.subject,
         body: draft.body,
         threadId: draft.threadId,
+        attachments: draft.attachments,
       });
       const snapshot = { ...draft };
       close();

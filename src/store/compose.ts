@@ -27,6 +27,7 @@ function emptyDraft(seed?: Partial<Draft>): Draft {
     subject: '',
     body: '',
     mode: 'new',
+    attachments: [],
     aiState: 'none',
     ...seed,
   };

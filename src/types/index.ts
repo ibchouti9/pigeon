@@ -13,6 +13,19 @@ export interface Attachment {
   mimeType: string;
 }
 
+/**
+ * A file chosen in the composer, held in memory until the message is sent.
+ * D20 caps these at 25 MB; nothing is uploaded anywhere before send.
+ */
+export interface OutgoingAttachment {
+  id: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+  /** base64, without the data: prefix. */
+  data: string;
+}
+
 export interface Message {
   id: string;
   threadId: string;
@@ -114,6 +127,7 @@ export interface Draft {
   /** Set for replies and forwards. */
   threadId?: string;
   mode: 'new' | 'reply' | 'reply-all' | 'forward';
+  attachments: OutgoingAttachment[];
   /** Ownership of the body text (§4.7). */
   aiState: 'none' | 'generating' | 'drafted' | 'edited';
 }

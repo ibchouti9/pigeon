@@ -42,6 +42,7 @@ export function InlineReply({ thread, mode, draftOnOpen, onClose }: InlineReplyP
         subject: draft.subject,
         body: draft.body,
         threadId: draft.threadId,
+        attachments: draft.attachments,
       });
       const snapshot = { ...draft };
       onClose();

@@ -3,6 +3,7 @@ import type {
   Address,
   HeldSender,
   Message,
+  OutgoingAttachment,
   Sender,
   SyncProgress,
   Thread,
@@ -528,6 +529,7 @@ export class GmailMailProvider implements MailProvider {
     subject: string;
     body: string;
     threadId?: string;
+    attachments?: OutgoingAttachment[];
   }): Promise<Message> {
     const account = await this.getAccount();
     const raw = buildRawMessage({
@@ -537,6 +539,7 @@ export class GmailMailProvider implements MailProvider {
       bcc: draft.bcc,
       subject: draft.subject,
       body: draft.body,
+      attachments: draft.attachments,
     });
 
     let sent: GmailMessage;
@@ -563,7 +566,12 @@ export class GmailMailProvider implements MailProvider {
       subject: draft.subject,
       body: draft.body,
       date: new Date().toISOString(),
-      attachments: [],
+      attachments: (draft.attachments ?? []).map((a) => ({
+        id: a.id,
+        filename: a.filename,
+        size: a.size,
+        mimeType: a.mimeType,
+      })),
       isFromUser: true,
     };
   }

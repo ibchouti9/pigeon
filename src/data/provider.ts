@@ -3,6 +3,7 @@ import type {
   Address,
   HeldSender,
   Message,
+  OutgoingAttachment,
   Sender,
   SyncProgress,
   Thread,
@@ -59,6 +60,7 @@ export interface MailProvider {
     subject: string;
     body: string;
     threadId?: string;
+    attachments?: OutgoingAttachment[];
   }): Promise<Message>;
 
   /** Un-appends a sent message during the 8s undo window (§3.4 step 6). */

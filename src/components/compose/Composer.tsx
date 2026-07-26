@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { Address, Draft, Message } from '../../types';
+import type { Address, Draft, Message, OutgoingAttachment } from '../../types';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { Chip } from '../primitives/Controls';
@@ -8,9 +8,27 @@ import { BodyEditor } from './BodyEditor';
 import { useAssistant, useBehaviour } from '../../ai/useAssistant';
 import { hasUnresolvedPlaceholder } from '../../store/compose';
 import { cn } from '../../lib/cn';
-import { displayName } from '../../lib/format';
+import { displayName, formatBytes } from '../../lib/format';
 import type { Tone } from '../../ai/types';
 import styles from './Composer.module.css';
+
+/** D20 — attach on compose up to 25 MB, counted across the whole message. */
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+let attachmentCounter = 0;
+
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const result = String(reader.result);
+      // Strip the `data:<mime>;base64,` prefix.
+      resolve(result.slice(result.indexOf(',') + 1));
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 const TONES: { value: Tone; label: string }[] = [
   { value: 'shorter', label: 'Shorter' },
@@ -64,6 +82,8 @@ export function Composer({
   const [toneDone, setToneDone] = useState<Tone | null>(null);
   const [undoBody, setUndoBody] = useState<string | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const provenanceId = useId();
 
   const generating = draft.aiState === 'generating';
@@ -130,6 +150,34 @@ export function Composer({
     } finally {
       setTonePending(null);
     }
+  }
+
+  async function addFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setAttachError(null);
+
+    const existing = draft.attachments.reduce((n, a) => n + a.size, 0);
+    const added: OutgoingAttachment[] = [];
+    let total = existing;
+
+    for (const file of Array.from(files)) {
+      total += file.size;
+      if (total > MAX_ATTACHMENT_BYTES) {
+        setAttachError(
+          `Attachments are limited to ${formatBytes(MAX_ATTACHMENT_BYTES)}. ${file.name} doesn't fit.`,
+        );
+        break;
+      }
+      added.push({
+        id: `attachment-${++attachmentCounter}`,
+        filename: file.name,
+        size: file.size,
+        mimeType: file.type || 'application/octet-stream',
+        data: await readAsBase64(file),
+      });
+    }
+
+    if (added.length) onChange({ attachments: [...draft.attachments, ...added] });
   }
 
   function onBodyChange(next: string) {
@@ -296,6 +344,34 @@ export function Composer({
         </div>
       )}
 
+      {draft.attachments.length > 0 && (
+        <div className={styles.attachments}>
+          {draft.attachments.map((file) => (
+            <span key={file.id} className={cn('t-xs', styles.attachment)}>
+              <Icon name="attach" size={16} />
+              {file.filename}
+              <span className={styles.attachmentSize}>· {formatBytes(file.size)}</span>
+              <button
+                type="button"
+                className={styles.attachmentRemove}
+                aria-label={`Remove ${file.filename}`}
+                onClick={() =>
+                  onChange({ attachments: draft.attachments.filter((a) => a.id !== file.id) })
+                }
+              >
+                <Icon name="close" size={16} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {attachError && (
+        <div className={cn('t-sm', styles.errorBlock)} role="alert">
+          {attachError}
+        </div>
+      )}
+
       <div className={styles.actions}>
         <Button variant="primary" type="submit" loading={sending} disabled={sendDisabled}>
           Send
@@ -327,6 +403,33 @@ export function Composer({
         )}
 
         <span className={styles.actionsSpacer} />
+
+        {/*
+          display:none, not .visually-hidden — the clip technique leaves the
+          input focusable and in the accessibility tree, which would put a
+          second, silent "Attach file" stop next to the button that labels it.
+          .click() still opens the picker on a display:none input.
+        */}
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          className={styles.fileInput}
+          onChange={(e) => {
+            void addFiles(e.currentTarget.files);
+            e.currentTarget.value = '';
+          }}
+        />
+        <Button
+          variant="icon"
+          size="sm"
+          aria-label="Attach file"
+          title="Attach file"
+          disabled={sending}
+          onClick={() => fileRef.current?.click()}
+        >
+          <Icon name="attach" size={16} />
+        </Button>
 
         <Button
           variant="icon"
