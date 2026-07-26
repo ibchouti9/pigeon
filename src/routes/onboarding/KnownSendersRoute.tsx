@@ -11,6 +11,7 @@ import { cn } from '../../lib/cn';
 import { formatCount, plural } from '../../lib/format';
 import { MailError } from '../../data/provider';
 import { useMail } from '../../store/mail';
+import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import type { Sender } from '../../types';
 import styles from './KnownSendersRoute.module.css';
 
@@ -33,6 +34,8 @@ export function KnownSendersRoute() {
   const navigate = useNavigate();
 
   const [status, setStatus] = useState<LoadStatus>('loading');
+  // C-21 — 200ms minimum on the skeleton.
+  const showSkeleton = useMinimumVisible(status === 'loading');
   const [errorText, setErrorText] = useState(
     "Pigeon couldn't read your contacts. You can approve senders one at a time in the Screener instead.",
   );
@@ -189,7 +192,7 @@ export function KnownSendersRoute() {
     <OnboardingColumn width={720}>
       <h1 className={cn('t-display-md', styles.heading)}>Who already knows you?</h1>
 
-      {status === 'loading' && <SkeletonRows count={8} height={44} circle={24} label="Loading known senders" />}
+      {showSkeleton && <SkeletonRows count={8} height={44} circle={24} label="Loading known senders" />}
 
       {status === 'error' && (
         <div className={styles.stateBlock}>

@@ -9,6 +9,7 @@ import cardStyles from './SenderCard.module.css';
 import { SkeletonBar, SkeletonCircle } from '../primitives/Feedback';
 import { rotateFrom, BEHIND_INSETS } from './stack';
 import { MOTION } from './motion';
+import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import styles from './CardStack.module.css';
 
 export interface CardStackProps {
@@ -40,6 +41,7 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
   const [enter, setEnter] = useState<'rise' | 'fromRight' | 'fromLeft' | 'restore' | null>(null);
   const [announce, setAnnounce] = useState('');
   const [errorId, setErrorId] = useState<string | null>(null);
+  const showSkeleton = useMinimumVisible(status !== 'ready');
 
   const cardRef = useRef<HTMLElement | null>(null);
   const hasFocused = useRef(false);
@@ -195,7 +197,10 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
     // never go stale — the listener itself is cheap to recreate.
   }, [held, topId, online, overlay, top, onRead, onToggleView, handleDecide, cycle]);
 
-  if (status !== 'ready') {
+  // C-21's 200ms minimum, which every other skeleton in the product got and
+  // this one didn't — the Screener card is the largest of them, so a sub-200ms
+  // flash of it is the most visible.
+  if (showSkeleton) {
     return (
       <div className={styles.stack}>
         <div className={styles.wrapper}>

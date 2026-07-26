@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { cn } from '../../lib/cn';
 import { displayName, joinNames, plural } from '../../lib/format';
 import type { Address, Message, Place, Thread } from '../../types';
@@ -112,6 +113,8 @@ export function ThreadReader({
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
   const [quotedOpen, setQuotedOpen] = useState<Record<string, boolean>>({});
   const [hiddenSummaryFor, setHiddenSummaryFor] = useState<Record<string, boolean>>({});
+  // C-21 — 200ms minimum, so a cached thread doesn't flash a skeleton reader.
+  const showSkeleton = useMinimumVisible(status === 'loading');
 
   if (status === 'none' || !thread) {
     /*
@@ -138,7 +141,7 @@ export function ThreadReader({
       </header>
     );
 
-    if (status === 'loading') {
+    if (showSkeleton) {
       return (
         <div className={styles.pane}>
           {placeholderHeader}

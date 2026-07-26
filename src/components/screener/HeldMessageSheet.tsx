@@ -3,6 +3,7 @@ import type { HeldSender } from '../../types';
 import { useMail } from '../../store/mail';
 import { isTypingTarget, useUi } from '../../store/ui';
 import { useOnline } from '../../hooks/useOnline';
+import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { cn } from '../../lib/cn';
 import { displayName, formatBytes, formatMessageTimestamp, formatPostmarkDate, plural } from '../../lib/format';
 import { Button } from '../primitives/Button';
@@ -28,6 +29,8 @@ export function HeldMessageSheet() {
   const closeHeldSheet = useUi((s) => s.closeHeldSheet);
   const held = useMail((s) => s.held);
   const heldStatus = useMail((s) => s.status.held);
+  // C-21 — 200ms minimum, so a fast load doesn't flash a sheet of bars.
+  const showSkeleton = useMinimumVisible(heldStatus === 'loading' || heldStatus === 'idle');
   const decide = useMail((s) => s.decide);
   const loadHeld = useMail((s) => s.loadHeld);
   const online = useOnline();
@@ -119,7 +122,7 @@ export function HeldMessageSheet() {
     if (e.target === e.currentTarget) closeHeldSheet();
   }
 
-  if (!entry && (heldStatus === 'loading' || heldStatus === 'idle')) {
+  if (!entry && showSkeleton) {
     // §5.9's loading state. Deep-linking to /screener/s/:id on a cold start
     // used to fall straight through to "This message didn't load." while the
     // held list was still on its way — a false error, on the one path where
