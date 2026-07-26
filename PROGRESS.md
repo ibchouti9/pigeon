@@ -141,6 +141,33 @@ found by driving the running app, not by reading the code.
   from Contacts; skipping the screen skipped the seeding too.
 - **Background sync finished invisibly** — §3.1 3a's rail progress line had
   nothing subscribed to it.
+- **A held search result froze the keyboard.** The held-message sheet was
+  mounted by the Screener alone, so clicking a held result set the open-sheet
+  state with nothing to render it — and an open sheet blocks every single-key
+  shortcut, so the whole app went dead until Esc.
+- **Bulk archive lost most of its own undos.** The toast store capped itself at
+  the three *visible* toasts and dropped the rest with their handlers.
+- **Opening a search result destroyed the search.** `/search/t/:id` dropped the
+  query string, so the query cleared and every result vanished.
+- **`r` opened a reply and left focus on the thread row**, so everything typed
+  after it went nowhere (§3.4 step 3).
+- **Undoing a sent inline reply threw the draft away** instead of restoring the
+  composer with it (§3.4 step 6).
+- **Send-blocked helper text was suppressed** whenever no AI provider was
+  connected — offline, Send was greyed with no explanation.
+- **C-28's tooltips were unreachable.** They hung off `disabled` buttons, which
+  take no focus and dispatch no pointer events, so the only text explaining why
+  a control was off could not be reached at all.
+- **A revoked token didn't lock the shell** (§5.5) — the reader sat beside the
+  error offering "Select a thread to read it.", and every route stayed live.
+- **The `[confirm: …]` chip was misaligned.** It set `--font-mono` on the
+  transparent mirror while the textarea above stayed in `--font-body`, so the
+  tint box was 260px against the text's 201px and the rest of the line drifted.
+- **Search results never marked the matched terms** (§5.11); only the held rows
+  did.
+- **"Test connection" opened the provider form** instead of testing anything.
+- **One Esc closed two layers** — the global handler minimized the composer and
+  the list then cleared its selection on the same press.
 
 ## Deliberate deviations from the spec
 
@@ -166,7 +193,22 @@ Each is a considered call, not an oversight.
    keeping both views mounted through the overlap, which duplicates their
    keyboard handlers and gives the Screener two live cursors. The single fade
    is the same duration and reads the same; correctness beat the extra phase.
-6. **No blocked-images state for C-8** — the component specifies a placeholder
+6. **No `reconnecting` state on the offline banner** — C-26 lists
+   hidden · visible · reconnecting. A browser reports `online` and `offline`
+   and nothing in between, so there is no signal a "Reconnecting…" state could
+   be driven from without inventing one. Reconnection shows §7.5's
+   "Back online." toast instead.
+7. **The `[confirm: …]` chip is not in `--font-mono`** — C-18 asks for it, but
+   the chip is a run in a transparent mirror that has to line up character for
+   character with a textarea, and a textarea renders one font throughout. It
+   keeps the destructive tint and border; the text stays in the body face. Same
+   root cause as deviation 2.
+8. **Settings sender empty states have no headline** — §7.4 splits headline from
+   body ("No approved senders yet." + the rest), while §3.6 and §5.13c give the
+   same copy as one run-on string. The implementation follows §3.6/§5.13c.
+9. **Bulk rows omit the sender's address** — §3.3 lists it in the row; §5.8's
+   column spec for the same rows does not. The implementation follows §5.8.
+10. **No blocked-images state for C-8** — the component specifies a placeholder
    for images suppressed until a sender is approved. Message bodies render as
    plain text everywhere in this build (the Gmail parser walks the MIME tree
    for `text/plain` and falls back to stripping HTML), so no remote image is
@@ -193,16 +235,20 @@ In rough order of expected value:
   client ID in `.env.local` (see the README) and a careful first run. Everything
   above it is wired: consent, provider swap, token restore on reload, and
   sign-out clearing the token.
-- **Sender lists in Settings have no list keyboard support.** §8.1 puts them in
-  the thread-list scope. Lower severity than the others: every row's controls
-  are individually tabbable, so nothing is unreachable.
 - **"Start sync again" restarts from zero** despite §3.1 3b's copy promising to
   "pick up where it stopped". Gmail's list endpoint is walked without a stored
   page token, so resumption needs a cursor the sync layer does not keep.
-- Bulk rows omit the sender's address. §3.3 lists it; §5.8's column spec for the
-  same rows does not. The implementation follows §5.8.
 - Toast copy for two of the three Assistant toggles is extrapolated; §7.5 spells
-  out only the summaries one.
+  out only the summaries one. So are the bulk-archive and appearance toasts —
+  §7.5 has no row for either, and both follow the shape of the bulk sender lines
+  beside them.
+- Four places where the spec contradicts itself, resolved and recorded rather
+  than silently picked: the minimized dock's height (§3.5 says 40px, §5.12 says
+  44px — 44 wins, it is the later and more detailed passage); list section and
+  postmark type (`--mono-xs` is 10px, below §8.5's 11px floor — the floor wins,
+  enforced by `src/test/typeFloor.test.ts`); Settings sub-nav (§2.2 lists About,
+  §7.1 does not — it is built); and the approve/decline failure copy, where §3.6
+  and §7.6 differ and the implementation uses each on its own path.
 - Received attachments render as chips but have no download action — there is
   no file backend behind the demo account. Attaching on compose works end to
   end (D20): the composer holds files in memory and the Gmail client sends them
