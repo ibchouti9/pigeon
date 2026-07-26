@@ -93,6 +93,11 @@ VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 Pigeon requests four scopes: read your mail, send on your behalf, modify labels,
 and read your contacts. It never sends anything you haven't seen.
 
+With no client ID configured, "Connect Gmail" says so and connects the demo
+account instead, so the whole product is walkable out of the box. The token
+lives in `sessionStorage` and is dropped when you sign out; there is no refresh
+token, because a pure browser client cannot hold one safely.
+
 ## Scripts
 
 | | |

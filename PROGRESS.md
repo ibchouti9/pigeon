@@ -46,22 +46,34 @@ Every screen in §5 is built and runs against the demo account.
 
 ## Quality floor (§8.5), verified in the running app
 
+§8.5 has ten items, not twelve.
+
 1. Empty, loading and error states — reachable at **`/dev/states`**, which swaps
    the mail provider for one of six scenarios and opens a real route, so each
-   state is reached through the screen's own code. Dev builds only; it
-   tree-shakes out of production.
-2. Focus ring on `:focus-visible` only — one rule in `base.css`, never overridden.
-3. Keyboard-only operation — verified for approve, reply-with-draft and reverse.
+   state is reached through the screen's own code. Now also covers the
+   held-message sheet, the composer's own five states and C-27's connection
+   pill. Dev builds only; it tree-shakes out of production. The offline banner
+   is the one exclusion — it follows the browser, not the provider.
+2. Focus ring on `:focus-visible` only — one rule in `base.css`, never
+   overridden. The "never on mouse click" half rests on the browser's own
+   `:focus-visible` heuristics and is not separately asserted.
+3. Keyboard-only operation — driven end to end in the browser for approve,
+   reply-with-draft (`j` → `o` → `r` → type → ⌘Enter) and reverse.
 4. Contrast — the token block is §4.3 verbatim, so §8.3's table holds by
-   construction. **Not independently re-measured.**
-5. `prefers-reduced-motion` — token overrides in place. **Not verified in-browser.**
-6. Every AI string carries its label and hidden prefix — verified in the reader,
-   the Screener card and the composer.
+   construction, plus one pairing the table omits, fixed on filled rows.
+   **Not independently re-measured.**
+5. `prefers-reduced-motion` — every keyframe that moves a transform ships a
+   fade-only fallback, enforced by `src/test/motion.test.ts`. The composer's
+   max-height expansion is the one animation outside that rule.
+6. Every AI string carries its label and hidden prefix — the reader, the
+   Screener card, the composer and the bulk row.
 7. No banned words or exclamation marks — enforced by `src/test/copy.test.ts`.
-8. Undo or confirm, never neither — D11's two dialogs plus 8s undo elsewhere.
-9. Usable at 720px, no horizontal scroll to 2560px — verified at 720, 900, 1440,
-   2560 after fixing the breakpoint bug below.
-10. No text below 11px — measured in the running app.
+8. Undo or confirm, never neither — D11's two dialogs plus 8s undo elsewhere,
+   and a burst of undos no longer evicts the earlier ones from the store.
+9. Usable at 720px, no horizontal scroll to 2560px — verified at 720, 820, 900,
+   1280, 1440, 2560 after fixing the breakpoint bug below.
+10. No text below 11px — measured in the running app, including the bulk
+    postmark, which is computed in JS and so invisible to the type-floor test.
 
 ## Bugs found and fixed while verifying
 
