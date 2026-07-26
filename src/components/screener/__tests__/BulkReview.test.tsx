@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useMail } from '../../../store/mail';
 import { useUi } from '../../../store/ui';
@@ -102,6 +102,22 @@ describe('BulkReview — selection announcements (§8.4)', () => {
   it('announces the count once a selection exists', () => {
     renderBulk(new Set(['s0', 's1', 's2']));
     expect(statusRegion()).toHaveTextContent('3 selected');
+  });
+
+  /**
+   * Once a bulk decision is running, the selection is being consumed and §3.3
+   * step 3's toast announces the outcome. This region used to keep saying
+   * "9 selected" over the top of it — two live regions, one describing a state
+   * that had just ended.
+   */
+  it('goes quiet while a decision is in flight', async () => {
+    const user = userEvent.setup();
+    renderBulk(new Set(['s0', 's1']));
+    expect(statusRegion()).toHaveTextContent('2 selected');
+
+    await user.click(screen.getByRole('button', { name: /Approve senders/ }));
+
+    await waitFor(() => expect(statusRegion()).toHaveTextContent(''));
   });
 
   it('does not double-announce from the visible bar', () => {

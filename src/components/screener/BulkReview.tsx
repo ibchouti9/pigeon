@@ -397,7 +397,14 @@ export function BulkReview({
        * Mounted for the life of the screen, like the stack view's own.
        */}
       <div role="status" aria-live="polite" className="visually-hidden">
-        {activeCount > 0 ? plural(activeCount, 'selected', 'selected') : ''}
+        {/*
+          The selection, not the decision. Once a bulk decision is running the
+          selection is being consumed and §3.3 step 3's toast announces the
+          outcome — so this used to re-say "9 selected" over the top of
+          "Approved 9 senders", two live regions with one of them describing a
+          state that had just ended.
+        */}
+        {!acting && checked.size > 0 ? plural(checked.size, 'selected', 'selected') : ''}
       </div>
 
       {activeCount > 0 && (
