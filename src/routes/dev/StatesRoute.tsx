@@ -1,5 +1,8 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { SCENARIOS, type ScenarioName } from '../../data/mock/scenarios';
+import { useCompose } from '../../store/compose';
+import { useSettings } from '../../store/settings';
+import type { Draft } from '../../types';
 import { cn } from '../../lib/cn';
 import styles from './StatesRoute.module.css';
 
@@ -21,6 +24,7 @@ const ROUTES: { path: string; label: string; note: string }[] = [
   { path: '/search?q=atlas', label: '/search', note: '§5.11' },
   { path: '/settings/senders', label: '/settings/senders', note: '§5.13b' },
   { path: '/settings/assistant', label: '/settings/assistant', note: '§5.13c' },
+  { path: '/screener/s/s-held-0', label: '/screener/s/:id', note: '§5.9 held sheet' },
 ];
 
 const ONBOARDING: { path: string; label: string; note: string }[] = [
@@ -31,6 +35,46 @@ const ONBOARDING: { path: string; label: string; note: string }[] = [
   { path: '/setup/screener', label: 'O5 Screener intro', note: '§5.4' },
 ];
 
+/** §5.12's states come from the draft, not from the provider. */
+const COMPOSER_STATES: { label: string; note: string; draft: Partial<Draft> }[] = [
+  { label: 'Empty', note: 'send disabled, no recipient', draft: {} },
+  {
+    label: 'Send-blocked',
+    note: 'D26 unresolved [confirm:]',
+    draft: {
+      to: [{ name: 'Dana Whitlock', email: 'dana@lumenpartners.com' }],
+      subject: 'Redlines',
+      body: 'Does [confirm: a time on Thursday] work?',
+      aiState: 'drafted',
+    },
+  },
+  {
+    label: 'AI-drafted',
+    note: 'AI ink on the AI tint',
+    draft: {
+      to: [{ name: 'Dana Whitlock', email: 'dana@lumenpartners.com' }],
+      subject: 'Redlines',
+      body: 'Happy with 750 as a middle. I will send the redline back tonight.',
+      aiState: 'drafted',
+    },
+  },
+  {
+    label: 'AI-drafted, edited',
+    note: 'tint cleared, provenance keeps saying so',
+    draft: {
+      to: [{ name: 'Dana Whitlock', email: 'dana@lumenpartners.com' }],
+      subject: 'Redlines',
+      body: 'Happy with 750 as a middle.',
+      aiState: 'edited',
+    },
+  },
+  {
+    label: 'Invalid recipient',
+    note: "§7.6 isn't a complete address",
+    draft: { to: [{ name: '', email: 'dana@lumen' }], subject: 'Redlines' },
+  },
+];
+
 function withScenario(path: string, scenario: ScenarioName): string {
   const [pathname, search] = path.split('?');
   const params = new URLSearchParams(search);
@@ -39,6 +83,7 @@ function withScenario(path: string, scenario: ScenarioName): string {
 }
 
 export function StatesRoute() {
+  const navigate = useNavigate();
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
@@ -88,9 +133,59 @@ export function StatesRoute() {
           </div>
         </section>
 
+        <section className={styles.section}>
+          <h2 className={cn('t-mono-sm', styles.sectionTitle)}>Composer</h2>
+          <p className={cn('t-sm', styles.sectionNote)}>
+            §5.12's states are driven by the draft rather than the provider, so they open
+            a composer already in each one.
+          </p>
+          <div className={styles.grid}>
+            {COMPOSER_STATES.map((state) => (
+              <button
+                key={state.label}
+                type="button"
+                className={styles.link}
+                onClick={() => {
+                  useCompose.getState().close();
+                  useCompose.getState().open(state.draft);
+                  // This page lives outside the shell, and the dock is mounted
+                  // by the shell — so opening a draft here has to land
+                  // somewhere the dock exists.
+                  navigate('/inbox');
+                }}
+              >
+                <span className={cn('t-sm', styles.linkRoute)}>{state.label}</span>
+                <span className={cn('t-xs', styles.linkNote)}>{state.note}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={cn('t-mono-sm', styles.sectionTitle)}>Provider connection (C-27)</h2>
+          <p className={cn('t-sm', styles.sectionNote)}>
+            The status pill in §5.13c has three states and the panel's own status line has
+            eight. These set the stored connection result; open Settings → Assistant to see
+            the pill, or press Test connection there to drive the panel's own line.
+          </p>
+          <div className={styles.grid}>
+            {(['connected', 'rejected', 'unknown'] as const).map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={styles.link}
+                onClick={() => useSettings.getState().setConnection(status)}
+              >
+                <span className={cn('t-sm', styles.linkRoute)}>{status}</span>
+                <span className={cn('t-xs', styles.linkNote)}>§5.13c pill</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <p className={cn('t-xs', styles.footer)}>
           Missing here: the offline banner, which follows the browser rather than the
-          provider — use your browser's offline toggle.
+          provider — use your browser&apos;s offline toggle.
         </p>
       </div>
     </div>
