@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { useTheme } from './hooks/useTheme';
+import { useScenario } from './hooks/useScenario';
 import { useSettings } from './store/settings';
 
 import { WelcomeRoute } from './routes/onboarding/WelcomeRoute';
@@ -18,6 +19,7 @@ import { AccountSettings } from './routes/settings/AccountSettings';
 import { SendersSettings } from './routes/settings/SendersSettings';
 import { AssistantSettings } from './routes/settings/AssistantSettings';
 import { AboutSettings } from './routes/settings/AboutSettings';
+import { StatesRoute } from './routes/dev/StatesRoute';
 
 /** Onboarding runs once per account; after that /welcome redirects to /inbox. */
 function OnboardingGate({ children }: { children: React.ReactNode }) {
@@ -34,9 +36,12 @@ function ShellGate() {
 
 export default function App() {
   useTheme();
+  useScenario();
 
   return (
     <Routes>
+      {/* §8.5 item 1's dev harness. Dev builds only. */}
+      {import.meta.env.DEV && <Route path="/dev/states" element={<StatesRoute />} />}
       <Route
         path="/welcome"
         element={

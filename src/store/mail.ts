@@ -19,6 +19,13 @@ interface MailState {
   contacts: Address[];
 
   status: Record<'account' | 'inbox' | 'archive' | 'held' | 'senders', LoadStatus>;
+  /**
+   * Bumped whenever the provider is swapped. A load started against the old
+   * provider must not apply its result afterwards — signing out of Gmail back
+   * to the demo account, or switching scenarios in the dev harness, otherwise
+   * lets the previous account's mail land in the new one's screens.
+   */
+  providerEpoch: number;
   /** Set when Google revoked access — locks the shell (§5.5). */
   revoked: boolean;
 
@@ -65,10 +72,12 @@ export const useMail = create<MailState>((set, get) => ({
     senders: 'idle',
   },
   revoked: false,
+  providerEpoch: 0,
 
   setProvider: (provider) =>
-    set({
+    set((s) => ({
       provider,
+      providerEpoch: s.providerEpoch + 1,
       account: null,
       inbox: [],
       archive: [],
@@ -84,58 +93,74 @@ export const useMail = create<MailState>((set, get) => ({
         senders: 'idle',
       },
       revoked: false,
-    }),
+    })),
 
   loadAccount: async () => {
+    const epoch = get().providerEpoch;
     set((s) => ({ status: { ...s.status, account: 'loading' } }));
     try {
       const account = await get().provider.getAccount();
+      if (get().providerEpoch !== epoch) return;
       set((s) => ({ account, status: { ...s.status, account: 'ready' } }));
     } catch {
+      if (get().providerEpoch !== epoch) return;
       set((s) => ({ status: { ...s.status, account: 'error' } }));
     }
   },
 
   loadThreads: async (place) => {
+    const epoch = get().providerEpoch;
     set((s) => ({ status: { ...s.status, [place]: 'loading' } }));
     try {
       const threads = await get().provider.listThreads(place);
+      if (get().providerEpoch !== epoch) return;
       set((s) => ({
         [place]: threads,
         status: { ...s.status, [place]: 'ready' },
       }) as Partial<MailState>);
     } catch {
+      if (get().providerEpoch !== epoch) return;
       set((s) => ({ status: { ...s.status, [place]: 'error' } }));
     }
   },
 
   loadHeld: async () => {
+    const epoch = get().providerEpoch;
     set((s) => ({ status: { ...s.status, held: 'loading' } }));
     try {
       const held = await get().provider.listHeld();
+      if (get().providerEpoch !== epoch) return;
       set((s) => ({ held, status: { ...s.status, held: 'ready' } }));
     } catch {
+      if (get().providerEpoch !== epoch) return;
       set((s) => ({ status: { ...s.status, held: 'error' } }));
     }
   },
 
   loadSenders: async () => {
+    const epoch = get().providerEpoch;
     set((s) => ({ status: { ...s.status, senders: 'loading' } }));
     try {
       const [approved, declined] = await Promise.all([
         get().provider.listSenders('approved'),
         get().provider.listSenders('declined'),
       ]);
+      if (get().providerEpoch !== epoch) return;
       set((s) => ({ approved, declined, status: { ...s.status, senders: 'ready' } }));
     } catch {
+      if (get().providerEpoch !== epoch) return;
       set((s) => ({ status: { ...s.status, senders: 'error' } }));
     }
   },
 
   loadContacts: async () => {
+    const epoch = get().providerEpoch;
     try {
-      set({ contacts: await get().provider.listContacts() });
+      const contacts = await get().provider.listContacts();
+      if (get().providerEpoch !== epoch) return;
+      set({ contacts });
     } catch {
+      if (get().providerEpoch !== epoch) return;
       set({ contacts: [] });
     }
   },
