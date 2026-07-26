@@ -233,11 +233,19 @@ export function Composer({
     onChange({ body: next, aiState });
   }
 
-  function onBodyKeyDown(e: React.KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+  /*
+   * §8.1 exempts ⌘Enter and ⌘J from the rule that shortcuts are disabled
+   * inside a text field, so both belong to the whole composer. Bound to the
+   * body alone, ⌘Enter sent from the message but did nothing from Subject or
+   * the recipient fields — where someone finishing a short reply is just as
+   * likely to be.
+   */
+  function onComposerKeyDown(e: React.KeyboardEvent) {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    if (e.key === 'Enter') {
       void send();
       e.preventDefault();
-    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+    } else if (e.key.toLowerCase() === 'j') {
       if (connected) void generate();
       e.preventDefault();
     }
@@ -262,6 +270,7 @@ export function Composer({
       ref={formRef}
       className={cn(styles.composer, variant === 'inline' && styles.inline, className)}
       aria-label={draft.mode === 'new' ? 'New message' : `Reply to ${recipientLabel}`}
+      onKeyDown={onComposerKeyDown}
       onSubmit={(e) => {
         e.preventDefault();
         void send();
@@ -337,7 +346,6 @@ export function Composer({
         ariaDescribedBy={showProvenance ? `${provenanceId}-spoken` : undefined}
         busy={generating}
         textareaRef={bodyRef}
-        onKeyDown={onBodyKeyDown}
         minHeight={variant === 'inline' ? 160 : 200}
       />
 
