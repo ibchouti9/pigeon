@@ -179,17 +179,24 @@ export const useMail = create<MailState>((set, get) => ({
        * §5.2b's progress bar behind it during onboarding, but the Archive is
        * walked the first time someone clicks it, with nothing to look at.
        */
-      const publish = (threads: Thread[]) => {
+      const publish = (threads: Thread[], done: boolean) => {
         if (get().providerEpoch !== epoch) return;
+        // A page that filtered down to nothing is not an empty mailbox. Going
+        // 'ready' on it renders §5.5's empty state — "You're all caught up" —
+        // for a moment, and then fills the screen behind it. Only the finished
+        // walk can say the place is genuinely empty.
+        if (threads.length === 0 && !done) return;
         set((s) => ({
           [place]: threads,
           status: { ...s.status, [place]: 'ready' },
         }) as Partial<MailState>);
       };
 
-      const threads = await get().provider.listThreads(place, publish);
+      const threads = await get().provider.listThreads(place, (partial) =>
+        publish(partial, false),
+      );
       if (get().providerEpoch !== epoch) return;
-      publish(threads);
+      publish(threads, true);
     } catch (error) {
       if (get().providerEpoch !== epoch) return;
       set((s) => ({

@@ -52,6 +52,38 @@ describe('loadThreads shows pages as they arrive', () => {
     expect(useMail.getState().inbox).toHaveLength(2);
   });
 
+  it('does not flash the empty state on a page that filtered down to nothing', async () => {
+    let release: () => void = () => {};
+    const finished = new Promise<void>((r) => (release = r));
+
+    vi.spyOn(useMail.getState().provider, 'listThreads').mockImplementation(
+      async (_place, onPage) => {
+        // §2.3 hides held senders, so an early page can be entirely filtered
+        // out while thousands of threads are still to come.
+        onPage?.([]);
+        await finished;
+        return [thread('a')];
+      },
+    );
+
+    const loading = useMail.getState().loadThreads('inbox');
+    await vi.waitFor(() => expect(useMail.getState().status.inbox).toBe('loading'));
+    expect(useMail.getState().status.inbox).toBe('loading');
+
+    release();
+    await loading;
+    expect(useMail.getState().status.inbox).toBe('ready');
+  });
+
+  it('still reaches the empty state for a mailbox that really is empty', async () => {
+    vi.spyOn(useMail.getState().provider, 'listThreads').mockResolvedValue([]);
+
+    await useMail.getState().loadThreads('inbox');
+
+    expect(useMail.getState().status.inbox).toBe('ready');
+    expect(useMail.getState().inbox).toEqual([]);
+  });
+
   it('ignores pages from a provider the user has since swapped away from', async () => {
     let publish: ((threads: Thread[]) => void) | undefined;
     let release: () => void = () => {};
