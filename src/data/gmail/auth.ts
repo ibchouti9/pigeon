@@ -13,7 +13,7 @@ const GIS_SRC = 'https://accounts.google.com/gsi/client';
  * The four permissions §3.1 branch 2b refers to. Consent shows one checkbox per
  * scope; Pigeon needs all four, and says so when a user unticks one.
  */
-export const SCOPES = [
+const SCOPES = [
   'https://www.googleapis.com/auth/gmail.modify',
   'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/contacts.readonly',

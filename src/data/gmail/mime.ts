@@ -138,7 +138,7 @@ function unescapeHtml(value: string): string {
 }
 
 /** Last-resort conversion when a message carries no text/plain alternative. */
-export function htmlToText(html: string): string {
+function htmlToText(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   doc.querySelectorAll('script, style, head').forEach((el) => el.remove());
   return (doc.body?.textContent ?? '')

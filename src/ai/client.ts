@@ -40,13 +40,17 @@ export const CURATED_MODELS: Record<ProviderId, string[]> = {
   none: [],
 };
 
-export const PROVIDER_ENDPOINTS: Record<ProviderId, string> = {
+/**
+ * C-27's curated endpoints, for the screens that name where a key is sent.
+ * Remote providers only: Local uses the base URL the user supplies, and the
+ * rest reach nothing. The adapters hold their own full request URLs — a
+ * hostname can't carry a path — so this is what the UI shows, not what it
+ * calls.
+ */
+export const PROVIDER_ENDPOINTS: Partial<Record<ProviderId, string>> = {
   anthropic: 'api.anthropic.com',
   openai: 'api.openai.com',
   google: 'generativelanguage.googleapis.com',
-  local: '',
-  demo: 'none — canned replies',
-  none: '',
 };
 
 /** Used by O2 and Settings → Assistant. Never throws. */

@@ -21,7 +21,7 @@ export function initialsFor(name: string | undefined, email: string): string {
 }
 
 /** Stable 32-bit string hash (FNV-1a). Same address always gets the same tone. */
-export function hashString(s: string): number {
+function hashString(s: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);

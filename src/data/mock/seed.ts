@@ -491,7 +491,7 @@ interface HeldSeed {
   messages: { subject: string; body: string; daysAgo: number; hour: number }[];
 }
 
-export const HELD_SEEDS: HeldSeed[] = [
+const HELD_SEEDS: HeldSeed[] = [
   {
     name: 'Sana Sethi',
     email: 'sana@northbound.io',

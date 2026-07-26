@@ -4,18 +4,11 @@ import { Button } from '../../components/primitives/Button';
 import { Switch } from '../../components/primitives/Field';
 import { ProviderPanel } from '../../components/onboarding/ProviderPanel';
 import { DEFAULT_BASE_URL, PROVIDER_LABELS, hasProvider, type BehaviourFlags, type ConnectionStatus, type ProviderConfig, useSettings } from '../../store/settings';
-import { testConnection } from '../../ai/client';
+import { PROVIDER_ENDPOINTS, testConnection } from '../../ai/client';
 import { toast } from '../../store/toast';
 import { formatSpend, plural, relativeTime } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import styles from './AssistantSettings.module.css';
-
-/** C-27's curated endpoints — the remote providers only, Local uses its own base URL. */
-const ENDPOINTS: Partial<Record<ProviderConfig['provider'], string>> = {
-  anthropic: 'api.anthropic.com',
-  openai: 'api.openai.com',
-  google: 'generativelanguage.googleapis.com',
-};
 
 interface BehaviourRow {
   key: keyof BehaviourFlags;
@@ -53,7 +46,7 @@ const BEHAVIOUR_ROWS: BehaviourRow[] = [
 
 function endpointFor(config: ProviderConfig): string {
   if (config.provider === 'local') return config.baseUrl || DEFAULT_BASE_URL;
-  return ENDPOINTS[config.provider] ?? '';
+  return PROVIDER_ENDPOINTS[config.provider] ?? '';
 }
 
 function maskedKey(config: ProviderConfig): string {
