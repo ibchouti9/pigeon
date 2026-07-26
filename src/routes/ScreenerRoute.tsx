@@ -56,16 +56,31 @@ export function ScreenerRoute() {
   // up the URL to match so the sheet truly reads as an overlay, not a page.
   useEffect(() => {
     if (!heldSheetSenderId && senderId) {
-      navigate(`/screener${view === 'list' ? '?view=list' : ''}`, { replace: true });
+      const search = searchParams.toString();
+      navigate(`/screener${search ? `?${search}` : ''}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heldSheetSenderId]);
 
   // §5.8 — Bulk review jumps back to Stack when it empties.
+  //
+  // Deliberately delayed. A bulk decision removes every selected row
+  // optimistically, so declining all of them takes `held` to zero for a moment
+  // even when some fail and come back. Switching views on that transient
+  // reading yanked the list out from under the user mid-action.
   useEffect(() => {
-    if (status === 'ready' && held.length === 0 && view === 'list') {
-      setSearchParams({}, { replace: true });
-    }
+    if (!(status === 'ready' && held.length === 0 && view === 'list')) return;
+    const timer = setTimeout(() => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('view');
+          return next;
+        },
+        { replace: true },
+      );
+    }, 400);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, held.length, view]);
 
@@ -81,7 +96,10 @@ export function ScreenerRoute() {
   }
 
   function openSheet(id: string) {
-    navigate(`/screener/s/${id}${view === 'list' ? '?view=list' : ''}`);
+    // Carry the whole query string, not just `view` — rebuilding it here drops
+    // anything else the URL is holding.
+    const search = searchParams.toString();
+    navigate(`/screener/s/${id}${search ? `?${search}` : ''}`);
   }
 
   function selectGroup(senderIds: string[]) {

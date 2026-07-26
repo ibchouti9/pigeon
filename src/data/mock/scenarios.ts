@@ -17,7 +17,11 @@ export const SCENARIOS: { name: ScenarioName; label: string; description: string
   { name: 'loading', label: 'Loading', description: 'Every request hangs, so skeletons stay up.' },
   { name: 'error', label: 'Error', description: 'Gmail is unreachable.' },
   { name: 'revoked', label: 'Token revoked', description: 'Google withdrew permission.' },
-  { name: 'flaky', label: 'Flaky writes', description: 'Reads work; decisions and sends fail.' },
+  {
+    name: 'flaky',
+    label: 'Flaky writes',
+    description: 'Reads work; every second decision fails, so bulk review reports a partial failure (§3.3 3b).',
+  },
 ];
 
 function never<T>(): Promise<T> {
@@ -57,8 +61,18 @@ class ScenarioProvider implements MailProvider {
     return null;
   }
 
+  /**
+   * `flaky` fails every second write. Failing all of them would only ever
+   * produce "0 of 9 succeeded", which is the total-failure path — §3.3 3b's
+   * partial failure, where some rows leave and some come back with a retry
+   * affordance, needs a mix.
+   */
+  private writeAttempt = 0;
+
   private failWrite(): MailError | null {
-    if (this.scenario === 'flaky') return UNREACHABLE();
+    if (this.scenario === 'flaky') {
+      return this.writeAttempt++ % 2 === 1 ? UNREACHABLE() : null;
+    }
     return this.failRead();
   }
 
