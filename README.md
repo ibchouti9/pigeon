@@ -2,16 +2,19 @@
 
 **Mail from people you've chosen. Everyone else waits at the door.**
 
-Pigeon is a desktop web mail client for Gmail with one idea in it: mail from
-someone new never lands in your inbox. It waits in the **Screener** until you
-decide. Approve a sender and their mail — this message and everything after —
-goes to your inbox. Decline and you never see them again.
+Pigeon is a macOS mail client for Gmail with one idea in it: mail from someone
+new never lands in your inbox. It waits in the **Screener** until you decide.
+Approve a sender and their mail — this message and everything after — goes to
+your inbox. Decline and you never see them again.
 
 Pigeon ships no inference of its own. You bring your own model: an API key for
 Anthropic, OpenAI or Google, or a local endpoint (Ollama, LM Studio). The key is
-stored in your browser and sent to no origin except the provider you pick. There
-is no Pigeon server, so there is nothing to bill through and no shared key to
-leak.
+stored on your machine and sent to no origin except the provider you pick.
+
+**There is no Pigeon server.** Nothing to bill through, no shared credential to
+leak, and nothing between you and Google. That is a deliberate constraint rather
+than a stage — it is also why connecting Gmail takes a five-minute detour
+through Google's console the first time.
 
 ---
 
@@ -19,14 +22,21 @@ leak.
 
 ```bash
 npm install
-npm run dev
+npm run app
 ```
 
-Pigeon opens on a **demo mail account** — a seeded inbox, archive and Screener,
-persisted to `localStorage`. No Google credentials are needed to run, review or
-develop against it. Pick the **Demo** provider on the assistant step to see the
-summaries, Screener reads and drafts with canned output, or paste a real key to
-use a real model.
+That builds and opens the macOS app. Pigeon starts on a **demo mail account** —
+a seeded inbox, archive and Screener, persisted locally — so the whole product
+is walkable in the first ten seconds, with no Google account and no API key.
+Press **Connect Gmail** when you want real mail; see
+[Connecting Gmail](#connecting-gmail) for what that involves.
+
+Pick the **Demo** provider on the assistant step to see the summaries, Screener
+reads and drafts with canned output, or paste a real key to use a real model.
+
+`npm run dev` serves the same app in a browser instead, which is faster to
+iterate on and is what the tests run against. Real Gmail needs the desktop
+build.
 
 ### Seeing the awkward states
 
@@ -76,54 +86,91 @@ src/
     compose/    the composer, inline and docked
   routes/       one file per screen
   styles/       the design token block, verbatim from the spec
+src-tauri/
+  src/google.rs the installed-app OAuth flow: PKCE, loopback, Keychain
+  src/lib.rs    the commands the webview may call
 ```
 
 Nothing above `MailProvider` knows whether it is talking to Gmail or to the demo
 account, and nothing above `AiClient` knows which model provider is connected.
 
+The same source builds twice. `src/lib/desktop.ts` is the only place that asks
+which build it is in, and the answer changes three things: how Google sign-in
+works (`data/gmail/auth.ts`), whether outbound requests go through Rust
+(`lib/http.ts`), and whether the in-app Google setup exists at all. Every Tauri
+import is dynamic, so none of it reaches the web bundle.
+
 ## Connecting Gmail
 
-Pigeon is a pure browser client, so it needs a Google OAuth **client ID** of your
-own — there is no shared one, by design.
+Open the macOS app, press **Connect Gmail**, and it walks you through it. The
+five console steps, their deep links, and the file you end up with are all in
+the app — this section is the same walk written down, not a prerequisite for it.
 
-1. In the [Google Cloud console](https://console.cloud.google.com/apis/library),
-   enable **both** the Gmail API and the **People API**. They are separate
-   steps, and Pigeon needs both: contacts are half of how it decides who you
-   already know. If the People API is missing you'll see "Pigeon couldn't read
-   your contacts" on the known-senders step.
-2. Create a **Web application** OAuth client under
-   [Credentials](https://console.cloud.google.com/apis/credentials) and add your
-   origin (`http://localhost:5173` for the dev server) to the authorised
-   JavaScript origins.
-3. Put the ID in `.env.local`:
+### Why there's a setup at all
 
-```
-VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-```
+Reading someone's mail needs the `gmail.modify` scope, which Google classes as
+**restricted**. An app that ships its own OAuth client and lets strangers sign
+in has to pass a paid third-party security assessment (CASA) first. Pigeon
+hasn't, so instead each person registers their own client. It is about five
+minutes, once per machine, and it means Pigeon has no shared credential to leak
+and no per-user quota to run out of.
 
-Pigeon requests four scopes: read your mail, send on your behalf, modify labels,
-and read your contacts. It never sends anything you haven't seen.
+### The five minutes
 
-Two things to expect while the client is unverified. `gmail.modify` and
-`gmail.send` are restricted scopes, so until Google verifies the OAuth client the
-project stays in Testing: you must list yourself as a test user, and **a test
-user's grant expires after seven days**, after which the first request fails and
-Pigeon shows the reconnect screen. That is the app behaving correctly — connect
-again.
+1. **Make a project** — [console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate)
+2. **Enable the Gmail API** — [one button](https://console.cloud.google.com/apis/library/gmail.googleapis.com)
+3. **Enable the People API** — [also one button](https://console.cloud.google.com/apis/library/people.googleapis.com).
+   Optional: it is how Pigeon reads your contacts, and skipping it just means
+   Pigeon works out who you know from mail you have sent instead.
+4. **Consent screen** — [External, any app name, your own email](https://console.cloud.google.com/auth/overview).
+   Then add your own Google address under **Audience → Test users**. Miss this
+   and Google refuses at the last step with `access_denied`.
+5. **Create the client** — [Credentials → Create client → **Desktop app**](https://console.cloud.google.com/auth/clients),
+   then use the download button on the row it makes.
 
-With no client ID configured, "Connect Gmail" says so and connects the demo
-account instead, so the whole product is walkable out of the box. The token
-lives in `sessionStorage` and is dropped when you sign out; there is no refresh
-token, because a pure browser client cannot hold one safely.
+Drop that JSON file anywhere on the Pigeon window. It goes into the macOS
+Keychain and never enters the webview.
+
+**Desktop app, not Web application.** Installed-app clients need no registered
+redirect URI, so the commonest bring-your-own failure — an authorised origin
+that doesn't match the port you happen to be on — cannot happen. The client
+secret Google issues alongside it is not confidential for this client type; PKCE
+is what secures the exchange.
+
+### What to expect while the client is unverified
+
+Your project stays in **Testing**, which means the account you sign in with must
+be on the test-user list, and **a test user's grant expires after seven days**.
+After that the next request fails and Pigeon shows the reconnect screen — that
+is the app behaving correctly. Connect again.
+
+If your Google account is on a Workspace domain you can set the consent screen
+to **Internal** instead: no test-user list, no seven-day expiry, no unverified
+warning.
+
+### The web build
+
+`npm run dev` serves the same app in a browser, where none of the above is
+available: a browser can neither hold a refresh token safely nor listen on a
+loopback port. It reads `VITE_GOOGLE_CLIENT_ID` from `.env.local` if you have
+set one — a **Web application** client, with your origin registered — and
+otherwise offers only the demo account. The desktop app is the supported way to
+reach real mail.
 
 ## Scripts
 
 | | |
 |---|---|
-| `npm run dev` | Dev server |
-| `npm run build` | Typecheck and build |
+| `npm run app` | Build and run the macOS app |
+| `npm run app:build` | Bundle `.app` and `.dmg` into `src-tauri/target/release/bundle/` |
+| `npm run app:test` | The Rust tests |
+| `npm run dev` | Dev server, in a browser |
+| `npm run build` | Typecheck and build the frontend |
 | `npm run check` | Typecheck, lint and test |
 | `npm test` | Vitest |
+
+The desktop shell needs a Rust toolchain ([rustup.rs](https://rustup.rs)); the
+web scripts do not.
 
 ## Licence
 

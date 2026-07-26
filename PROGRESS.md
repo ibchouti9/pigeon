@@ -10,12 +10,21 @@ Vite · React 19 · TypeScript · react-router-dom · zustand · CSS Modules ove
 token block from §4.3. Vitest + Testing Library. No CSS framework — the spec is a
 token system, not a utility system.
 
+Tauri 2 wraps the same frontend as a macOS app. The Rust side exists for the
+three things a browser cannot do: hold a refresh token in the Keychain, listen
+on a loopback port for an OAuth redirect, and make requests no CORS policy gets
+a say in. `cargo test` covers it; `npm run app:test` is the same thing.
+
 ## Architecture
 
 - `src/types` — domain model shared by every provider.
 - `src/data/provider.ts` — the `MailProvider` interface.
   - `src/data/mock/` — the seeded demo account (works with no credentials).
   - `src/data/gmail/` — the real Gmail REST client.
+- `src/lib/desktop.ts` — the only place that asks which build this is. It
+  changes three things and nothing else: how Google sign-in works, whether
+  requests go through Rust, and whether the in-app Google setup exists.
+- `src-tauri/src/google.rs` — the installed-app OAuth flow.
 - `src/ai/` — `AiClient` interface, one adapter per provider (D41), the §7.9
   prompts, and the hooks that wire it into the reader and the Screener.
 - `src/store/` — zustand stores: `mail`, `settings`, `compose`, `toast`, `ui`.
@@ -32,6 +41,9 @@ Every screen in §5 is built and runs against the demo account.
 | Domain types + `MailProvider` | done |
 | Mock provider + demo seed | done, tested |
 | Gmail provider (auth, MIME, REST) | done and unit-tested against a stubbed transport; **never run against a real account** |
+| macOS app shell (Tauri 2) | builds; `.app` + `.dmg`, unsigned |
+| Desktop OAuth: PKCE, loopback, Keychain | done, 13 Rust tests; **never run against a real Google client** |
+| In-app Google client setup (5 deep-linked steps, JSON drop) | done |
 | Stores | done, tested |
 | Primitives C-1…C-28 | done |
 | App shell, nav rail, global shortcuts | done |

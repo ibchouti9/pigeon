@@ -45,3 +45,19 @@
   margin-top: var(--space-2);
   max-width: 40ch;
 }
+
+/* Shown while consent is open in the user's browser (§3.1 step 2). */
+.waiting {
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-tertiary);
+}
+
+.cancel {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-accent);
+  cursor: pointer;
+  text-decoration: underline;
+}

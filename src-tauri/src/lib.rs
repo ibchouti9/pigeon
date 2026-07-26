@@ -72,6 +72,12 @@ async fn google_sign_in(app: tauri::AppHandle) -> Result<google::Session, String
     google::sign_in(&app).await
 }
 
+/// Ends a sign-in the user has given up on — see `google::cancel`.
+#[tauri::command]
+fn google_cancel_sign_in() {
+    google::cancel();
+}
+
 #[tauri::command]
 async fn google_refresh() -> Result<google::Session, String> {
     google::refresh().await
@@ -105,6 +111,7 @@ pub fn run() {
             google_pick_credentials,
             google_forget_credentials,
             google_sign_in,
+            google_cancel_sign_in,
             google_refresh,
             google_sign_out,
         ])

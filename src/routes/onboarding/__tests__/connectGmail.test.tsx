@@ -4,17 +4,23 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { useMail } from '../../../store/mail';
 import { MockMailProvider } from '../../../data/mock/mockProvider';
-import { AuthError, type GmailStatus } from '../../../data/gmail/auth';
+import { AuthError, SignInCancelled, type GmailStatus } from '../../../data/gmail/auth';
 import { WelcomeRoute } from '../WelcomeRoute';
 
 const auth = vi.hoisted(() => ({
   signIn: vi.fn<() => Promise<void>>(),
   gmailStatus: vi.fn<() => GmailStatus>(),
+  cancelSignIn: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock('../../../data/gmail/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../data/gmail/auth')>();
-  return { ...actual, signIn: auth.signIn, gmailStatus: auth.gmailStatus };
+  return {
+    ...actual,
+    signIn: auth.signIn,
+    gmailStatus: auth.gmailStatus,
+    cancelSignIn: auth.cancelSignIn,
+  };
 });
 
 const navigate = vi.fn();
@@ -46,6 +52,8 @@ describe('O1 Connect Gmail (§3.1)', () => {
     useMail.getState().setProvider(new MockMailProvider());
     auth.signIn.mockReset();
     auth.gmailStatus.mockReset();
+    auth.cancelSignIn.mockReset();
+    auth.cancelSignIn.mockResolvedValue();
     navigate.mockReset();
   });
 
@@ -101,6 +109,38 @@ describe('O1 Connect Gmail (§3.1)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /Pigeon didn't get access to your mail/,
     );
+    expect(useMail.getState().provider.kind).toBe('mock');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Google does not always come back. Reject the request — an unknown client,
+   * a project with no consent screen — and it renders its own error page in the
+   * browser instead of redirecting, so the loopback listener waits out its full
+   * five minutes. Found by pointing the real app at a client ID that did not
+   * exist: Google answered `401: invalid_client` in Chrome and Pigeon sat on a
+   * spinner, with nothing on screen admitting anything had gone wrong.
+   *
+   * Cancelling is the way out, and it is not a failure: no error block.
+   */
+  it('says where to look while consent is open, and offers a way out', async () => {
+    const user = userEvent.setup();
+    auth.gmailStatus.mockReturnValue(READY);
+    let refuse: (e: unknown) => void = () => {};
+    auth.signIn.mockReturnValue(new Promise((_, reject) => (refuse = reject)));
+
+    await user.click(renderWelcome());
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /Waiting for Google in your browser/,
+    );
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(auth.cancelSignIn).toHaveBeenCalledOnce();
+
+    refuse(new SignInCancelled());
+
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(useMail.getState().provider.kind).toBe('mock');
     expect(navigate).not.toHaveBeenCalled();
   });

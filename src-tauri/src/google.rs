@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::net::TcpListener;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const AUTH_URI: &str = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -44,7 +45,32 @@ const SCOPES: [&str; 4] = [
 ];
 
 /// How long the loopback listener waits for the user to finish with Google.
+///
+/// Long, because consent legitimately takes a while: signing in, picking an
+/// account, reading four scopes. The user is never held for it — `cancel()`
+/// ends the wait, and the screen offers that from the moment it starts.
 const CONSENT_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Told apart from a real failure by the frontend, which shows nothing at all
+/// for it. Deliberately not prose: this string is a signal, not a message.
+pub const CANCELLED: &str = "pigeon:cancelled";
+
+/// Set by `cancel`, read by the loopback loop.
+///
+/// There is exactly one sign-in in flight at a time — the button that starts
+/// it is disabled for the duration — so a single flag is the whole story.
+static ABANDONED: AtomicBool = AtomicBool::new(false);
+
+/// Stops a sign-in that will never complete.
+///
+/// This is not a rare path. When Google rejects the request outright — an
+/// unknown client, a project with no consent screen — it renders its own error
+/// page and never redirects, so nothing ever reaches the loopback. Without
+/// this the app sat on a spinner for the full five minutes with no way out,
+/// which is precisely the state a misconfigured client puts you in.
+pub fn cancel() {
+    ABANDONED.store(true, Ordering::SeqCst);
+}
 
 /* -------------------------------------------------------------------------- */
 /* Stored client credentials                                                   */
@@ -273,6 +299,9 @@ fn await_callback(listener: TcpListener, expected_state: &str) -> Result<Callbac
                 return Ok(outcome);
             }
             Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                if ABANDONED.load(Ordering::SeqCst) {
+                    return Err(CANCELLED.into());
+                }
                 if Instant::now() > deadline {
                     return Err("Pigeon stopped waiting for Google. Try connecting again.".into());
                 }
@@ -379,8 +408,26 @@ fn session_from(response: TokenResponse) -> Result<Session, String> {
     })
 }
 
+/// Google's consent URL for one attempt.
+///
+/// `access_type=offline` with `prompt=consent` is what makes Google return a
+/// refresh token; without both, the desktop flow degrades to the web one's
+/// hour and the Keychain has nothing worth holding.
+fn auth_url(client_id: &str, redirect_uri: &str, challenge: &str, state: &str) -> String {
+    format!(
+        "{AUTH_URI}?client_id={}&redirect_uri={}&response_type=code&scope={}&code_challenge={}&code_challenge_method=S256&state={}&access_type=offline&prompt=consent",
+        urlencoding::encode(client_id),
+        urlencoding::encode(redirect_uri),
+        urlencoding::encode(&SCOPES.join(" ")),
+        urlencoding::encode(challenge),
+        urlencoding::encode(state),
+    )
+}
+
 /// The whole interactive flow: consent in the system browser, then exchange.
 pub async fn sign_in<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Session, String> {
+    ABANDONED.store(false, Ordering::SeqCst);
+
     let creds = stored_credentials().ok_or_else(|| {
         "Pigeon doesn't have a Google client yet. Set one up first — it takes about five minutes."
             .to_string()
@@ -399,14 +446,7 @@ pub async fn sign_in<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Ses
     let Pkce { verifier, challenge } = pkce();
     let state = random_state();
 
-    let url = format!(
-        "{AUTH_URI}?client_id={}&redirect_uri={}&response_type=code&scope={}&code_challenge={}&code_challenge_method=S256&state={}&access_type=offline&prompt=consent",
-        urlencoding::encode(&creds.client_id),
-        urlencoding::encode(&redirect_uri),
-        urlencoding::encode(&SCOPES.join(" ")),
-        urlencoding::encode(&challenge),
-        urlencoding::encode(&state),
-    );
+    let url = auth_url(&creds.client_id, &redirect_uri, &challenge, &state);
 
     // The system browser, not a webview: Google rejects embedded user agents,
     // and the user's existing Google session is in their real browser anyway.
@@ -474,4 +514,161 @@ pub async fn sign_out() {
             .await;
     }
     delete_secret(REFRESH_ENTRY);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The file the setup guide's last step produces.
+    const DESKTOP_JSON: &str = r#"{"installed":{"client_id":"123-abc.apps.googleusercontent.com","project_id":"pigeon-1","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","client_secret":"GOCSPX-verysecret","redirect_uris":["http://localhost"]}}"#;
+
+    #[test]
+    fn takes_the_file_google_gives_you() {
+        let creds = parse_credentials(DESKTOP_JSON).expect("desktop client rejected");
+        assert_eq!(creds.client_id, "123-abc.apps.googleusercontent.com");
+        assert_eq!(creds.client_secret, "GOCSPX-verysecret");
+    }
+
+    #[test]
+    fn tolerates_the_whitespace_a_copy_paste_brings() {
+        let padded = format!("\n  {DESKTOP_JSON}\n");
+        assert!(parse_credentials(&padded).is_ok());
+    }
+
+    /// The credentials page offers Web application first and it is the wrong
+    /// one, so this is the mistake most likely to be made. Saying only "invalid"
+    /// would leave the user staring at a file that looks entirely correct.
+    #[test]
+    fn names_the_web_client_mistake() {
+        let json = r#"{"web":{"client_id":"123-abc.apps.googleusercontent.com","client_secret":"x"}}"#;
+        let message = parse_credentials(json).unwrap_err();
+        assert!(message.contains("Web application"), "{message}");
+        assert!(message.contains("Desktop app"), "{message}");
+    }
+
+    #[test]
+    fn names_the_service_account_mistake() {
+        let json = r#"{"type":"service_account","project_id":"p","private_key":"k"}"#;
+        let message = parse_credentials(json).unwrap_err();
+        assert!(message.contains("service account"), "{message}");
+    }
+
+    /// Pasting the secret instead of the ID is easy: they sit in the same
+    /// dialog, and the secret is the one Google shows you last.
+    #[test]
+    fn names_the_secret_mistake() {
+        let message = parse_credentials("GOCSPX-verysecret").unwrap_err();
+        assert!(message.contains("client secret"), "{message}");
+    }
+
+    /// A bare client ID is not what the guide asks for, but it is enough to
+    /// sign in with — PKCE is what secures the exchange, not the secret.
+    #[test]
+    fn accepts_a_bare_client_id() {
+        let creds = parse_credentials("  123-abc.apps.googleusercontent.com  ")
+            .expect("bare client id rejected");
+        assert_eq!(creds.client_id, "123-abc.apps.googleusercontent.com");
+        assert!(creds.client_secret.is_empty());
+    }
+
+    #[test]
+    fn rejects_an_empty_file() {
+        assert!(parse_credentials("   ").is_err());
+    }
+
+    #[test]
+    fn rejects_json_that_is_not_a_client() {
+        let message = parse_credentials(r#"{"hello":"world"}"#).unwrap_err();
+        assert!(message.contains("Download JSON"), "{message}");
+    }
+
+    #[test]
+    fn rejects_a_client_block_with_no_id() {
+        let message = parse_credentials(r#"{"installed":{"client_id":""}}"#).unwrap_err();
+        assert!(message.contains("no client ID"), "{message}");
+    }
+
+    /// S256, per RFC 7636: the challenge is the URL-safe base64 of the
+    /// verifier's SHA-256, unpadded. Google rejects a padded one.
+    #[test]
+    fn pkce_challenge_is_unpadded_url_safe_base64() {
+        let Pkce { verifier, challenge } = pkce();
+        assert_eq!(verifier.len(), 64);
+        assert!(!challenge.contains('='), "padding: {challenge}");
+        assert!(!challenge.contains('+') && !challenge.contains('/'), "{challenge}");
+
+        let expected = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(Sha256::digest(verifier.as_bytes()));
+        assert_eq!(challenge, expected);
+    }
+
+    #[test]
+    fn every_sign_in_gets_its_own_verifier() {
+        assert_ne!(pkce().verifier, pkce().verifier);
+    }
+
+    /// `access_denied` arrives both when the user cancels and when the account
+    /// is not on the client's test-user list. The second is the one nobody
+    /// guesses, so the message has to raise it.
+    #[test]
+    fn access_denied_mentions_the_test_user_list() {
+        let message = explain("access_denied", None);
+        assert!(message.contains("test-user"), "{message}");
+    }
+
+    /**
+     * Verified against the real Google endpoint once: with a well-formed URL
+     * and a client ID that does not exist, Google reaches its own sign-in flow
+     * and answers `401: invalid_client — The OAuth client was not found`. That
+     * it got that far is the proof the request parses; these assertions are
+     * what keep it parsing.
+     */
+    #[test]
+    fn the_consent_url_carries_everything_google_needs() {
+        let url = auth_url(
+            "000-test.apps.googleusercontent.com",
+            "http://127.0.0.1:49152",
+            "chal-lenge",
+            "st-ate",
+        );
+
+        assert!(url.starts_with(AUTH_URI));
+        assert!(url.contains("client_id=000-test.apps.googleusercontent.com"));
+        assert!(url.contains("response_type=code"));
+        assert!(url.contains("code_challenge=chal-lenge"));
+        assert!(url.contains("code_challenge_method=S256"));
+        assert!(url.contains("state=st-ate"));
+        // Both, or Google returns no refresh token and the Keychain holds
+        // nothing worth having.
+        assert!(url.contains("access_type=offline"));
+        assert!(url.contains("prompt=consent"));
+
+        // The loopback port is chosen at runtime, so it has to survive encoding
+        // intact — a mangled redirect_uri is a redirect_uri_mismatch.
+        assert!(url.contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A49152"));
+
+        // Scopes are space-separated in one parameter, not repeated.
+        assert_eq!(url.matches("scope=").count(), 1);
+        for scope in SCOPES {
+            assert!(url.contains(&urlencoding::encode(scope).into_owned()), "{scope}");
+        }
+    }
+
+    /// A cancelled sign-in must be silent. If this ever became prose, the
+    /// frontend would start showing an error to a user who pressed Cancel.
+    #[test]
+    fn the_cancel_signal_is_not_a_message() {
+        assert!(!CANCELLED.contains(' '));
+        assert_eq!(CANCELLED, "pigeon:cancelled");
+    }
+
+    #[test]
+    fn an_unknown_error_still_says_something_useful() {
+        assert!(explain("weird_thing", None).contains("weird_thing"));
+        assert_eq!(
+            explain("weird_thing", Some("the sky fell")),
+            "Google said: the sky fell"
+        );
+    }
 }

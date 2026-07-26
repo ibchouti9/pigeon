@@ -5,7 +5,13 @@ import { GoogleSetup } from '../../components/onboarding/GoogleSetup';
 import { Button } from '../../components/primitives/Button';
 import { PostmarkRing } from '../../components/primitives/Postmark';
 import { useMail } from '../../store/mail';
-import { AuthError, gmailStatus, signIn } from '../../data/gmail/auth';
+import {
+  AuthError,
+  SignInCancelled,
+  cancelSignIn,
+  gmailStatus,
+  signIn,
+} from '../../data/gmail/auth';
 import { GmailMailProvider } from '../../data/gmail/gmailProvider';
 import styles from './WelcomeRoute.module.css';
 
@@ -31,6 +37,8 @@ export function WelcomeRoute() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [settingUp, setSettingUp] = useState(false);
+  /** Consent is open in the user's browser and Pigeon is listening for it. */
+  const [waiting, setWaiting] = useState(false);
   const status = gmailStatus();
 
   async function enterWith(provider: 'gmail' | 'demo') {
@@ -46,9 +54,14 @@ export function WelcomeRoute() {
     try {
       // A grant already in the Keychain needs no consent screen — asking again
       // would be a second trip through Google for nothing.
-      if (!gmailStatus().hasSession) await signIn();
+      if (!gmailStatus().hasSession) {
+        setWaiting(true);
+        await signIn();
+      }
       await enterWith('gmail');
     } catch (e) {
+      // Pressing Cancel is not a failure and gets no error block.
+      if (e instanceof SignInCancelled) return;
       // AuthError already carries §3.1's branch copy; anything else is a
       // network or GIS-loading failure, which reads the same to the user.
       setError(
@@ -57,6 +70,7 @@ export function WelcomeRoute() {
           : "Pigeon couldn't reach Google. Check your connection and try again.",
       );
     } finally {
+      setWaiting(false);
       setLoading(false);
     }
   }
@@ -137,9 +151,29 @@ export function WelcomeRoute() {
               >
                 Connect Gmail
               </Button>
-              <Button variant="tertiary" fullWidth onClick={handleDemo} disabled={loading}>
-                Try the demo instead
-              </Button>
+              {waiting ? (
+                /*
+                 * Google does not always come back: reject the request and it
+                 * renders its own error page rather than redirecting, which
+                 * Pigeon cannot see. Saying where the user should be looking,
+                 * and giving them a way out, is the difference between a
+                 * five-minute spinner and a five-second mistake.
+                 */
+                <p className={`t-sm ${styles.waiting}`} role="status">
+                  Waiting for Google in your browser.{' '}
+                  <button
+                    type="button"
+                    className={`t-sm ${styles.cancel}`}
+                    onClick={() => void cancelSignIn()}
+                  >
+                    Cancel
+                  </button>
+                </p>
+              ) : (
+                <Button variant="tertiary" fullWidth onClick={handleDemo} disabled={loading}>
+                  Try the demo instead
+                </Button>
+              )}
             </div>
 
             <p className={`t-xs ink-tertiary ${styles.legal}`}>

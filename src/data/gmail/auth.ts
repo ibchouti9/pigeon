@@ -326,13 +326,42 @@ function asAuthError(error: unknown): AuthError {
   return new AuthError(message, 'denied');
 }
 
+/**
+ * Rust's signal for "the user gave up", which must not read as a failure.
+ * Matches `CANCELLED` in `src-tauri/src/google.rs`.
+ */
+const CANCELLED = 'pigeon:cancelled';
+
+/** Thrown by `signIn` when the user pressed Cancel. Carries no copy. */
+export class SignInCancelled extends Error {
+  constructor() {
+    super(CANCELLED);
+    this.name = 'SignInCancelled';
+  }
+}
+
 async function desktopSignIn(): Promise<void> {
   try {
     desktopSession = await invoke<Session>('google_sign_in');
     desktopSetup = { ...desktopSetup, hasSession: true };
   } catch (error) {
+    if (typeof error === 'string' && error === CANCELLED) throw new SignInCancelled();
     throw asAuthError(error);
   }
+}
+
+/**
+ * Abandons a sign-in that is going nowhere.
+ *
+ * Needed because Google does not always come back. When it rejects the request
+ * outright — a client ID that doesn't exist, a project with no consent screen —
+ * it renders its own error page in the browser and never redirects, so the
+ * loopback listener waits out its full five minutes. The user, meanwhile, is
+ * looking at a spinner and an error page that Pigeon cannot see.
+ */
+export async function cancelSignIn(): Promise<void> {
+  if (!isDesktop()) return;
+  await invoke('google_cancel_sign_in').catch(() => undefined);
 }
 
 async function desktopAccessToken(): Promise<string> {

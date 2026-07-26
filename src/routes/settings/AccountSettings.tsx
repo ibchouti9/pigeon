@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SettingsPage } from '../../components/settings/SettingsPage';
+import { GoogleSetup } from '../../components/onboarding/GoogleSetup';
 import { Button } from '../../components/primitives/Button';
 import { Monogram } from '../../components/primitives/Monogram';
 import { Segmented } from '../../components/primitives/Controls';
-import { signOut } from '../../data/gmail/auth';
+import { gmailStatus, signOut } from '../../data/gmail/auth';
 import { MockMailProvider } from '../../data/mock/mockProvider';
 import { toast } from '../../store/toast';
 import { useMail } from '../../store/mail';
@@ -27,6 +29,14 @@ export function AccountSettings() {
   const setOnboarded = useSettings((s) => s.setOnboarded);
   const openDialog = useUi((s) => s.openDialog);
   const navigate = useNavigate();
+  /*
+   * The way back out of a client that is valid JSON but wrong — the project
+   * without the Gmail API switched on, say. Without this, O1 stops offering
+   * setup the moment anything is stored, and the only fix is a Keychain entry
+   * the user has no reason to know exists.
+   */
+  const [showSetup, setShowSetup] = useState(false);
+  const status = gmailStatus();
 
   // §3.6 / §7.7 — both destructive account actions reset to onboarding.
   // §5.13 — "every change saves immediately and confirms with a toast". §7.5
@@ -66,6 +76,32 @@ export function AccountSettings() {
           </span>
         )}
       </div>
+
+      {status.canSetUp && (
+        <section className={styles.section}>
+          <h2 className={cn('t-sm', styles.sectionLabel)}>Google client</h2>
+          {showSetup ? (
+            <GoogleSetup
+              configured={status.canConnect}
+              onReady={() => {
+                setShowSetup(false);
+                toast.confirm('Google client saved. Connect Gmail to use it.');
+              }}
+            />
+          ) : (
+            <>
+              <p className={cn('t-sm', styles.clientNote)}>
+                {status.canConnect
+                  ? 'Pigeon has its own Google client on this machine, so it can reach your mail directly.'
+                  : "Pigeon has no Google client yet, so it can only show the demo account."}
+              </p>
+              <Button variant="secondary" onClick={() => setShowSetup(true)}>
+                {status.canConnect ? 'Replace this client' : 'Set up a Google client'}
+              </Button>
+            </>
+          )}
+        </section>
+      )}
 
       <section className={styles.section}>
         <h2 className={cn('t-sm', styles.sectionLabel)}>Appearance</h2>
