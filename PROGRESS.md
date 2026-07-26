@@ -317,6 +317,11 @@ found by driving the running app, not by reading the code.
 - Four smaller ones: the body's own newlines went out without CRLF, the
   HTML-escaped snippet was rendered raw, the Screener sorted by each sender's
   oldest held message, and the archive query excluded the wrong things.
+- **The thread list rendered every row it had.** Measured on a 2,000-thread
+  inbox — the ceiling the Gmail walk now uses — that was 43,411 DOM nodes, 299ms
+  to move the cursor one row and 180ms to tick a checkbox, on the most-used key
+  in the product. Now 556 nodes, 27ms and 18ms. Caused by lifting the walk's
+  ceiling earlier the same night.
 - **Four surfaces described the symptom rather than the cause.** Each catch
   discarded the `MailError` and hardcoded one §7.6 line, so a revoked token was
   reported as a rejected message, a failed contacts read, or an attachment that
@@ -409,6 +414,18 @@ In rough order of expected value:
    none of them by any static check. Still undriven: Gmail's own error states,
    O4 at 342 rows, the reader at a very long thread.
 3. The audit findings still open, listed below.
+
+## Measured and deliberately not done
+
+**Bulk review is not windowed.** At 400 held senders it renders 4,127 nodes and
+takes 120ms to move the cursor — noticeable, and worth fixing eventually, but
+not the 299ms the thread list was. The list scrolls inside the Screener's
+region together with the digest block above it, whose height varies with its
+own state, so windowing means measuring against a variable-height sibling
+rather than a self-contained scroller. That is a real change to how the screen
+scrolls, and the failure mode — rows not rendering where they are expected — is
+user-visible. Worth doing deliberately rather than at the end of a long session.
+`groupedWindow` and `useVirtualRows` are both there when it is.
 
 ## Open items
 
