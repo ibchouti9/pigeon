@@ -65,16 +65,50 @@ describe('sender list keyboard (§8.1)', () => {
     expect(cursorRow()).toBe(0);
   });
 
-  it('gives the cursor row’s action button focus, so Enter reverses it', async () => {
+  /**
+   * The cursor used to land on the row's action button, which §5.13b makes
+   * "Decline" on the Approved tab. So `j` `j` `Enter` declined a sender —
+   * while §8.1's Enter is "open the cursor row", and a sender row has nothing
+   * to open. The button is one Tab away, which is where a decision belongs.
+   */
+  it('gives the cursor row focus, not its destructive button', async () => {
     const user = userEvent.setup();
     await renderSenders();
 
     await user.keyboard('j');
     await waitFor(() => {
       const active = document.activeElement as HTMLElement;
-      expect(active.closest('[data-sender-row]')?.getAttribute('data-sender-row')).toBe('1');
+      expect(active.getAttribute('data-sender-row')).toBe('1');
     });
-    expect(document.activeElement?.tagName).toBe('BUTTON');
+  });
+
+  it('does not reverse a decision on Enter', async () => {
+    const user = userEvent.setup();
+    await renderSenders();
+    const approvedBefore = useMail.getState().approved.length;
+
+    await user.keyboard('j');
+    await waitFor(() =>
+      expect((document.activeElement as HTMLElement).getAttribute('data-sender-row')).toBe('1'),
+    );
+    await user.keyboard('{Enter}');
+
+    expect(useMail.getState().approved.length).toBe(approvedBefore);
+  });
+
+  it('still reaches the action button with Tab', async () => {
+    const user = userEvent.setup();
+    await renderSenders();
+
+    await user.keyboard('j');
+    await waitFor(() =>
+      expect((document.activeElement as HTMLElement).getAttribute('data-sender-row')).toBe('1'),
+    );
+    await user.tab();
+
+    const active = document.activeElement as HTMLElement;
+    expect(active.tagName).toBe('BUTTON');
+    expect(active.closest('[data-sender-row]')?.getAttribute('data-sender-row')).toBe('1');
   });
 
   it('resets to the top when the filter changes', async () => {

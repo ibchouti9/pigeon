@@ -137,7 +137,14 @@ export function SendersSettings() {
       behavior: 'auto',
     });
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(`[data-sender-row="${next}"] button`)?.focus();
+      /*
+       * The row, not the button inside it. §5.13b gives a sender row one
+       * control and it is destructive — "Decline" on the Approved tab — so
+       * focusing it made `j` `j` `Enter` decline a sender, when §8.1's Enter
+       * is "open the cursor row" and a sender row has nothing to open. The
+       * button is still one Tab away, which is where a decision belongs.
+       */
+      document.querySelector<HTMLElement>(`[data-sender-row="${next}"]`)?.focus();
     });
   }
 
@@ -246,7 +253,11 @@ export function SendersSettings() {
                 key={sender.id}
                 data-testid={`sender-row-${sender.id}`}
                 data-sender-row={index}
+                tabIndex={index === cursor ? 0 : -1}
                 className={cn(
+                  // §8.2 — the ring renders inset on a list row, where an
+                  // offset one would be clipped by the row's own bounds.
+                  'focus-inset',
                   styles.row,
                   index === cursor && styles.cursor,
                   leaving[sender.id] && styles.leaving,
