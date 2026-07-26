@@ -42,6 +42,7 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
   const [errorId, setErrorId] = useState<string | null>(null);
 
   const cardRef = useRef<HTMLElement | null>(null);
+  const hasFocused = useRef(false);
   const wasSheetOpen = useRef(false);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -52,10 +53,14 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
   const position = top ? held.findIndex((h) => h.sender.id === top.sender.id) + 1 : 0;
 
   // Route entry: the card region takes focus so single-key shortcuts work
-  // without a click (§8.4).
+  // without a click (§8.4). This has to wait for the first real card — on
+  // mount the stack is still a skeleton and there is nothing to focus, and an
+  // empty-dependency effect would never run again once there was.
   useEffect(() => {
-    cardRef.current?.focus();
-  }, []);
+    if (hasFocused.current || status !== 'ready' || !cardRef.current) return;
+    hasFocused.current = true;
+    cardRef.current.focus();
+  }, [status, top?.sender.id]);
 
   // §5.9 — closing the held-message sheet returns focus to the card.
   useEffect(() => {
