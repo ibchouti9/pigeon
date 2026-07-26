@@ -208,6 +208,47 @@ describe('search result keyboard navigation (§8.1)', () => {
   });
 
   /**
+   * Until /archive has been visited the store holds only the inbox, so an
+   * archived result exists nowhere but the results themselves. Deriving the
+   * open thread from those alone meant clearing the query emptied the reader
+   * mid-read — and once Search gained a composer, that took an open reply and
+   * everything typed into it, with no warning and no undo.
+   */
+  it('keeps an archived result open when the query is cleared', async () => {
+    const user = userEvent.setup();
+    // The store deliberately holds no archive: that is the state this breaks in.
+    expect(useMail.getState().archive).toEqual([]);
+    await renderSearch('the');
+
+    const archivedIds = new Set(
+      (await useMail.getState().provider.listThreads('archive')).map((t) => t.id),
+    );
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
+    const subjects = new Map(
+      (await useMail.getState().provider.listThreads('archive')).map((t) => [t.subject, t.id]),
+    );
+    const row = rows.find((r) =>
+      [...subjects.keys()].some((subject) => r.textContent?.includes(subject)),
+    );
+    expect(row, 'the query needs at least one archived result').toBeTruthy();
+    expect(archivedIds.size).toBeGreaterThan(0);
+
+    await user.click(row!);
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument());
+    const subject = screen.getByRole('heading', { level: 1 }).textContent;
+
+    await user.keyboard('r');
+    const body = await screen.findByLabelText('Message body');
+    await user.type(body, 'Words I would hate to lose.');
+
+    await user.clear(screen.getByRole('searchbox', { name: 'Search mail' }));
+
+    await waitFor(() => expect(screen.queryAllByRole('listitem')).toHaveLength(0));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(subject);
+    expect(screen.getByLabelText('Message body')).toHaveValue('Words I would hate to lose.');
+  });
+
+  /**
    * Clicking left the cursor where it was, so `e` acted on a thread that was
    * not the one on screen, and j/k jumped back somewhere else.
    */

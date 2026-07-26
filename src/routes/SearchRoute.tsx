@@ -161,8 +161,24 @@ export function SearchRoute() {
   const storedThread = useMail((s) =>
     [...s.inbox, ...s.archive].find((t) => t.id === threadId),
   );
+  const live = storedThread ?? flatThreads.find((t) => t.id === threadId);
+
+  /*
+   * Until /archive has been visited the store holds only the inbox, so an
+   * archived result exists nowhere but the results themselves. Deriving the
+   * open thread from those alone meant clearing or editing the query emptied
+   * the reader mid-read — and once Search gained a composer, that took an open
+   * reply and everything typed into it with no warning and no undo.
+   *
+   * A thread that has been opened stays until the reader moves off it.
+   */
+  const [remembered, setRemembered] = useState<Thread | null>(null);
+  useEffect(() => {
+    if (live) setRemembered(live);
+  }, [live]);
+
   const thread: Thread | undefined =
-    storedThread ?? flatThreads.find((t) => t.id === threadId);
+    live ?? (remembered?.id === threadId ? remembered : undefined) ?? undefined;
   const summary = useThreadSummary(thread ?? null);
 
   // §5.6 — a result opened from Search is still a thread to act on. The reader
