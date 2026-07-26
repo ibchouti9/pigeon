@@ -419,15 +419,35 @@ In rough order of expected value:
    real mailbox has happened. This is the only part of the product that has
    never executed.
 2. Drive more of the running app. Most of the bugs above were found this way and
-   none of them by any static check. Still undriven: Gmail's own error states,
-   O4 at 342 rows, the reader at a very long thread.
+   none of them by any static check. `?scenario=crowded` now reaches the states
+   that used to need hand-edited localStorage. Still undriven: Gmail's own error
+   states, which need a real account.
 3. The audit findings still open, listed below.
+
+## Driven at scale
+
+`?scenario=crowded` amplifies the demo seed to 800 threads, 120 held senders and
+40 messages a thread. What it found is above (the reader's start position); what
+it confirmed:
+
+- **Thread list, 800 threads.** 499 DOM nodes. `j` to row 240 keeps the cursor
+  on screen and the node count flat — the windowing and its scroll-by-arithmetic
+  both hold when the target row isn't mounted.
+- **Reader, 40 messages.** 6 expanded, 34 collapsed: exactly §5.6's rule, the
+  last 8 minus the two the user sent that have later messages after them.
+- **Screener, 120 senders.** Decisions apply and the counter tracks. The digest
+  keeps its own count — it is the week's summary, not a live counter, and the
+  live one sits under the stack.
+- **O4, 342 senders.** Already the seeded scale, so it needed no amplification:
+  175 nodes, 16 windowed rows, no horizontal overflow, filter narrowing right.
 
 ## Measured and deliberately not done
 
 **Bulk review is not windowed.** At 400 held senders it renders 4,127 nodes and
 takes 120ms to move the cursor — noticeable, and worth fixing eventually, but
-not the 299ms the thread list was. The list scrolls inside the Screener's
+not the 299ms the thread list was. At 120 held senders, which is a heavy week
+rather than a pathological one, it renders 1,327 nodes and holds a steady 60fps
+under `j` (median 16.7ms a frame, worst 18.7ms over 88 frames). The list scrolls inside the Screener's
 region together with the digest block above it, whose height varies with its
 own state, so windowing means measuring against a variable-height sibling
 rather than a self-contained scroller. That is a real change to how the screen
