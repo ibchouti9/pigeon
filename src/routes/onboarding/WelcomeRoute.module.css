@@ -1,0 +1,47 @@
+/* §5.1 O1 — Welcome / Connect Gmail */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.mark {
+  color: var(--color-accent);
+  transform: rotate(-9deg);
+  margin-bottom: var(--space-6);
+}
+
+.wordmark {
+  margin-bottom: var(--space-3);
+}
+
+.subhead {
+  margin-bottom: var(--space-8);
+  max-width: 34ch;
+}
+
+.actions {
+  width: 100%;
+}
+
+.errorBlock {
+  width: 100%;
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-destructive-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.legal {
+  margin-top: var(--space-4);
+  max-width: 40ch;
+}
+
+.demoNote {
+  margin-top: var(--space-2);
+  max-width: 40ch;
+}

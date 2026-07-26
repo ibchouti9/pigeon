@@ -1,0 +1,62 @@
+/* O3 step list (§5.2b) */
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  gap: var(--space-3);
+  color: var(--color-text-primary);
+}
+
+.rowPending {
+  color: var(--color-text-tertiary);
+}
+
+.glyph {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.check {
+  color: var(--color-accent);
+}
+
+.ringPending {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border-subtle);
+}
+
+/* The one documented motion exception (D33) — a rotating 90° accent arc,
+   the sole indicator that a multi-minute background operation is alive. */
+.ringCurrent {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border-subtle);
+  border-top-color: var(--color-accent);
+  animation: step-spin 1200ms linear infinite;
+}
+
+@keyframes step-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ringCurrent {
+    animation: none;
+    border: none;
+    background: conic-gradient(var(--color-accent) 0deg 180deg, var(--color-border-subtle) 180deg 360deg);
+  }
+}

@@ -1,0 +1,121 @@
+/* C-27 Provider connection panel — shared by O2 (§5.2) and
+   Settings → Assistant (§5.13c). */
+
+.section {
+  margin-top: var(--space-6);
+}
+
+.section:first-of-type {
+  margin-top: 0;
+}
+
+.sectionLabel {
+  display: block;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  margin-bottom: var(--space-3);
+}
+
+.keyRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.keyInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.showButton {
+  flex: none;
+  height: 34px;
+  padding: 0 var(--space-2);
+  background: none;
+  border: none;
+  color: var(--color-text-accent);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.showButton:hover {
+  text-decoration: underline;
+}
+
+.statusLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 18px;
+  margin-top: var(--space-2);
+  color: var(--color-text-primary);
+}
+
+.dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+}
+
+.dotTertiary {
+  background: var(--color-text-tertiary);
+}
+
+.dotAccent {
+  background: var(--color-accent);
+}
+
+.dotDestructive {
+  background: var(--color-destructive);
+}
+
+.provenance {
+  margin-top: var(--space-2);
+  max-width: 70ch;
+}
+
+.modelWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.modelSelect {
+  appearance: none;
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--space-8) 0 var(--space-3);
+  border: var(--border-width-control) solid var(--color-border-control);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.modelSelect:disabled {
+  color: var(--color-text-disabled);
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border-subtle);
+  cursor: not-allowed;
+}
+
+.modelJobs {
+  position: absolute;
+  right: 32px;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+.modelChevron {
+  position: absolute;
+  right: var(--space-3);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}

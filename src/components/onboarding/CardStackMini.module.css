@@ -1,0 +1,56 @@
+/* O5 static card-stack miniature (§5.4). No animation. */
+
+.stack {
+  position: relative;
+  width: 240px;
+  height: 168px;
+}
+
+.behind {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  height: 148px;
+  border-radius: var(--radius-lg);
+}
+
+.behind2 {
+  top: 0;
+  background: var(--color-card-behind-2);
+}
+
+.behind1 {
+  top: 8px;
+  left: var(--space-1);
+  right: var(--space-1);
+  background: var(--color-card-behind-1);
+}
+
+.front {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  right: 0;
+  height: 148px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface-held);
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+}
+
+.frontHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}

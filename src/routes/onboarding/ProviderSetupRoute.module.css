@@ -1,0 +1,11 @@
+/* §5.2 O2 — Connect your AI provider */
+
+.heading {
+  margin-bottom: var(--space-3);
+}
+
+.body {
+  margin-bottom: var(--space-8);
+  max-width: 66ch;
+  color: var(--color-text-secondary);
+}

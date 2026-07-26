@@ -1,0 +1,45 @@
+/* §5.2b O3 — Setting up your inbox */
+
+.heading {
+  margin-bottom: var(--space-6);
+}
+
+.progress {
+  margin-bottom: var(--space-3);
+}
+
+.counter {
+  margin-bottom: var(--space-6);
+}
+
+.divider {
+  border: none;
+  border-top: var(--border-hairline);
+  margin: 0 0 var(--space-4);
+}
+
+.skippedLine {
+  margin-top: var(--space-4);
+}
+
+.continueButton {
+  margin-top: var(--space-8);
+}
+
+.errorBlock {
+  padding: var(--space-4);
+  background: var(--color-destructive-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+}
+
+.errorActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.contactLink {
+  color: var(--color-text-accent);
+}

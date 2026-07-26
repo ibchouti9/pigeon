@@ -1,0 +1,19 @@
+/* Shared centered column shell for O1–O5 (§5.1–§5.4). Vertically centered
+   with a minimum top offset of --space-20; horizontally centered always. */
+
+.page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-20) var(--space-6) var(--space-8);
+  background: var(--color-bg);
+}
+
+.column {
+  width: 100%;
+  max-width: var(--layout-onboarding-width);
+  /* Centers within the remaining space below the top offset, never above it. */
+  margin-top: auto;
+  margin-bottom: auto;
+}

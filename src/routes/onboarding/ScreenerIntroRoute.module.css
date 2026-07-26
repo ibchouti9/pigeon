@@ -1,0 +1,30 @@
+/* §5.4 O5 — How the Screener works */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stack {
+  margin-bottom: var(--space-8);
+}
+
+.heading {
+  margin-bottom: var(--space-3);
+}
+
+.paras {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 46ch;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}

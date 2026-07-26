@@ -1,0 +1,116 @@
+/* §5.3 O4 — Confirm your known senders */
+
+.heading {
+  margin-bottom: var(--space-3);
+}
+
+.body {
+  margin-bottom: var(--space-6);
+  max-width: 78ch;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.filterWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filterIcon {
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+.filterInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.listBox {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  max-height: min(52vh, 520px);
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  border-bottom: var(--border-hairline);
+  cursor: pointer;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowCursor {
+  background: var(--color-surface-hover);
+}
+
+.name {
+  flex: none;
+  font-weight: 500;
+  max-width: 220px;
+}
+
+.name,
+.address {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.address {
+  flex: 1;
+  min-width: 0;
+}
+
+.reason {
+  flex: none;
+  text-align: right;
+}
+
+.helper {
+  margin-top: var(--space-3);
+}
+
+.approveButton {
+  margin-top: var(--space-6);
+}
+
+.stateBlock,
+.emptyBlock {
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.stateActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.emptyButton {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 880px) {
+  .reason {
+    display: none;
+  }
+}
