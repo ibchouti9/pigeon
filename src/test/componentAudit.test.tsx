@@ -12,7 +12,7 @@ import { BulkReview } from '../components/screener/BulkReview';
 import { AssistantSettings } from '../routes/settings/AssistantSettings';
 import { ThreadRow } from '../components/mail/ThreadRow';
 import { HeldMessageSheet } from '../components/screener/HeldMessageSheet';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMinimumVisible } from '../hooks/useMinimumVisible';
 import { useRouteFocus } from '../hooks/useRouteFocus';
 import { makeHeldList } from '../components/screener/__tests__/fixtures';
@@ -342,5 +342,101 @@ describe('route-change focus (§8.2)', () => {
     await new Promise((r) => setTimeout(r, 20));
 
     expect(row).toHaveFocus();
+  });
+
+  /**
+   * §8.4 gives the Screener card focus on route entry so its single-key
+   * shortcuts work. React runs child effects before parent ones, so the card
+   * focused first and this hook took it back a moment later — the heading won
+   * every time, and the comment here claimed the opposite ordering.
+   */
+  it('leaves focus where the screen itself put it', async () => {
+    /*
+     * The nesting matters and is the whole bug: `useRouteFocus` lives in the
+     * shell and the card lives in a screen inside it. React runs child effects
+     * before parent ones, so the card claims focus first and the shell used to
+     * take it straight back. Putting both hooks in one component would order
+     * them by declaration instead and reproduce nothing.
+     */
+    function Card() {
+      const card = useRef<HTMLElement>(null);
+      const region = useLocation().pathname.split('/')[1];
+      useEffect(() => {
+        card.current?.focus();
+      }, [region]);
+      return (
+        <article ref={card} tabIndex={0}>
+          the card
+        </article>
+      );
+    }
+
+    function Shell({ children }: { children: React.ReactNode }) {
+      const ref = useRef<HTMLDivElement>(null);
+      const region = useLocation().pathname.split('/')[1];
+      useRouteFocus(ref);
+      return (
+        <div ref={ref}>
+          <h1>{region || 'root'}</h1>
+          {children}
+        </div>
+      );
+    }
+
+    const nav: { go: (to: string) => void } = { go: () => {} };
+    function Nav() {
+      const navigate = useNavigate();
+      nav.go = navigate;
+      return null;
+    }
+    render(
+      <MemoryRouter initialEntries={['/inbox']}>
+        <Routes>
+          <Route
+            path="/*"
+            element={
+              <Shell>
+                <Card />
+                <Nav />
+              </Shell>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    act(() => nav.go('/screener'));
+
+    await waitFor(() => expect(screen.getByText('the card')).toHaveFocus());
+  });
+
+  /**
+   * The other half of the same check: focus held *outside* the region — the
+   * rail, where `g i` is typed from — is not the screen claiming its own, so
+   * §8.2's heading still wins.
+   */
+  it('still takes the heading when focus was outside the region', async () => {
+    const nav: { go: (to: string) => void } = { go: () => {} };
+    function Nav() {
+      const navigate = useNavigate();
+      nav.go = navigate;
+      return null;
+    }
+    render(
+      <MemoryRouter initialEntries={['/inbox']}>
+        <button type="button">rail control</button>
+        <Routes>
+          <Route path="/*" element={<><Harness /><Nav /></>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const rail = screen.getByRole('button', { name: 'rail control' });
+    rail.focus();
+    expect(rail).toHaveFocus();
+
+    act(() => nav.go('/archive'));
+
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
   });
 });

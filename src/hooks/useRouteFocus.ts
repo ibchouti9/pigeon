@@ -9,8 +9,15 @@ import { useLocation } from 'react-router-dom';
  * it and no announcement of where they were.
  *
  * Deliberately not on first mount: the user has not navigated anywhere yet, and
- * stealing focus on load would fight the skip link. Screens that place focus
- * themselves (§8.4's Screener card) run their own effect afterwards and win.
+ * stealing focus on load would fight the skip link.
+ *
+ * A screen that places focus itself keeps it. §8.4 gives the Screener card
+ * focus on route entry so its single-key shortcuts work, and this used to
+ * overwrite that with the heading: React runs child effects before parent
+ * ones, so the card focused first and the shell took it back a moment later.
+ * The comment here used to claim the opposite ordering, which is why it went
+ * unnoticed — the check below is on what actually has focus, not on who ran
+ * when.
  */
 export function useRouteFocus(regionRef: React.RefObject<HTMLElement | null>): void {
   // The region, not the URL. Opening a thread changes the path but not the
@@ -26,7 +33,14 @@ export function useRouteFocus(regionRef: React.RefObject<HTMLElement | null>): v
       return;
     }
 
-    const heading = regionRef.current?.querySelector<HTMLElement>('h1');
+    const region = regionRef.current;
+    if (!region) return;
+
+    // Something inside the new screen already claimed focus, so leave it there.
+    const active = document.activeElement;
+    if (active && active !== document.body && region.contains(active)) return;
+
+    const heading = region.querySelector<HTMLElement>('h1');
     if (!heading) return;
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
