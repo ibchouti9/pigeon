@@ -40,6 +40,8 @@ export function MailPlaceScreen({ place }: { place: Place }) {
 
   // D14 — the reply composer lives in the reading pane, not the dock.
   const [replyMode, setReplyMode] = useState<ReplyMode | null>(null);
+  // Set when ⌘J opened the reply, so the composer starts drafting on mount.
+  const [draftWithPigeon, setDraftWithPigeon] = useState(false);
 
   const { connected } = useAssistant();
 
@@ -114,6 +116,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
 
   function reply(mode: ReplyMode) {
     if (!openThread || !online) return;
+    setDraftWithPigeon(false);
     setReplyMode(mode);
   }
 
@@ -122,6 +125,20 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (isTypingTarget(e.target)) return;
+
+      // §5.6 — ⌘J drafts with Pigeon and "opens the composer if closed". The
+      // composer handles it once focus is inside; this is the path from
+      // reading a thread with no reply open, which is the case the wording is
+      // actually about.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        if (openThread && online && !replyMode) {
+          setReplyMode('reply');
+          setDraftWithPigeon(true);
+          e.preventDefault();
+        }
+        return;
+      }
+
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key) {
@@ -170,7 +187,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId, threads, openThread, bp]);
+  }, [threadId, threads, openThread, bp, online, replyMode]);
 
   // §5.0 narrow tablet (720–879px) — list and reader are a single column.
   const showList = bp !== 'narrow' || !threadId;
@@ -232,7 +249,11 @@ export function MailPlaceScreen({ place }: { place: Place }) {
                 key={`${openThread.id}-${replyMode}`}
                 thread={openThread}
                 mode={replyMode}
-                onClose={() => setReplyMode(null)}
+                draftOnOpen={draftWithPigeon}
+                onClose={() => {
+                  setReplyMode(null);
+                  setDraftWithPigeon(false);
+                }}
               />
             ) : undefined
           }

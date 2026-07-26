@@ -79,7 +79,7 @@ export function ShortcutsDialog() {
       <div className={styles.groups}>
         {GROUPS.map((group) => (
           <section key={group.title}>
-            <h3 className={cn('t-mono-xs', styles.groupTitle)}>{group.title.toUpperCase()}</h3>
+            <h3 className={cn('t-mono-sm', styles.groupTitle)}>{group.title.toUpperCase()}</h3>
             <dl className={styles.rows}>
               {group.rows.map(([key, description]) => (
                 <div key={key + description} className={styles.row}>

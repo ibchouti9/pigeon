@@ -51,7 +51,7 @@ export function StatesRoute() {
 
         {SCENARIOS.map((scenario) => (
           <section key={scenario.name} className={styles.section}>
-            <h2 className={cn('t-mono-xs', styles.sectionTitle)}>{scenario.label}</h2>
+            <h2 className={cn('t-mono-sm', styles.sectionTitle)}>{scenario.label}</h2>
             <p className={cn('t-sm', styles.sectionNote)}>{scenario.description}</p>
             <div className={styles.grid}>
               {ROUTES.map((route) => (
@@ -69,7 +69,7 @@ export function StatesRoute() {
         ))}
 
         <section className={styles.section}>
-          <h2 className={cn('t-mono-xs', styles.sectionTitle)}>Onboarding</h2>
+          <h2 className={cn('t-mono-sm', styles.sectionTitle)}>Onboarding</h2>
           <p className={cn('t-sm', styles.sectionNote)}>
             O1–O5 run outside the shell. Reaching them needs the onboarded flag cleared,
             which the first link does.

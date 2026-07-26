@@ -11,6 +11,8 @@ import { buildReplyDraft } from './replyDraft';
 export interface InlineReplyProps {
   thread: Thread;
   mode: ReplyMode;
+  /** ⌘J opened this reply, so start drafting as soon as it mounts (§5.6). */
+  draftOnOpen?: boolean;
   onClose: () => void;
 }
 
@@ -18,7 +20,7 @@ export interface InlineReplyProps {
  * D14 — the reply composer expands at the foot of the thread rather than in the
  * dock, so the quoted context stays visible while writing.
  */
-export function InlineReply({ thread, mode, onClose }: InlineReplyProps) {
+export function InlineReply({ thread, mode, draftOnOpen, onClose }: InlineReplyProps) {
   const account = useMail((s) => s.account);
   const contacts = useMail((s) => s.contacts);
   const provider = useMail((s) => s.provider);
@@ -59,6 +61,7 @@ export function InlineReply({ thread, mode, onClose }: InlineReplyProps) {
   return (
     <Composer
       variant="inline"
+      draftOnMount={draftOnOpen}
       draft={draft}
       onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
       onSend={send}

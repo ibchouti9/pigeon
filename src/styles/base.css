@@ -198,6 +198,16 @@ a:hover {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+/*
+ * Not used in the DOM. §4.5's type map assigns --mono-xs to list section
+ * headers and postmark text, but --mono-xs-size is 10px and §8.5 item 10 says
+ * no text in the product renders below 11px. The spec contradicts itself; the
+ * quality gate wins, and both of those elements use --mono-sm (11px) — which
+ * is also what §4.4's density table says for section headers.
+ *
+ * The class stays because the token is still correct for the postmark's own
+ * SVG text, which is sized from the mark's diameter rather than this scale.
+ */
 .t-mono-xs {
   font-size: var(--mono-xs-size);
   line-height: var(--mono-xs-line);

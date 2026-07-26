@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Address, Draft, Message } from '../../types';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
@@ -31,6 +31,8 @@ export interface ComposerProps {
   /** Docked composers carry a title bar and a scrim-free dialog role. */
   variant: 'inline' | 'docked';
   className?: string;
+  /** Start drafting with Pigeon as soon as the composer mounts (⌘J, §5.6). */
+  draftOnMount?: boolean;
   /** Rendered above the action bar when a send fails (§3.4 6a). */
   sendError?: string | null;
   onRetrySend?: () => void;
@@ -47,6 +49,7 @@ export function Composer({
   online,
   variant,
   className,
+  draftOnMount,
   sendError,
   onRetrySend,
 }: ComposerProps) {
@@ -145,6 +148,14 @@ export function Composer({
     }
   }
 
+  // ⌘J from a thread with no reply open lands here: the composer mounts and
+  // immediately asks for a draft, so one keystroke does the whole thing.
+  useEffect(() => {
+    if (!draftOnMount || !connected || draft.aiState !== 'none' || draft.body) return;
+    void generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftOnMount, connected]);
+
   const recipientLabel = draft.to.length
     ? displayName(draft.to[0])
     : draft.mode === 'new'
@@ -219,6 +230,7 @@ export function Composer({
         disabled={sending || generating}
         ariaLabel="Message body"
         ariaDescribedBy={showProvenance ? provenanceId : undefined}
+        busy={generating}
         textareaRef={bodyRef}
         onKeyDown={onBodyKeyDown}
         minHeight={variant === 'inline' ? 160 : 200}

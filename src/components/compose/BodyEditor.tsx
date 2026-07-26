@@ -39,6 +39,8 @@ export interface BodyEditorProps {
   maxHeight?: number;
   ariaLabel: string;
   ariaDescribedBy?: string;
+  /** §5.12 — the body is aria-busy while Pigeon is writing into it. */
+  busy?: boolean;
   className?: string;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -54,6 +56,7 @@ export function BodyEditor({
   maxHeight = 480,
   ariaLabel,
   ariaDescribedBy,
+  busy,
   className,
   textareaRef,
   onKeyDown,
@@ -88,6 +91,7 @@ export function BodyEditor({
         disabled={disabled}
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
+        aria-busy={busy || undefined}
         spellCheck
         style={{ minHeight }}
         onKeyDown={onKeyDown}

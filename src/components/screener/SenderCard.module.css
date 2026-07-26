@@ -5,6 +5,9 @@
   z-index: 1;
   width: var(--layout-card-width);
   max-width: 100%;
+  /* §4.4 — 520px wide, min 280px tall. A sparse card (short snippet, no AI
+     read, one message) would otherwise collapse below the floor. */
+  min-height: 280px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -212,8 +215,10 @@
     width: 100%;
   }
 
+  /* §5.7 — the pair stacks with Approve on top at this width, so
+     column-reverse against the DOM order (Decline first, for tab order). */
   .actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   .actions :global(button) {

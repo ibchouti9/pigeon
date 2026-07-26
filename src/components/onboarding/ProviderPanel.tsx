@@ -241,7 +241,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
   return (
     <div>
       <section className={styles.section}>
-        <span className={cn('t-mono-xs', styles.sectionLabel)}>PROVIDER</span>
+        <span className={cn('t-mono-sm', styles.sectionLabel)}>PROVIDER</span>
         <ProviderRadioGroup value={providerId} onChange={selectProvider} />
       </section>
 
@@ -249,7 +249,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
         <>
           <section className={styles.section}>
             {!isDemo && (
-              <label htmlFor="provider-key" className={cn('t-mono-xs', styles.sectionLabel)}>
+              <label htmlFor="provider-key" className={cn('t-mono-sm', styles.sectionLabel)}>
                 {isLocal ? 'BASE URL' : 'API KEY'}
               </label>
             )}
@@ -308,7 +308,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
           </section>
 
           <section className={styles.section}>
-            <label htmlFor="provider-model" className={cn('t-mono-xs', styles.sectionLabel)}>
+            <label htmlFor="provider-model" className={cn('t-mono-sm', styles.sectionLabel)}>
               MODEL
             </label>
             <div className={styles.modelWrap}>

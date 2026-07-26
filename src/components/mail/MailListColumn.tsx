@@ -291,7 +291,7 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
                 let rowIndex = -1;
                 return groups.map((group) => (
                   <Fragment key={group.label}>
-                    <div className={cn('t-mono-xs', styles.groupHeader)} aria-hidden="true">
+                    <div className={cn('t-mono-sm', styles.groupHeader)} aria-hidden="true">
                       {group.label}
                     </div>
                     {group.threads.map((t) => {

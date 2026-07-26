@@ -41,7 +41,7 @@ export function Postmark({
   if (textOnly) {
     return (
       <span
-        className={cn('t-mono-xs', styles.textOnly, className)}
+        className={cn('t-mono-sm', styles.textOnly, className)}
         aria-hidden={decorative ? 'true' : undefined}
         role={decorative ? undefined : 'img'}
         aria-label={decorative ? undefined : label}

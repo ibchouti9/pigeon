@@ -131,10 +131,22 @@ export function ScreenerRoute() {
             <EmptyState
               headline="Pigeon can't reach Gmail."
               body="Your mail is safe. This is a connection problem between Pigeon and Google."
+              // §5.7 says "same copy as the inbox", and §5.5 specifies that
+              // state as a *primary* Try again plus the status link.
               action={
-                <Button variant="secondary" onClick={() => void loadHeld()}>
+                <Button variant="primary" onClick={() => void loadHeld()}>
                   Try again
                 </Button>
+              }
+              secondaryAction={
+                <a
+                  className="t-sm"
+                  href="https://www.google.com/appsstatus/dashboard/"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  Check Google Workspace status
+                </a>
               }
             />
           </div>

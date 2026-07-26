@@ -232,7 +232,7 @@ export function SearchRoute() {
       <div className={styles.results}>
         {status === 'empty' && recent.length > 0 && (
           <>
-            <h2 className={cn('t-mono-xs', styles.groupHeader)}>RECENT</h2>
+            <h2 className={cn('t-mono-sm', styles.groupHeader)}>RECENT</h2>
             {recent.map((entry) => (
               <button
                 key={entry}
@@ -287,7 +287,7 @@ export function SearchRoute() {
           <div role="list" aria-label={`${formatCount(total)} results`}>
             {groups.map((group) => (
               <div key={group.label}>
-                <h2 className={cn('t-mono-xs', styles.groupHeader)}>
+                <h2 className={cn('t-mono-sm', styles.groupHeader)}>
                   {group.label.toUpperCase()}
                 </h2>
                 {group.threads.map((t) => {
@@ -327,7 +327,7 @@ export function SearchRoute() {
 
             {includeHeld && results.held.length > 0 && (
               <div>
-                <h2 className={cn('t-mono-xs', styles.groupHeader)}>HELD</h2>
+                <h2 className={cn('t-mono-sm', styles.groupHeader)}>HELD</h2>
                 {results.held.map((h: HeldSender) => (
                   <button
                     key={h.sender.id}
