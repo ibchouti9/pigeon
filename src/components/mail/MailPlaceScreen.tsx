@@ -259,6 +259,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           onReply={reply}
           summary={summary.hidden || summary.bullets.length === 0 ? undefined : summary.bullets}
           summaryState={summary.state === 'idle' ? undefined : summary.state}
+          summaryFailedText={summary.failedText ?? undefined}
           onRetrySummary={summary.summarize}
           onSummarize={summary.summarize}
           hasProvider={connected}

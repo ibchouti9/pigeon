@@ -450,9 +450,12 @@ export function Composer({
         </Button>
 
         {/*
-          `title` on a disabled button never shows — the browser dispatches no
-          pointer events for one. aria-disabled keeps the control hoverable and
-          focusable, which is the only way C-28's explanation reaches anyone.
+          aria-disabled rather than `disabled`: a disabled button takes no focus
+          and dispatches no pointer events, so nothing that explains why it is
+          off can be reached. No tooltip here — §6 C-28 gives this control the
+          helper text below ("Connect a provider to draft replies.") and gives
+          "Connect a provider in Settings → Assistant" to the Summarize button
+          instead. Carrying both said the same thing twice, differently.
         */}
         <Button
           variant="secondary"
@@ -463,7 +466,6 @@ export function Composer({
           onClick={() => {
             if (connected) void generate();
           }}
-          title={connected ? undefined : 'Connect a provider in Settings → Assistant'}
         >
           Draft with Pigeon
         </Button>

@@ -1,3 +1,4 @@
+import { plural } from '../../lib/format';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CardStackMini } from '../../components/onboarding/CardStackMini';
@@ -35,7 +36,7 @@ export function ScreenerIntroRoute() {
     useSettings.getState().setOnboarded(true);
     navigate('/inbox');
     useToasts.getState().push({
-      message: `Pigeon is holding ${n} senders for you.`,
+      message: `Pigeon is holding ${plural(n, 'sender')} for you.`,
       tone: 'confirm',
       duration: 8000,
       action: { label: 'Open Screener', run: () => navigate('/screener') },

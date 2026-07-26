@@ -115,14 +115,20 @@ export function AssistantSettings() {
         toast.confirm(`Connected. Answered in ${result.ms} ms.`);
       } else {
         useSettings.getState().setConnection(result.status === 'rejected' ? 'rejected' : 'unknown');
+        // §7.6 gives all four of these the same action: Test connection. The
+        // point of the button is that you can try again from here without
+        // going back through the form.
         toast.error(testFailureCopy(result.status, label, provider.baseUrl), {
-          label: 'Change',
-          run: () => setEditing(true),
+          label: 'Test connection',
+          run: () => void handleTestConnection(),
         });
       }
     } catch {
       useSettings.getState().setConnection('unknown');
-      toast.error(`Couldn't reach ${label}. Check your connection and test again.`);
+      toast.error(`Couldn't reach ${label}. Check your connection and test again.`, {
+        label: 'Test connection',
+        run: () => void handleTestConnection(),
+      });
     } finally {
       setTesting(false);
     }

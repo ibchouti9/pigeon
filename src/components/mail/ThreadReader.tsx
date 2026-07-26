@@ -44,6 +44,8 @@ export interface ThreadReaderProps {
    */
   summary?: string[];
   summaryState?: AiBlockState;
+  /** §7.6's rate-limit line, when that is what went wrong (C-10's failed state). */
+  summaryFailedText?: string;
   onRetrySummary?: () => void;
   onSummarize?: () => void;
   hasProvider?: boolean;
@@ -102,6 +104,7 @@ export function ThreadReader({
   pendingSubject,
   summary,
   summaryState,
+  summaryFailedText,
   onRetrySummary,
   onSummarize,
   hasProvider,
@@ -285,6 +288,7 @@ export function ThreadReader({
             kind="summary"
             state={summaryState ?? 'ready'}
             content={summary}
+            failedText={summaryFailedText}
             onRetry={onRetrySummary}
             onHide={() => setHiddenSummaryFor((s) => ({ ...s, [thread.id]: true }))}
             className={styles.summary}

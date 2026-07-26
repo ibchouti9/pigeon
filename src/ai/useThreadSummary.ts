@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Thread } from '../types';
+import { AiError } from './types';
 import { useAssistant, useBehaviour } from './useAssistant';
 import { useMail } from '../store/mail';
 
@@ -22,6 +23,11 @@ export function shouldAutoSummarize(thread: Thread): boolean {
 export interface ThreadSummary {
   state: SummaryState;
   bullets: string[];
+  /**
+   * §7.6's rate-limit line when that is why it failed, and null otherwise —
+   * which leaves §3.4 2b's "Summary unavailable." as the default.
+   */
+  failedText: string | null;
   /** True when the thread is below the threshold and nothing has been asked for. */
   offersButton: boolean;
   summarize: () => void;
@@ -36,6 +42,8 @@ export function useThreadSummary(thread: Thread | null): ThreadSummary {
 
   const [state, setState] = useState<SummaryState>('idle');
   const [bullets, setBullets] = useState<string[]>([]);
+  /** §7.6's rate-limit line, when that is why it failed. */
+  const [failedText, setFailedText] = useState<string | null>(null);
   // §5.6 — hiding is remembered per thread for the session only.
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
   const requestedFor = useRef<string | null>(null);
@@ -53,8 +61,16 @@ export function useThreadSummary(thread: Thread | null): ThreadSummary {
         if (requestedFor.current !== target.id) return;
         setBullets(result);
         setState('ready');
-      } catch {
+      } catch (error) {
         if (requestedFor.current !== target.id) return;
+        /*
+         * §7.6 gives a rate-limited provider its own line — "Summaries and
+         * drafts will come back on their own" — because it means something
+         * different from "unavailable": it will fix itself, and retrying now
+         * won't help. Every consumer discarded the error, so the one case with
+         * good news attached read the same as a hard failure.
+         */
+        setFailedText(error instanceof AiError && error.status === 'rate-limited' ? error.message : null);
         setState('failed');
       }
     },
@@ -93,6 +109,7 @@ export function useThreadSummary(thread: Thread | null): ThreadSummary {
   return {
     state,
     bullets,
+    failedText,
     offersButton: Boolean(thread && client && state === 'idle'),
     summarize,
     hide,
