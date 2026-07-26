@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMail, useHeldCount, useUnreadCount } from '../../store/mail';
 import { useCompose } from '../../store/compose';
 import { getSyncProgress, subscribeSync } from '../onboarding/syncSession';
@@ -40,6 +40,28 @@ interface Item {
  */
 export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+
+  /*
+   * §2.2 spells the search URL `/search?q=…&held=0|1`, and the rail's field was
+   * neither reading it nor preserving it. Landing on one — a reload, a
+   * bookmark, the back button — left the field empty beside a full page of
+   * results, and because every keystroke navigates, typing one character
+   * replaced the query rather than editing it and dropped `held` with it: the
+   * "Also search held mail" scope silently turned itself off.
+   */
+  // `startsWith`, not equality: opening a result routes to `/search/t/:id` and
+  // carries the query with it. The user is still inside their search, so the
+  // field has to keep showing it.
+  const query = pathname.startsWith('/search') ? (searchParams.get('q') ?? '') : '';
+
+  function search(next: string) {
+    if (!next) return navigate('/search');
+    const params = new URLSearchParams(searchParams);
+    params.set('q', next);
+    navigate(`/search?${params}`);
+  }
   const account = useMail((s) => s.account);
   const unread = useUnreadCount();
   const heldCount = useHeldCount();
@@ -123,10 +145,8 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
             onKeyDown={(e) => {
               if (e.key === 'Escape') e.currentTarget.blur();
             }}
-            onChange={(e) => {
-              const q = e.currentTarget.value;
-              navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
-            }}
+            value={query}
+            onChange={(e) => search(e.currentTarget.value)}
           />
         </div>
       )}

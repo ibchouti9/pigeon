@@ -294,11 +294,46 @@ class ScenarioProvider implements MailProvider {
     return this.inner.unsend(messageId);
   }
 
-  search(query: string, includeHeld: boolean): Promise<SearchResults> {
+  async search(query: string, includeHeld: boolean): Promise<SearchResults> {
     if (this.scenario === 'loading') return never();
-    if (this.scenario === 'empty') return Promise.resolve({ inbox: [], archive: [], held: [] });
+    if (this.scenario === 'empty') return { inbox: [], archive: [], held: [] };
     const failure = this.failRead();
-    return failure ? Promise.reject(failure) : this.inner.search(query, includeHeld);
+    if (failure) throw failure;
+    if (this.scenario !== 'crowded') return this.inner.search(query, includeHeld);
+
+    // Searching the seed would report five results against eight hundred
+    // threads, so §5.11 would never be driven at the scale that matters.
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return { inbox: [], archive: [], held: [] };
+
+    const matches = (t: Thread) =>
+      t.subject.toLowerCase().includes(q) ||
+      t.messages.some(
+        (m) =>
+          m.body.toLowerCase().includes(q) ||
+          m.from.name.toLowerCase().includes(q) ||
+          m.from.email.toLowerCase().includes(q),
+      );
+
+    const [inbox, archive] = await Promise.all([
+      this.listThreads('inbox'),
+      this.listThreads('archive'),
+    ]);
+
+    return {
+      inbox: inbox.filter(matches),
+      archive: archive.filter(matches),
+      held: includeHeld
+        ? (await this.listHeld()).filter(
+            (h) =>
+              h.sender.name.toLowerCase().includes(q) ||
+              h.sender.email.toLowerCase().includes(q) ||
+              h.messages.some(
+                (m) => m.subject.toLowerCase().includes(q) || m.body.toLowerCase().includes(q),
+              ),
+          )
+        : [],
+    };
   }
 }
 
