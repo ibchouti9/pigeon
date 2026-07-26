@@ -52,6 +52,8 @@ interface GoogleGlobal {
         error_callback?: (error: { type?: string }) => void;
       }) => TokenClient;
       revoke: (token: string, done: () => void) => void;
+      /** GIS's own scope check; see the note where it is used. */
+      hasGrantedAllScopes?: (response: TokenResponse, ...scopes: string[]) => boolean;
     };
   };
 }
@@ -147,7 +149,19 @@ function request(clientId: string, prompt: string): Promise<StoredToken> {
         }
 
         const granted = (response.scope ?? '').split(' ').filter(Boolean);
-        const missing = SCOPES.filter((s) => !granted.includes(s));
+        /*
+         * Google's own check, not a string comparison of our own. It normalises
+         * some scopes in the response — `.../auth/userinfo.email` comes back as
+         * the alias `email` — so comparing the returned strings to the ones we
+         * asked for can reject a grant that fully succeeded, and there is no way
+         * past that screen once it does.
+         */
+        const hasAll = window.google?.accounts.oauth2.hasGrantedAllScopes;
+        const missing = hasAll
+          ? hasAll(response, ...SCOPES)
+            ? []
+            : ['some']
+          : SCOPES.filter((s) => !granted.includes(s));
         if (missing.length > 0) {
           reject(
             new AuthError(
@@ -166,12 +180,21 @@ function request(clientId: string, prompt: string): Promise<StoredToken> {
         writeToken(token);
         resolve(token);
       },
-      error_callback: () =>
+      error_callback: (error?: { type?: string }) =>
         reject(
-          new AuthError(
-            "Pigeon didn't get access to your mail. Google needs permission to read and send on your behalf for Pigeon to work. Try connecting again.",
-            'denied',
-          ),
+          // A blocked popup is not a refusal, and telling the user to "try
+          // connecting again" sends them round the same loop. This one happens
+          // when the token lapses mid-session and the renewal has no user
+          // gesture behind it.
+          error?.type === 'popup_failed_to_open'
+            ? new AuthError(
+                'Your browser blocked the Google window. Allow pop-ups for this site, then connect again.',
+                'unavailable',
+              )
+            : new AuthError(
+                "Pigeon didn't get access to your mail. Google needs permission to read and send on your behalf for Pigeon to work. Try connecting again.",
+                'denied',
+              ),
         ),
     });
 
@@ -192,10 +215,23 @@ export async function signIn(): Promise<void> {
   await request(clientId, 'consent');
 }
 
+/** One renewal at a time, however many callers arrive at once. */
+let renewal: Promise<StoredToken> | null = null;
+
 /**
- * Returns a live access token, renewing it silently if the last one lapsed.
- * Throws when Google has revoked Pigeon's permission, which the shell renders
- * as the token-revoked state in §5.5.
+ * Returns a live access token, renewing it when the last one lapsed. Throws
+ * when Google has revoked Pigeon's permission, which the shell renders as the
+ * token-revoked state in §5.5.
+ *
+ * The renewal is shared. Every Gmail request calls this, and the walk issues
+ * ten at a time — so when the hour-long token lapsed mid-walk, all ten found no
+ * token and each opened its own Google window. The browser blocks nine of them,
+ * and a blocked window used to be reported as the user refusing consent.
+ *
+ * Note that the token flow has no truly silent renewal: Google's guidance is to
+ * obtain a token from a user gesture, and a renewal triggered by a background
+ * fetch may be blocked whatever we do. Sharing it at least means one prompt
+ * rather than ten, and an honest message when it is blocked.
  */
 export async function accessToken(): Promise<string> {
   const existing = readToken();
@@ -209,8 +245,14 @@ export async function accessToken(): Promise<string> {
     );
   }
 
-  await loadGis();
-  const token = await request(clientId, '');
+  if (!renewal) {
+    renewal = loadGis()
+      .then(() => request(clientId, ''))
+      .finally(() => {
+        renewal = null;
+      });
+  }
+  const token = await renewal;
   return token.accessToken;
 }
 
