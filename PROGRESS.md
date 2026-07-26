@@ -46,8 +46,10 @@ Every screen in §5 is built and runs against the demo account.
 
 ## Quality floor (§8.5), verified in the running app
 
-1. Empty, loading and error states — built for every screen; **no dev harness**
-   yet to reach them all in one place.
+1. Empty, loading and error states — reachable at **`/dev/states`**, which swaps
+   the mail provider for one of six scenarios and opens a real route, so each
+   state is reached through the screen's own code. Dev builds only; it
+   tree-shakes out of production.
 2. Focus ring on `:focus-visible` only — one rule in `base.css`, never overridden.
 3. Keyboard-only operation — verified for approve, reply-with-draft and reverse.
 4. Contrast — the token block is §4.3 verbatim, so §8.3's table holds by
@@ -79,6 +81,14 @@ found by driving the running app, not by reading the code.
   "every text pairing" table does not contain.
 - **Search's URL updater changed identity every render**, and the debounce
   effect both depended on it and called it.
+- **A provider swap didn't cancel in-flight loads.** A load started against the
+  old provider applied its result after the new one was installed — so signing
+  out of Gmail back to the demo account would drop the previous account's mail
+  into the new one's screens.
+- **The Screener rebuilt its URL from scratch** in three places, destroying any
+  query parameter other than `view`; and its jump-back-to-Stack fired on the
+  transient zero-count during a bulk decision, yanking the user out of bulk
+  review mid-action.
 
 - **Breakpoint measured from `window.innerWidth`**, which includes the overflow
   the layout itself causes. Self-reinforcing: every viewport from 720–1079 chose
@@ -123,11 +133,9 @@ In rough order of expected value:
    and none of them by any static check. Untested paths: the offline banner and
    the disabled controls behind it, Gmail's error states, O4 at 342 rows, the
    partial-failure bulk retry.
-2. Build the dev harness §8.5 item 1 asks for — one route that mounts every
-   screen's empty, loading and error state. It is the last quality-floor item
-   still open, and it makes the states above reachable without faking data by
-   hand.
-3. First real Gmail run, once an OAuth client exists.
+2. First real Gmail run, once an OAuth client exists. This is the only part of
+   the product that has never executed.
+3. Work through whatever the spec-conformance and bug-hunt audits turn up.
 
 ## Open items
 
