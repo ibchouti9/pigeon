@@ -186,6 +186,41 @@ describe('O3 sync progress (§5.2b)', () => {
       expect(provider.approved).toEqual([]);
     });
 
+    /**
+     * Nothing on this path may strand the user. A provider that throws used to
+     * leave Continue un-spun and inert, with no error state and no way forward.
+     */
+    it('moves on to O4 when the provider throws', async () => {
+      const provider = quietProvider();
+      provider.getKnownSenders = () => Promise.reject(new Error('gone'));
+      provider.listThreads = () => Promise.reject(new Error('gone'));
+      renderRoute();
+      await waitFor(() => expect(provider.onProgress).not.toBeNull());
+
+      // Total unknown, so the count falls back to the walk — which fails.
+      act(() => provider.onProgress!({ total: null, done: 0, step: 'complete' }));
+      (await screen.findByRole('button', { name: 'Continue' })).click();
+
+      // O4 has its own error state for a sender list that won't load, and
+      // nothing has been decided on the user's behalf.
+      expect(await screen.findByText('O4 known senders')).toBeInTheDocument();
+      expect(provider.approved).toEqual([]);
+    });
+
+    it('reaches O5 even when seeding the contacts fails', async () => {
+      const provider = quietProvider();
+      provider.approveKnownSenders = () => Promise.reject(new Error('gone'));
+      renderRoute();
+      await waitFor(() => expect(provider.onProgress).not.toBeNull());
+
+      act(() => provider.onProgress!({ total: 12, done: 12, step: 'complete' }));
+      (await screen.findByRole('button', { name: 'Continue' })).click();
+
+      // The seeding is an optimisation; those senders just wait in the
+      // Screener, where the user can see them.
+      expect(await screen.findByText('O5 screener intro')).toBeInTheDocument();
+    });
+
     it('still skips O4 when the account really is that small', async () => {
       const provider = quietProvider();
       renderRoute();

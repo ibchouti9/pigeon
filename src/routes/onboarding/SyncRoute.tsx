@@ -90,23 +90,39 @@ export function SyncRoute() {
        * senders were never offered — a whole screen the demo could not reach.
        * Falls back to the lists only while the count is still unknown.
        */
-      const quiet =
-        total !== null
-          ? total < QUIET_ACCOUNT_THREADS
-          : (
-              await Promise.all([provider.listThreads('inbox'), provider.listThreads('archive')])
-            ).reduce((n, list) => n + list.length, 0) < QUIET_ACCOUNT_THREADS;
+      const walked = async () =>
+        (
+          await Promise.all([provider.listThreads('inbox'), provider.listThreads('archive')])
+        ).reduce((n, list) => n + list.length, 0);
+
+      /*
+       * Nothing here may strand the user on O3. These calls are a refinement —
+       * which screen comes next, and whether contacts are pre-approved — and a
+       * provider that throws used to leave Continue un-spun and inert with no
+       * error state and no way forward. Treating a failure as "not quiet" sends
+       * them to O4, which has its own error state for a sender list that won't
+       * load, and where nothing has been decided on their behalf.
+       */
+      const quiet = await (total !== null
+        ? Promise.resolve(total < QUIET_ACCOUNT_THREADS)
+        : walked().then((n) => n < QUIET_ACCOUNT_THREADS)
+      ).catch(() => false);
 
       // §3.1 3c — a quiet account skips O4, but the branch still says "known
       // senders are seeded from Contacts only". Skipping the screen used to
       // skip the seeding with it, so every contact started life in the
       // Screener and the user had to approve people they already knew.
       if (quiet) {
-        const known = await provider.getKnownSenders();
-        const fromContacts = known.filter((s) => s.knownReason === 'contact');
-        if (fromContacts.length) {
-          await provider.approveKnownSenders(fromContacts.map((s) => s.id));
-        }
+        await (async () => {
+          const known = await provider.getKnownSenders();
+          const fromContacts = known.filter((s) => s.knownReason === 'contact');
+          if (fromContacts.length) {
+            await provider.approveKnownSenders(fromContacts.map((s) => s.id));
+          }
+        })().catch(() => {
+          // The seeding is an optimisation; O5 works without it and those
+          // senders simply wait in the Screener, where the user can see them.
+        });
       }
 
       navigate(quiet ? '/setup/screener' : '/setup/senders', { state: { quietInbox: quiet } });
