@@ -23,6 +23,24 @@
   }
 }
 
+/* §8.5 item 5 — no element moves under reduced motion. The global rule in
+   tokens.css only constrains transitions; a keyframe still travels. The pulse
+   is a border flash rather than travel, so it stays. */
+@media (prefers-reduced-motion: reduce) {
+  .dock {
+    animation-name: dock-fade;
+  }
+}
+
+@keyframes dock-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* §3.5 1a — a second compose focuses the existing dock and pulses its border. */
 .pulse {
   animation: pulse var(--duration-base) var(--ease-standard) 2;

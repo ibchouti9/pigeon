@@ -182,6 +182,23 @@
   }
 }
 
+/* §8.5 item 5 — no element moves under reduced motion. The global rule in
+   tokens.css only constrains transitions; a keyframe still travels. */
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation-name: bar-fade;
+  }
+}
+
+@keyframes bar-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .spacer {
   flex: 1;
 }
