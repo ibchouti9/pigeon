@@ -66,6 +66,13 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           : 'error';
 
   // §3.4 step 1 — mark read after 1,200ms of continuous display.
+  // The shell loads the inbox at mount because the rail's unread count needs
+  // it everywhere. Every other place fetches when its screen opens.
+  useEffect(() => {
+    if (place === 'inbox') return;
+    void loadThreads(place);
+  }, [place, loadThreads]);
+
   useEffect(() => {
     if (place !== 'inbox' || !openThread || !openThread.unread) return;
     const timer = setTimeout(() => void markRead(openThread.id), 1200);
