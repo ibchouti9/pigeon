@@ -13,6 +13,42 @@ function delay<T>(value: T, ms = DELAY_MS): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
 }
 
+/**
+ * The tone buttons echoed the draft straight back, so §3.4 4a's crossfade and
+ * checked state were unobservable without a real key — on the provider whose
+ * whole job is making every AI surface reviewable without one. These follow
+ * §7.9's own tone rules, and each keeps the `[confirm:]` placeholder so D26
+ * stays exercised through a retone.
+ */
+function retone(system: string, draft: string): string {
+  const paragraphs = draft.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const keep = (p: string) => p.includes('[confirm:');
+
+  if (/Target 60% of the/.test(system)) {
+    // "Remove sentences; never compress into jargon."
+    const trimmed = paragraphs.filter((p, i) => keep(p) || i === 0 || i === paragraphs.length - 1);
+    return trimmed
+      .map((p) => (keep(p) ? p : p.split(/(?<=\.)\s+/)[0]))
+      .join('\n\n');
+  }
+
+  if (/Add a greeting and a closing courtesy/.test(system)) {
+    const body = paragraphs.filter((p) => !/^Hi\b/.test(p) && !/^Marc$/.test(p));
+    return ['Hi there,', ...body.map((p) => p.replace(/^Please /, 'Would you mind ')), 'Thanks very much,', 'Marc'].join(
+      '\n\n',
+    );
+  }
+
+  // Firmer — "remove hedges and apologies, state the request as a direct ask".
+  return paragraphs
+    .map((p) =>
+      keep(p)
+        ? p.replace(/I'd rather settle it on a call than over mail — does/, 'Let\u2019s settle it on a call:')
+        : p.replace(/\bI think\b|\bjust\b|\bmaybe\b|\bperhaps\b/gi, '').replace(/\s{2,}/g, ' ').trim(),
+    )
+    .join('\n\n');
+}
+
 /** Enough shape-matching to exercise the parsers in prompts.ts. */
 function respond(system: string, user: string): string {
   if (system.includes('Summarize a mail thread')) {
@@ -53,12 +89,15 @@ function respond(system: string, user: string): string {
   }
 
   if (system.includes('Rewrite a draft reply')) {
-    return user.trim();
+    return retone(system, user.trim());
   }
 
   // Draft reply — deliberately carries a placeholder so D26 can be exercised.
-  const name = user.match(/^Reply to: (.*)$/m)?.[1]?.split(/[,<]/)[0]?.trim() ?? 'there';
-  return `Hi ${name.split(' ')[0]},
+  // A bare address is not a name. Greeting someone "Hi ines@carvalho-arq.pt,"
+  // is exactly the kind of output §7.9 rules out, demo or not.
+  const recipient = user.match(/^Reply to: (.*)$/m)?.[1]?.split(/[,<]/)[0]?.trim() ?? '';
+  const name = recipient.includes('@') || !recipient ? 'there' : recipient.split(' ')[0];
+  return `Hi ${name},
 
 Thanks for this. I've read through it and I'm happy with the direction.
 
