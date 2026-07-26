@@ -386,6 +386,8 @@ found by driving the running app, not by reading the code.
 - **A measurement that measured nothing.** The first pass at timing the search
   cursor reported a clean 60fps; the keys were never reaching the handler,
   because §5.11 moves the cursor only from the field and focus was elsewhere.
+  Re-run properly it gives the same answer, which is the point: the number was
+  not wrong, it was unearned, and there was no way to tell from the number.
   Two harness key names — `Return` and `Down` — also arrive as an empty string
   and silently do nothing, which is what made an earlier "Enter doesn't open a
   thread" look like a product bug. Check that an input actually changed
@@ -493,10 +495,15 @@ it confirmed:
   175 nodes, 16 windowed rows, no horizontal overflow, filter narrowing right.
 - **Search, 364 results.** 7,966 nodes and no horizontal overflow. Unwindowed,
   and the largest unwindowed list in the product — ahead of bulk review's 4,127
-  at 400 senders. Its cursor has not been timed: the first attempt measured a
-  steady 60fps while the keys were in fact going nowhere, so that number was
-  wrong and is not recorded. Worth measuring properly, alongside the bulk-review
-  windowing already deferred below.
+  at 400 senders — but it holds 60fps anyway: 40 rapid `j` presses carried the
+  cursor to row 41 of 364 and scrolled 1,755px at a median 16.7ms a frame, worst
+  18.7ms over 98 frames. §5.11's cursor is a roving tabindex, so a keypress
+  re-renders two rows rather than the list.
+
+  Measured twice. The first attempt reported the same clean numbers while the
+  keys were going nowhere — §5.11 moves the cursor only from the field, and
+  focus was elsewhere — so it measured an idle page. The figures above are from
+  a run where the cursor demonstrably moved.
 - **All nine routes walked at this scale** with no uncaught error, no blank
   screen and no horizontal overflow at 1280px.
 
