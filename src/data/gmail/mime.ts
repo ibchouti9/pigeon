@@ -216,7 +216,9 @@ function encodeHeaderValue(value: string): string {
  * some trouble to read that form on the way in; this is the other half.
  */
 function formatAddress(a: Address): string {
-  if (!a.name) return a.email;
+  // `people/me` can fail, and the account name then falls back to the address —
+  // which would put `marc@x.dev <marc@x.dev>` in every From header.
+  if (!a.name || a.name.toLowerCase() === a.email.toLowerCase()) return a.email;
   const encoded = encodeHeaderValue(a.name);
   // An RFC 2047 encoded-word is already a token and must not be quoted.
   if (encoded !== a.name) return `${encoded} <${a.email}>`;

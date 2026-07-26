@@ -906,3 +906,132 @@ describe('throttling (Gmail quota)', () => {
     await expect(provider.markRead('t1', true)).resolves.toBeUndefined();
   });
 });
+
+/**
+ * §7.6 has a row for a contacts failure and O4 has the state built with the
+ * exact copy — but the provider swallowed it, so `known` came back holding only
+ * what the sent-scan found. O4 then said "Pigeon didn't find anyone to
+ * propose", the inbox looked empty and the Screener held hundreds, with nothing
+ * anywhere explaining why. Enabling the People API is a separate console step
+ * from enabling the Gmail API, so this is a likely first run rather than an
+ * edge.
+ */
+describe('when contacts cannot be read (§7.6)', () => {
+  function stub(peopleStatus: number) {
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\/connections/.test(href)) {
+        return new Response(JSON.stringify({ error: { status: 'PERMISSION_DENIED' } }), {
+          status: peopleStatus,
+        });
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/messages\?/.test(href)) {
+        return new Response(JSON.stringify({ messages: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ threads: [] }), { status: 200 });
+    });
+  }
+
+  it('says so rather than reporting an empty address book', async () => {
+    stub(403);
+    await expect(new GmailMailProvider().getKnownSenders()).rejects.toSatisfy(
+      (e: MailError) =>
+        e.message ===
+        "Pigeon couldn't read your contacts. You can approve senders one at a time in the Screener instead.",
+    );
+  });
+
+  it('proposes senders normally when contacts do read', async () => {
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\/connections/.test(href)) {
+        return new Response(
+          JSON.stringify({
+            connections: [
+              { names: [{ displayName: 'Dana Whitlock' }], emailAddresses: [{ value: 'dana@lumen.com' }] },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/messages\?/.test(href)) {
+        return new Response(JSON.stringify({ messages: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ threads: [] }), { status: 200 });
+    });
+
+    const senders = await new GmailMailProvider().getKnownSenders();
+    expect(senders.map((s) => s.email)).toContain('dana@lumen.com');
+  });
+});
+
+/**
+ * The walk is shared between callers, and it used to keep only the first
+ * caller's progress callback. If the shell's loadThreads started it before
+ * `sync` asked, §5.2b's counter never moved until the whole walk resolved — on
+ * the one screen whose entire job is showing that something is happening.
+ */
+describe('progress from a shared walk', () => {
+  it('reports to every caller, not just the first', async () => {
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/threads\?/.test(href)) {
+        await new Promise((r) => setTimeout(r, 5));
+        return new Response(JSON.stringify({ threads: [{ id: 'q1', historyId: '1' }] }), {
+          status: 200,
+        });
+      }
+      return new Response(
+        JSON.stringify({
+          id: 'q1',
+          messages: [
+            {
+              id: 'mq',
+              threadId: 'q1',
+              internalDate: '1750000000000',
+              labelIds: ['INBOX'],
+              payload: {
+                headers: [
+                  { name: 'From', value: 'Dana <dana@lumen.com>' },
+                  { name: 'Subject', value: 'Hi' },
+                ],
+                mimeType: 'text/plain',
+                body: { data: encodeBase64Url('Body.') },
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const provider = new GmailMailProvider();
+    const first = provider.listThreads('inbox');
+
+    const ticks: number[] = [];
+    const second = provider.sync((p) => {
+      if (p.step === 'history') ticks.push(p.done);
+    });
+
+    await Promise.all([first, second]);
+    expect(ticks.length).toBeGreaterThan(1);
+  });
+});

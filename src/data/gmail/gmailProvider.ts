@@ -123,8 +123,13 @@ export class GmailMailProvider implements MailProvider {
   private threads = new Map<string, Thread>();
   /** Gmail's own change token per thread — the key to a cache that stays fresh. */
   private historyIds = new Map<string, string>();
-  private hydrating = new Map<string, Promise<Thread[]>>();
+  private hydrating = new Map<
+    string,
+    { promise: Promise<Thread[]>; listeners: Set<(done: number, listed?: number) => void> }
+  >();
   private buildingKnown: Promise<void> | null = null;
+  /** §7.6's "Contacts unreadable" — O4 has a state for it and needs telling. */
+  private contactsFailed = false;
 
   private async call<T>(url: string, init: RequestInit = {}): Promise<T> {
     let token: string;
@@ -267,6 +272,7 @@ export class GmailMailProvider implements MailProvider {
   }
 
   private async doBuildKnownSet(onProgress?: (done: number) => void): Promise<void> {
+    this.contactsFailed = false;
     this.known.clear();
     this.contacts = [];
 
@@ -297,8 +303,19 @@ export class GmailMailProvider implements MailProvider {
         pageToken = page.nextPageToken;
       } while (pageToken);
     } catch {
-      // §7.6 — a contacts failure is recoverable; senders can be approved one
-      // at a time in the Screener instead.
+      /*
+       * §7.6 has a row for this — "Pigeon couldn't read your contacts. You can
+       * approve senders one at a time in the Screener instead." — and O4 has
+       * the state built. Swallowing the failure here meant it could never be
+       * shown: `known` came back holding only what the sent-scan found, so O4
+       * said "Pigeon didn't find anyone to propose", the inbox looked empty and
+       * the Screener held hundreds, with nothing anywhere explaining why.
+       *
+       * Enabling the People API is a separate step from enabling the Gmail API
+       * in the Cloud console, so a project that has done one and not the other
+       * gets exactly this — which makes it a likely first run, not an edge.
+       */
+      this.contactsFailed = true;
     }
 
     const since = new Date();
@@ -388,6 +405,12 @@ export class GmailMailProvider implements MailProvider {
 
   async getKnownSenders(): Promise<Sender[]> {
     if (this.known.size === 0) await this.buildKnownSet();
+    if (this.contactsFailed) {
+      throw new MailError(
+        "Pigeon couldn't read your contacts. You can approve senders one at a time in the Screener instead.",
+        'unreachable',
+      );
+    }
 
     const byEmail = new Map<string, Sender>();
     for (const contact of this.contacts) {
@@ -450,12 +473,28 @@ export class GmailMailProvider implements MailProvider {
      * pagination before any of them had populated the cache — three times the
      * requests at exactly the moment a first run can least afford them.
      */
-    const inFlight = this.hydrating.get(place);
-    if (inFlight) return inFlight;
+    /*
+     * Every caller's callback, not just the first one's. Returning the in-flight
+     * promise and dropping the incoming `onProgress` meant that if the shell's
+     * loadThreads started the walk before `sync` asked for it, §5.2b's counter
+     * never moved until the whole thing resolved — the one screen in the
+     * product whose entire job is showing that something is happening.
+     */
+    const existing = this.hydrating.get(place);
+    if (existing) {
+      if (onProgress) existing.listeners.add(onProgress);
+      return existing.promise;
+    }
 
-    const walk = this.walk(place, onProgress).finally(() => this.hydrating.delete(place));
-    this.hydrating.set(place, walk);
-    return walk;
+    const listeners = new Set<(done: number, listed?: number) => void>();
+    if (onProgress) listeners.add(onProgress);
+
+    const promise = this.walk(place, (done, listed) => {
+      for (const listener of listeners) listener(done, listed);
+    }).finally(() => this.hydrating.delete(place));
+
+    this.hydrating.set(place, { promise, listeners });
+    return promise;
   }
 
   private async walk(
