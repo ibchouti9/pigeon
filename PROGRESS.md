@@ -371,6 +371,13 @@ found by driving the running app, not by reading the code.
   for the demo provider and the live one didn't, so §5.13c's Endpoint row
   rendered its label with nothing beside it — missing data rather than "this one
   reaches nothing". The same drift, found from the other side while deleting it.
+- **The rail's search field discarded the search.** §2.2 spells the URL
+  `/search?q=…&held=0|1`; the field read neither half. Landing on one left it
+  empty beside a full page of results, and since every keystroke navigates,
+  typing one character replaced the query and dropped `held` with it — "Also
+  search held mail" turned itself off and the results changed underneath, with
+  nothing touched but the words. Found by driving §5.11 at 364 results, which
+  first needed the crowded scenario to search the crowd rather than the seed.
 
 ## Deliberate deviations from the spec
 
@@ -472,6 +479,12 @@ it confirmed:
   live one sits under the stack.
 - **O4, 342 senders.** Already the seeded scale, so it needed no amplification:
   175 nodes, 16 windowed rows, no horizontal overflow, filter narrowing right.
+- **Search, 364 results.** 7,966 nodes and no horizontal overflow. Unwindowed,
+  and worth watching — it is the largest unwindowed list in the product, ahead
+  of bulk review's 4,127 at 400 senders — but §5.11's own cursor moves through
+  the group structure rather than re-rendering rows, so nothing measured slow.
+- **All nine routes walked at this scale** with no uncaught error, no blank
+  screen and no horizontal overflow at 1280px.
 
 ## Measured and deliberately not done
 
