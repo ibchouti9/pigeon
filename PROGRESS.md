@@ -90,7 +90,7 @@ Every screen in §5 is built and runs against the demo account.
 
 ## Rules with a gate behind them
 
-Four house rules are enforced mechanically rather than by memory, because each
+Six house rules are enforced mechanically rather than by memory, because each
 was broken by applying it one file at a time:
 
 - `src/test/copy.test.ts` — §7's banned words and exclamation marks.
@@ -100,6 +100,9 @@ was broken by applying it one file at a time:
 - `src/test/disabledStyling.test.ts` — every `:disabled` rule has an
   `[aria-disabled='true']` twin, since offline controls use the latter.
 - `src/test/skeletonMinimum.test.ts` — C-21's 200ms minimum, everywhere.
+- `src/test/unusedExports.test.ts` — no exported value goes unreferenced, since
+  an unused export beside a live inline copy of the same rule is where the two
+  stop agreeing. It has caught three.
 
 ## Keeping the two providers honest
 
@@ -360,7 +363,14 @@ found by driving the running app, not by reading the code.
   rule and the Composer's disagreed about an empty To. In both cases the live
   copy was the correct one, so C-4 was corrected and adopted, and the dead send
   rule deleted. The lesson is the sweep itself: an unused export beside a live
-  inline copy of the same rule is where the two quietly stop agreeing.
+  inline copy of the same rule is where the two quietly stop agreeing — it is
+  now a gate, `src/test/unusedExports.test.ts`, which found a third case on its
+  first run: C-27's endpoint hostnames, listed in `ai/client` and copied
+  privately into Settings.
+- **The dead copy was right about one thing.** That endpoint table had an answer
+  for the demo provider and the live one didn't, so §5.13c's Endpoint row
+  rendered its label with nothing beside it — missing data rather than "this one
+  reaches nothing". The same drift, found from the other side while deleting it.
 
 ## Deliberate deviations from the spec
 
