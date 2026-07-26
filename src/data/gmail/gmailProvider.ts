@@ -583,19 +583,41 @@ export class GmailMailProvider implements MailProvider {
       return;
     }
 
-    // D7 — a Gmail filter keeps future mail out of the inbox and labels it, so
-    // it stays findable in Gmail and simply stops appearing in Pigeon.
-    const labelId = await this.ensureDeclinedLabel();
-    await this.call(`${GMAIL}/settings/filters`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        criteria: { from: email },
-        action: { addLabelIds: [labelId], removeLabelIds: ['INBOX'] },
-      }),
-    }).catch(() => {
-      // A duplicate filter is fine; the decision is recorded either way.
-    });
+    /*
+     * D7 — "declined senders' future mail is archived in Gmail under the label
+     * Pigeon/Declined and never appears in Pigeon."
+     *
+     * Pigeon does this itself rather than installing a Gmail filter. A filter
+     * needs `gmail.settings.basic`, a fifth scope — and §3.1's consent copy
+     * says "all four permissions", so asking for a fifth would make that
+     * sentence false. Every filter call was 403ing anyway, silently, so a
+     * declined sender's mail kept arriving in the user's real Gmail inbox
+     * forever while Pigeon reported success.
+     *
+     * Doing it here also covers the half D7 states plainly and a filter never
+     * could: the mail already sitting in the inbox.
+     */
+    await this.silence(email);
+  }
+
+  /** Archives every inbox thread from one address under `Pigeon/Declined`. */
+  private async silence(email: string): Promise<void> {
+    const labelId = await this.ensureDeclinedLabel().catch(() => null);
+    if (!labelId) return;
+
+    const threads = [...this.threads.values()].filter(
+      (t) => t.place === 'inbox' && this.threadSender(t)?.email.toLowerCase() === email,
+    );
+
+    for (const thread of threads) {
+      await this.call(`${GMAIL}/threads/${thread.id}/modify`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ addLabelIds: [labelId], removeLabelIds: ['INBOX'] }),
+      }).catch(() => undefined);
+      this.threads.delete(thread.id);
+      this.historyIds.delete(thread.id);
+    }
   }
 
   async undecideSender(senderId: string): Promise<void> {
@@ -604,19 +626,10 @@ export class GmailMailProvider implements MailProvider {
     delete this.decisions[email];
     writeDecisions(this.userEmail(), this.decisions);
 
-    if (previous?.status !== 'declined') return;
-
-    const filters = await this.call<{
-      filter?: { id: string; criteria?: { from?: string } }[];
-    }>(`${GMAIL}/settings/filters`).catch(() => ({ filter: [] }));
-
-    for (const filter of filters.filter ?? []) {
-      if (filter.criteria?.from?.toLowerCase() === email) {
-        await this.call(`${GMAIL}/settings/filters/${filter.id}`, { method: 'DELETE' }).catch(
-          () => undefined,
-        );
-      }
-    }
+    // §2.3 — "a reversed decline surfaces no old mail". Forgetting the decision
+    // is the whole of it: what was archived under Pigeon/Declined stays there,
+    // and only mail arriving from here on reaches the inbox again.
+    void previous;
   }
 
   async listSenders(status: 'approved' | 'declined'): Promise<Sender[]> {

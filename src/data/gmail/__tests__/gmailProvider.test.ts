@@ -169,15 +169,46 @@ describe('send', () => {
 });
 
 describe('declining a sender (D7)', () => {
-  it('creates a Pigeon/Declined filter that archives future mail, and deletes nothing', async () => {
+  /**
+   * D7's mechanism changed: Pigeon archives and labels the mail itself with
+   * `gmail.modify` rather than installing a Gmail filter. A filter needs
+   * `gmail.settings.basic`, a fifth scope §3.1's consent copy rules out — and
+   * every filter call was 403ing silently, so a declined sender's mail kept
+   * arriving in the real Gmail inbox while Pigeon reported success.
+   */
+  it('labels and archives the sender’s mail itself, and deletes nothing', async () => {
     routes = [
       PROFILE,
       PEOPLE_ME,
-      { match: /users\/me\/labels$/, body: { labels: [] } },
-      { match: /settings\/filters/, body: { id: 'f1' } },
+      { match: /users\/me\/labels$/, body: { labels: [], id: 'label1' } },
+      { match: /threads\?/, body: { threads: [{ id: 'tx', historyId: '1' }] } },
+      {
+        match: /threads\/tx\?/,
+        body: {
+          id: 'tx',
+          messages: [
+            {
+              id: 'mx',
+              threadId: 'tx',
+              internalDate: '1750000000000',
+              labelIds: ['INBOX'],
+              payload: {
+                headers: [
+                  { name: 'From', value: 'spam@example.com' },
+                  { name: 'To', value: 'marc@ferrum.dev' },
+                  { name: 'Subject', value: 'Buy this' },
+                ],
+                mimeType: 'text/plain',
+                body: { data: encodeBase64Url('Hello.') },
+              },
+            },
+          ],
+        },
+      },
+      { match: /threads\/tx\/modify/, body: {} },
     ];
     const provider = new GmailMailProvider();
-    await provider.getAccount();
+    await provider.listThreads('inbox');
 
     await provider.decideSender('spam@example.com', 'declined');
 
@@ -186,16 +217,34 @@ describe('declining a sender (D7)', () => {
     );
     expect(JSON.parse(String(labelCreate!.init!.body)).name).toBe('Pigeon/Declined');
 
-    const filter = requests.find((r) => /settings\/filters/.test(r.url) && r.init?.method === 'POST');
-    const payload = JSON.parse(String(filter!.init!.body)) as {
-      criteria: { from: string };
-      action: { addLabelIds: string[]; removeLabelIds: string[] };
+    // The mail already in the inbox is archived under it — the half a filter
+    // could never have covered.
+    const modify = requests.find((r) => /threads\/tx\/modify/.test(r.url));
+    const payload = JSON.parse(String(modify!.init!.body)) as {
+      addLabelIds: string[];
+      removeLabelIds: string[];
     };
-    expect(payload.criteria.from).toBe('spam@example.com');
-    expect(payload.action.removeLabelIds).toContain('INBOX');
+    expect(payload.removeLabelIds).toContain('INBOX');
+    expect(payload.addLabelIds).toHaveLength(1);
 
     // D8 — nothing is ever deleted.
     expect(requests.some((r) => r.init?.method === 'DELETE')).toBe(false);
+    // And no call needs a scope Pigeon never asked for.
+    expect(requests.some((r) => /settings\/filters/.test(r.url))).toBe(false);
+  });
+
+  it('surfaces no old mail when a decline is reversed (§2.3)', async () => {
+    routes = [PROFILE, PEOPLE_ME, { match: /users\/me\/labels$/, body: { labels: [], id: 'label1' } }];
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+
+    await provider.decideSender('spam@example.com', 'declined');
+    requests.length = 0;
+    await provider.undecideSender('spam@example.com');
+
+    // Nothing is un-archived and nothing is deleted; only the decision is
+    // forgotten, so mail from here on reaches the inbox again.
+    expect(requests.filter((r) => r.init?.method && r.init.method !== 'GET')).toHaveLength(0);
   });
 
   it('records an approval without touching Gmail', async () => {
