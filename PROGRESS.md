@@ -448,6 +448,27 @@ found by driving the running app, not by reading the code.
   an identically written `<span>` earlier in the same file, so they proved
   nothing while appearing to. A mutation that does not fail is not a passing
   grade — it is a finding about the test.
+- **Onboarding walked end to end for the first time, and O4 was unreachable.**
+  §3.1 3c skips O4 when "the account has fewer than 50 *total* threads", and
+  the check counted the threads Pigeon had *walked* instead. The walk stops at
+  2,000 a place, and the demo seed holds 22 threads while reporting a sync of
+  11,908 — so every demo run looked like a quiet account, skipped O4, and never
+  offered its 342 known senders. A whole screen nobody following the flow could
+  reach. The rest of the flow is faithful: O1's 480px column and 44px button,
+  §5.2's rejection copy with the key preserved and Save still disabled, §3.1
+  2c-iii's "assistant is off" line on O3, and "Your mail is ready." at 100%.
+- **An §3 flow audit of every numbered step and lettered branch.** The error
+  paths hold up — §3.2 3d rolls back before the toast, §3.3 3b retries only the
+  failed subset with per-row affordances, §3.6 3b restores its snapshot, both
+  OAuth branches carry their §7.6 copy. Three real gaps:
+  - **A failed tone change offered to destroy the draft.** §7.6 gives one error
+    line for every drafting failure, and its "Try again" always regenerated
+    from scratch — so retrying a failed *tone* change replaced everything the
+    user had written. The error remembers which action failed now.
+  - **Onboarding was reachable after finishing it.** §3.1 step 6 says O1–O5 are
+    never shown again; only `/welcome` was gated, so the four `/setup` routes
+    stayed open by URL and by pressing Back from the inbox.
+  - **A blocked Send had no tooltip**, only the helper text below it (§3.5 3e).
 
 ## Deliberate deviations from the spec
 
@@ -658,6 +679,20 @@ user-visible. Worth doing deliberately rather than at the end of a long session.
     pointing at it would read the entire correspondence aloud on open, over the
     label. The sheet is labelled and trapped like a dialog, which is the part
     of "same as a dialog" that serves the user.
+- **§3.5 3e's banner warning is not implemented, deliberately.** The branch says
+  "the banner warns that closing the tab loses it", but §5.14 and §7's copy
+  table both give the offline banner exactly one sentence — "You're offline.
+  Pigeon is showing the mail it already has." Appending to it would contradict
+  a string §7 specifies verbatim and `copy.test.ts` compares character for
+  character, so this is left as a spec conflict rather than resolved by
+  inventing copy. The draft-loss risk itself is real and worth a decision:
+  either the banner gets a second sentence in §7, or the compose draft
+  persists.
+- **Two §3 gaps left as spec-internal contradictions.** §3.3 step 1 lists an
+  address on each bulk row, and §5.8's own column list omits it — the code
+  follows §5.8. §3.2 step 4's empty state does not crossfade, because the
+  280ms `view-in` wraps the stack and list rather than the empty block; the
+  content and copy are right.
 - Four places where the spec contradicts itself, resolved and recorded rather
   than silently picked: the minimized dock's height (§3.5 says 40px, §5.12 says
   44px — 44 wins, it is the later and more detailed passage); list section and
