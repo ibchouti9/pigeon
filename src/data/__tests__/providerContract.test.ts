@@ -206,6 +206,28 @@ describe.each(IMPLEMENTATIONS)('$name honours the provider contract', ({ make })
       expect((await provider.listThreads('inbox')).length).toBe(approved);
     });
 
+    /**
+     * Approving is the one action that must never take mail away. A Gmail-side
+     * flag marking "this approval reversed a decline" was set for any previous
+     * decline, including one that had kept the sender's conversations on
+     * screen — so this exact cycle made all of them vanish. The mock cannot
+     * express that bug, which is why it needs pinning on both.
+     */
+    it('never hides mail by approving', async () => {
+      const held = await provider.listHeld();
+      const target = held[0];
+      expect(target).toBeTruthy();
+
+      await provider.decideSender(target.sender.id, 'approved');
+      const approved = (await provider.listThreads('inbox')).length;
+
+      await provider.decideSender(target.sender.id, 'declined');
+      expect((await provider.listThreads('inbox')).length).toBe(approved);
+
+      await provider.decideSender(target.sender.id, 'approved');
+      expect((await provider.listThreads('inbox')).length).toBe(approved);
+    });
+
     it('still silences mail that was only ever waiting in the Screener', async () => {
       const held = await provider.listHeld();
       const target = held[0];
