@@ -25,10 +25,24 @@ function respond(system: string, user: string): string {
   }
 
   if (system.includes('why a held message might matter')) {
-    const history = /never written/.test(user)
-      ? 'Cold mail from a list — no reply history.'
-      : 'A warm intro from someone you email often.';
-    return history;
+    // Reads a couple of signals out of the message the way a model would, so
+    // the demo's reads actually match the mail rather than all saying the same
+    // thing.
+    if (/suggested I reach out|introduc|referred/i.test(user)) {
+      return 'A warm intro from someone you email often.';
+    }
+    if (/unsubscribe|roundup|newsletter|issue \d+/i.test(user)) {
+      return 'A newsletter you have never opened or replied to.';
+    }
+    if (/\brole\b|\bcontract\b|day rate|remote-first/i.test(user)) {
+      return 'A recruiter pitching a role at a company with no reply history.';
+    }
+    if (/demo|invited|book|discovery call|audit/i.test(user)) {
+      return 'Cold sales mail from a list — no reply history.';
+    }
+    return /never written/.test(user)
+      ? 'Bulk mail from an address with no reply history.'
+      : 'A message from an address you have written to before.';
   }
 
   if (system.includes('everyone waiting in the Screener')) {

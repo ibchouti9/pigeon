@@ -66,6 +66,7 @@ export function useScreenerAi(): ScreenerAi {
   const [digestState, setDigestState] = useState<AiState>('idle');
   const [reads, setReads] = useState<Record<string, string>>({});
   const readRequests = useRef(new Set<string>());
+  const mounted = useRef(true);
 
   const runDigest = useCallback(async () => {
     if (!client || held.length === 0) return;
@@ -97,12 +98,18 @@ export function useScreenerAi(): ScreenerAi {
   }, [client, screenerReads, held.length === 0]);
 
   useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!client || !screenerReads) return;
 
-    let cancelled = false;
-    const pending = held.filter(
-      (h) => !reads[h.sender.id] && !readRequests.current.has(h.sender.id),
-    );
+    // `readRequests` is the dedupe, not `reads` — keeping `reads` out of the
+    // deps is what stops each arriving read from re-running this effect.
+    const pending = held.filter((h) => !readRequests.current.has(h.sender.id));
     if (pending.length === 0) return;
 
     // Only the cards a user will actually reach soon; the rest fill in as the
@@ -112,18 +119,17 @@ export function useScreenerAi(): ScreenerAi {
       void client
         .readSender(entry, { replyCount: entry.sender.replyCount ?? 0, frequentContacts: [] })
         .then((sentence) => {
-          if (cancelled) return;
+          // Guarding on unmount only. An earlier attempt cancelled on every
+          // dependency change, which meant the first read to arrive discarded
+          // its own still-in-flight siblings and no card ever showed one.
+          if (!mounted.current) return;
           setReads((prev) => ({ ...prev, [entry.sender.id]: sentence }));
         })
         .catch(() => {
           // §5.7 — a failed read omits the section. No error on the card.
         });
     }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [client, screenerReads, held, reads]);
+  }, [client, screenerReads, held]);
 
   return { digest, digestState, retryDigest: () => void runDigest(), reads };
 }

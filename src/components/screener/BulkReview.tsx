@@ -109,12 +109,12 @@ export function BulkReview({
     const baseMs = MOTION.base();
     const staggerMs = ids.length * 30;
 
-    window.setTimeout(() => {
+    setTimeout(() => {
       setActing((a) => (a ? { ...a, phase: 'collapse' } : a));
     }, stampMs);
 
     void decideMany(ids, decision).then(({ failed: failedIds }) => {
-      window.setTimeout(
+      setTimeout(
         () => {
           setActing(null);
           onCheckedChange(new Set());
