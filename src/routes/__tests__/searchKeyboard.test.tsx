@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { useMail } from '../../store/mail';
@@ -246,6 +246,62 @@ describe('search result keyboard navigation (§8.1)', () => {
     await waitFor(() => expect(screen.queryAllByRole('listitem')).toHaveLength(0));
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(subject);
     expect(screen.getByLabelText('Message body')).toHaveValue('Words I would hate to lose.');
+  });
+
+  /**
+   * The thread keys act on what is being read, and the reader outlives the
+   * results — so an emptiness guard meant for the list left `r`/`a`/`f`/`u`
+   * dead on a reader that was still on screen with working buttons.
+   */
+  it('still replies and closes with no results left', async () => {
+    const user = userEvent.setup();
+    await renderSearch('the');
+
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
+    await user.click(rows[0]);
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument());
+
+    await user.clear(screen.getByRole('searchbox', { name: 'Search mail' }));
+    await waitFor(() => expect(screen.queryAllByRole('listitem')).toHaveLength(0));
+
+    // §8.1 disables single keys inside a text field, so leave the query bar.
+    act(() => (document.activeElement as HTMLElement)?.blur());
+    await user.keyboard('r');
+    expect(await screen.findByLabelText('Message body')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByLabelText('Message body')).not.toBeInTheDocument());
+
+    await user.keyboard('u');
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument(),
+    );
+  });
+
+  /**
+   * A new result set resets the cursor to 0 while the reader keeps showing what
+   * it was showing, so `e` archived a thread the user had never looked at.
+   */
+  it('archives the thread being read, not whatever the cursor reset to', async () => {
+    const user = userEvent.setup();
+    await renderSearch('the');
+
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
+    await user.click(rows[2]);
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument());
+    const openSubject = screen.getByRole('heading', { level: 1 }).textContent;
+
+    // A different query resets the cursor to 0; the reader stays put.
+    await user.clear(screen.getByRole('searchbox', { name: 'Search mail' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search mail' }), 'the');
+    await waitFor(() => expect(cursorIndex()).toBe(0));
+
+    act(() => (document.activeElement as HTMLElement)?.blur());
+    await user.keyboard('e');
+
+    await waitFor(() =>
+      expect(useMail.getState().archive.some((t) => t.subject === openSubject)).toBe(true),
+    );
   });
 
   /**

@@ -232,7 +232,12 @@ export function SearchRoute() {
   useEffect(() => {
     function onListKeyDown(e: KeyboardEvent) {
       if (shortcutsBlocked(e)) return;
-      if (!flatThreads.length) return;
+      /*
+       * No emptiness guard here. `r`/`a`/`f`/`u` act on the *open thread*, and
+       * the reader outlives the results — clear the query with a result open
+       * and it stays on screen, so the keys have to keep working. Every list
+       * case below already handles an empty list on its own.
+       */
 
       switch (e.key) {
         case 'j':
@@ -255,8 +260,10 @@ export function SearchRoute() {
           break;
         case 'Enter':
         case 'o': {
-          const thread = flatThreads[cursor];
-          if (thread) openResult(thread.id);
+          // `row`, not `thread`: the outer `thread` is the one being read, and
+          // shadowing it here made one identifier mean two things in one switch.
+          const row = flatThreads[cursor];
+          if (row) openResult(row.id);
           e.preventDefault();
           break;
         }
@@ -277,12 +284,19 @@ export function SearchRoute() {
           break;
         }
         case 'e': {
-          const thread = flatThreads[cursor];
-          // §8.1 — "archive the cursor row (Inbox) / move to inbox (Archive)".
-          // Results carry their real place and the list is grouped by it, so an
-          // ARCHIVE row was being re-archived where it should come back.
-          if (thread && online) {
-            void setPlace(thread.id, thread.place === 'inbox' ? 'archive' : 'inbox');
+          /*
+           * §8.1 — "archive the cursor row (Inbox) / move to inbox (Archive)".
+           * Results carry their real place and the list is grouped by it, so an
+           * ARCHIVE row was being re-archived where it should come back.
+           *
+           * The open thread wins over the cursor, as it does in the mail
+           * reader: a new result set resets the cursor to 0 while the reader
+           * keeps showing what it was showing, and `e` then archived a thread
+           * the user had never looked at.
+           */
+          const target = thread ?? flatThreads[cursor];
+          if (target && online) {
+            void setPlace(target.id, target.place === 'inbox' ? 'archive' : 'inbox');
           }
           e.preventDefault();
           break;
@@ -294,7 +308,6 @@ export function SearchRoute() {
 
     window.addEventListener('keydown', onListKeyDown);
     return () => window.removeEventListener('keydown', onListKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flatThreads, cursor, online, navigate, thread, threadId, reply.open]);
 
