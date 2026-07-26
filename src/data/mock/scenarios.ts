@@ -9,7 +9,14 @@ import { MockMailProvider } from './mockProvider';
  * through their real code paths. A state you can only see in a fixture is a
  * state you haven't actually tested.
  */
-export type ScenarioName = 'normal' | 'empty' | 'loading' | 'error' | 'revoked' | 'flaky';
+export type ScenarioName =
+  | 'normal'
+  | 'empty'
+  | 'loading'
+  | 'error'
+  | 'revoked'
+  | 'flaky'
+  | 'crowded';
 
 export const SCENARIOS: { name: ScenarioName; label: string; description: string }[] = [
   { name: 'normal', label: 'Normal', description: 'The seeded demo account.' },
@@ -22,7 +29,36 @@ export const SCENARIOS: { name: ScenarioName; label: string; description: string
     label: 'Flaky writes',
     description: 'Reads work; every second decision fails, so bulk review reports a partial failure (§3.3 3b).',
   },
+  {
+    name: 'crowded',
+    label: 'Crowded account',
+    description:
+      'A decade of mail: 800 threads, 342 known senders in O4, 120 held senders, and a 40-message thread to open.',
+  },
 ];
+
+/** The scale a crowded account reaches. Sized to the states never yet driven. */
+const CROWD = { threads: 800, known: 342, held: 120, messages: 40 };
+
+/**
+ * Amplifies the demo seed rather than writing a second one: each copy keeps the
+ * original's shape and takes a distinct id and date, so grouping, sorting and
+ * §2.3's filter all behave as they do on real data.
+ */
+function amplify<T>(seed: T[], count: number, clone: (item: T, n: number) => T): T[] {
+  if (seed.length === 0) return [];
+  return Array.from({ length: count }, (_, i) => clone(seed[i % seed.length], i));
+}
+
+/** A held sender's newest waiting message — what §5.4 sorts the stack by. */
+function newest(entry: HeldSender): string {
+  return entry.messages.reduce((latest, m) => (m.date > latest ? m.date : latest), '');
+}
+
+/** Same day-of every copy would collapse §5.5's date groups into one header. */
+function daysBefore(iso: string, days: number): string {
+  return new Date(Date.parse(iso) - days * 86_400_000).toISOString();
+}
 
 function never<T>(): Promise<T> {
   return new Promise<T>(() => {});
@@ -89,31 +125,82 @@ class ScenarioProvider implements MailProvider {
     return this.inner.sync(onProgress);
   }
 
-  getKnownSenders(): Promise<Sender[]> {
+  async getKnownSenders(): Promise<Sender[]> {
     if (this.scenario === 'loading') return never();
-    if (this.scenario === 'empty') return Promise.resolve([]);
+    if (this.scenario === 'empty') return [];
     const failure = this.failRead();
-    return failure ? Promise.reject(failure) : this.inner.getKnownSenders();
+    if (failure) throw failure;
+
+    const known = await this.inner.getKnownSenders();
+    if (this.scenario !== 'crowded') return known;
+    return amplify(known, CROWD.known, (sender, n) => ({
+      ...sender,
+      id: `crowd-known-${n}`,
+      email: `${n}.${sender.email}`,
+      name: sender.name ? `${sender.name} ${n}` : sender.name,
+    }));
   }
 
   approveKnownSenders(ids: string[]): Promise<void> {
     return this.inner.approveKnownSenders(ids);
   }
 
-  listThreads(
+  async listThreads(
     place: 'inbox' | 'archive',
     onPage?: (threads: Thread[]) => void,
   ): Promise<Thread[]> {
     if (this.scenario === 'loading') return never();
-    if (this.scenario === 'empty') return Promise.resolve([]);
+    if (this.scenario === 'empty') return [];
     const failure = this.failRead();
-    return failure ? Promise.reject(failure) : this.inner.listThreads(place, onPage);
+    if (failure) throw failure;
+
+    const threads = await this.inner.listThreads(place, onPage);
+    if (this.scenario !== 'crowded') return threads;
+
+    const crowd = this.crowdThreads.get(place) ?? this.buildCrowd(place, threads);
+    onPage?.(crowd);
+    return crowd;
   }
 
-  getThread(threadId: string): Promise<Thread> {
+  private readonly crowdThreads = new Map<string, Thread[]>();
+
+  /**
+   * Every crowded thread is a long one. The reader at forty messages is a state
+   * that has never been driven, and one long thread in eight hundred is not
+   * something a walkthrough would happen to open.
+   */
+  private buildCrowd(place: 'inbox' | 'archive', seeds: Thread[]): Thread[] {
+    const crowd = amplify(seeds, CROWD.threads, (thread, n) => {
+      const last = daysBefore(thread.lastMessageAt, n);
+      return {
+        ...thread,
+        id: `crowd-${place}-${n}`,
+        lastMessageAt: last,
+        // Dated back from the thread's own last message, so the reader reads in
+        // order and the header agrees with the row that opened it.
+        messages: amplify(thread.messages, CROWD.messages, (m, i) => ({
+          ...m,
+          id: `crowd-${place}-${n}-${i}`,
+          date: daysBefore(last, CROWD.messages - 1 - i),
+        })),
+      };
+    }).sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
+
+    this.crowdThreads.set(place, crowd);
+    return crowd;
+  }
+
+  async getThread(threadId: string): Promise<Thread> {
     if (this.scenario === 'loading') return never();
     const failure = this.failRead();
-    return failure ? Promise.reject(failure) : this.inner.getThread(threadId);
+    if (failure) throw failure;
+
+    for (const threads of this.crowdThreads.values()) {
+      const found = threads.find((t) => t.id === threadId);
+      if (found) return found;
+    }
+
+    return this.inner.getThread(threadId);
   }
 
   markRead(threadId: string, read: boolean): Promise<void> {
@@ -125,19 +212,59 @@ class ScenarioProvider implements MailProvider {
     return failure ? Promise.reject(failure) : this.inner.setPlace(threadId, place);
   }
 
-  listHeld(): Promise<HeldSender[]> {
+  async listHeld(): Promise<HeldSender[]> {
     if (this.scenario === 'loading') return never();
-    if (this.scenario === 'empty') return Promise.resolve([]);
+    if (this.scenario === 'empty') return [];
     const failure = this.failRead();
-    return failure ? Promise.reject(failure) : this.inner.listHeld();
+    if (failure) throw failure;
+
+    const held = await this.inner.listHeld();
+    if (this.scenario !== 'crowded') return held;
+
+    if (!this.crowdHeld) {
+      this.crowdHeld = amplify(held, CROWD.held, (entry, n) => ({
+        ...entry,
+        sender: {
+          ...entry.sender,
+          id: `crowd-held-${n}`,
+          email: `${n}.${entry.sender.email}`,
+        },
+        messages: entry.messages.map((m, i) => ({
+          ...m,
+          id: `crowd-held-${n}-${i}`,
+          date: daysBefore(m.date, n),
+        })),
+      })).sort((a, b) => newest(b).localeCompare(newest(a)));
+    }
+
+    return this.crowdHeld.filter((h) => !this.crowdDecided.has(h.sender.id));
+  }
+
+  /*
+   * The crowded Screener keeps its own list. The demo account has never heard
+   * of these senders, so its `decideSender` would throw not-found on every card
+   * — and a Screener where no decision can be made is exactly the screen this
+   * scenario exists to drive at 120 senders.
+   */
+  private crowdHeld: HeldSender[] | null = null;
+  private readonly crowdDecided = new Set<string>();
+
+  private crowdDecide(senderId: string): boolean {
+    if (this.scenario !== 'crowded' || !senderId.startsWith('crowd-held-')) return false;
+    this.crowdDecided.add(senderId);
+    return true;
   }
 
   decideSender(senderId: string, decision: 'approved' | 'declined'): Promise<void> {
     const failure = this.failWrite();
-    return failure ? Promise.reject(failure) : this.inner.decideSender(senderId, decision);
+    if (failure) return Promise.reject(failure);
+    if (this.crowdDecide(senderId)) return Promise.resolve();
+    return this.inner.decideSender(senderId, decision);
   }
 
   undecideSender(senderId: string): Promise<void> {
+    // §3.2 3c — the card has to come back, or undo is a lie.
+    if (this.crowdDecided.delete(senderId)) return Promise.resolve();
     return this.inner.undecideSender(senderId);
   }
 
