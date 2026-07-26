@@ -797,3 +797,92 @@ describe('replying into a thread', () => {
     expect(refetched.messages).toHaveLength(2);
   });
 });
+
+/**
+ * Gmail's budget is 6,000 quota units a minute and threads.get costs 40, so a
+ * walk of any real mailbox meets a throttle. Google returns those as 429, and
+ * as 403 with a rateLimitExceeded reason — and every one of them used to read
+ * as "Google revoked Pigeon's permission. Connect your account again." A
+ * throttle told the user their account had been disconnected, and the only
+ * cure, waiting, is the one thing that message doesn't suggest.
+ */
+describe('throttling (Gmail quota)', () => {
+  function rateLimited(status: number, body: unknown, succeedAfter: number) {
+    let hits = 0;
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        hits += 1;
+        if (hits <= succeedAfter) {
+          return new Response(JSON.stringify(body), { status });
+        }
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+    return () => hits;
+  }
+
+  const RATE_403 = { error: { errors: [{ reason: 'userRateLimitExceeded' }] } };
+
+  it('retries a 429 and succeeds', async () => {
+    const hits = rateLimited(429, {}, 2);
+    const account = await new GmailMailProvider().getAccount();
+    expect(account.email).toBe('marc@ferrum.dev');
+    expect(hits()).toBe(3);
+  });
+
+  it('retries a rate-limit 403 rather than calling it revoked', async () => {
+    const hits = rateLimited(403, RATE_403, 1);
+    const account = await new GmailMailProvider().getAccount();
+    expect(account.email).toBe('marc@ferrum.dev');
+    expect(hits()).toBe(2);
+  });
+
+  it('says it is a rate limit, not a revoked account, once it gives up', async () => {
+    // Real backoff is 1s, 2s, 4s, 8s — driven rather than waited out.
+    vi.useFakeTimers();
+    try {
+      rateLimited(429, {}, 99);
+      const pending = new GmailMailProvider().getAccount();
+      const assertion = expect(pending).rejects.toSatisfy(
+        (e: MailError) => e.code !== 'revoked' && /rate-limiting/.test(e.message),
+      );
+      await vi.runAllTimersAsync();
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still calls a genuine authorization 403 revoked', async () => {
+    rateLimited(403, { error: { errors: [{ reason: 'insufficientPermissions' }] } }, 99);
+    await expect(new GmailMailProvider().getAccount()).rejects.toSatisfy(
+      (e: MailError) => e.code === 'revoked',
+    );
+  });
+
+  it('does not retry an authorization failure', async () => {
+    const hits = rateLimited(401, {}, 99);
+    await expect(new GmailMailProvider().getAccount()).rejects.toThrow();
+    expect(hits()).toBe(1);
+  });
+
+  it('handles a 204 with no body rather than choking on the JSON', async () => {
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/modify/.test(href)) return new Response(null, { status: 204 });
+      return new Response(JSON.stringify({ threads: [] }), { status: 200 });
+    });
+
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+    await expect(provider.markRead('t1', true)).resolves.toBeUndefined();
+  });
+});

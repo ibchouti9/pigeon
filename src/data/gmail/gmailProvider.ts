@@ -51,6 +51,35 @@ const MAX_SEARCH_RESULTS = 200;
  */
 const MAX_SENT_SCAN = PAGE_SIZE * 2;
 
+/** Google's guidance for both 429 and a rate-limit 403 is exponential backoff. */
+const RETRIES = 4;
+const BACKOFF_MS = 1000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * A 403 is either "you may not do this" or "not so fast". Only the body says
+ * which, and treating them alike is how a throttle came to be reported as a
+ * revoked account.
+ */
+async function isRateLimit(response: Response): Promise<boolean> {
+  if (response.status !== 403) return false;
+  try {
+    const body = (await response.clone().json()) as {
+      error?: { errors?: { reason?: string }[]; status?: string };
+    };
+    const reasons = (body.error?.errors ?? []).map((e) => e.reason ?? '');
+    return (
+      reasons.some((r) => /rateLimitExceeded|userRateLimitExceeded|dailyLimitExceeded/i.test(r)) ||
+      body.error?.status === 'RESOURCE_EXHAUSTED'
+    );
+  } catch {
+    return false;
+  }
+}
+
 interface Decisions {
   /** Lowercased email → decision + ISO date. */
   [email: string]: { status: 'approved' | 'declined'; at: string; name?: string };
@@ -111,39 +140,67 @@ export class GmailMailProvider implements MailProvider {
       throw error;
     }
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        ...init,
-        headers: {
-          ...init.headers,
-          authorization: `Bearer ${token}`,
-        },
-      });
-    } catch {
+    /*
+     * Gmail's per-user budget is 6,000 quota units a minute, and threads.get
+     * costs 40 of them — so a walk of any real mailbox will meet a throttle.
+     * Google's error guide returns those as 429, and also as 403 with a
+     * `reason` of rateLimitExceeded / userRateLimitExceeded / dailyLimitExceeded,
+     * and its advice for both is exponential backoff.
+     *
+     * Before this, every one of those read as 401/403 → "Google revoked
+     * Pigeon's permission. Connect your account again." A throttle told the
+     * user their account had been disconnected, and the only cure — waiting —
+     * was the one thing that message doesn't suggest.
+     */
+    for (let attempt = 0; ; attempt++) {
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          ...init,
+          headers: { ...init.headers, authorization: `Bearer ${token}` },
+        });
+      } catch {
+        throw new MailError(
+          'Pigeon can\'t reach Gmail. Your mail is safe. This is a connection problem between Pigeon and Google.',
+          'unreachable',
+        );
+      }
+
+      if (response.status === 404) {
+        throw new MailError("This thread didn't load. It's still in Gmail.", 'not-found');
+      }
+
+      if (response.ok) {
+        // A 204 carries no body, and `response.json()` throws on an empty one.
+        // DELETE on a label is the reachable case today.
+        const text = await response.text();
+        return (text ? JSON.parse(text) : undefined) as T;
+      }
+
+      const throttled = response.status === 429 || (await isRateLimit(response));
+
+      if (throttled && attempt < RETRIES) {
+        await sleep(BACKOFF_MS * 2 ** attempt + Math.random() * 250);
+        continue;
+      }
+      if (throttled) {
+        throw new MailError(
+          'Gmail is rate-limiting Pigeon. Your mail is safe — this will clear on its own.',
+          'unreachable',
+        );
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        throw new MailError(
+          "Pigeon lost access to your mail. Google revoked Pigeon's permission. Connect your account again to keep using Pigeon.",
+          'revoked',
+        );
+      }
       throw new MailError(
         'Pigeon can\'t reach Gmail. Your mail is safe. This is a connection problem between Pigeon and Google.',
         'unreachable',
       );
     }
-
-    if (response.status === 401 || response.status === 403) {
-      throw new MailError(
-        "Pigeon lost access to your mail. Google revoked Pigeon's permission. Connect your account again to keep using Pigeon.",
-        'revoked',
-      );
-    }
-    if (response.status === 404) {
-      throw new MailError("This thread didn't load. It's still in Gmail.", 'not-found');
-    }
-    if (!response.ok) {
-      throw new MailError(
-        'Pigeon can\'t reach Gmail. Your mail is safe. This is a connection problem between Pigeon and Google.',
-        'unreachable',
-      );
-    }
-
-    return (await response.json()) as T;
   }
 
   private userEmail(): string {
