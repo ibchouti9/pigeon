@@ -645,6 +645,19 @@ user-visible. Worth doing deliberately rather than at the end of a long session.
   card". The specific rule wins and the code already does it deliberately.
   Recorded here because it reads as an §8.2 violation until you find §5.9's
   sentence, and it cost a detour to work that out twice.
+- **Two §8.4 rules deliberately not applied, because the markup they assume
+  isn't the markup here.**
+  - "The scrim is `aria-hidden`" assumes a scrim that is a *sibling* of the
+    dialog. In this build the scrim is the dialog's parent (`Dialog.tsx`,
+    `HeldMessageSheet.tsx`), so setting the attribute as written would hide the
+    dialog itself from assistive technology. The scrim carries no role and no
+    content, so it is already presentational; adding the attribute would only
+    do harm.
+  - The held sheet has no `aria-describedby`. A dialog's description is a short
+    confirmation sentence; the sheet's body is the held messages themselves, so
+    pointing at it would read the entire correspondence aloud on open, over the
+    label. The sheet is labelled and trapped like a dialog, which is the part
+    of "same as a dialog" that serves the user.
 - Four places where the spec contradicts itself, resolved and recorded rather
   than silently picked: the minimized dock's height (§3.5 says 40px, §5.12 says
   44px — 44 wins, it is the later and more detailed passage); list section and
