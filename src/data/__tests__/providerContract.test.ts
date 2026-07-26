@@ -46,6 +46,8 @@ function gmailMessage(id: string, from: string, date: string, subject = 'Hello')
 
 /** A Gmail backend holding the two piles above, and nothing else. */
 function stubGmail() {
+  /** Threads Gmail has archived out of the inbox, as `silence` asks it to. */
+  const archived = new Set<string>();
   const threads = HELD.flatMap((h) => [
     { id: `${h.id}-a`, from: `${h.id}@example.com`, date: h.oldest },
     { id: `${h.id}-b`, from: `${h.id}@example.com`, date: h.newest },
@@ -54,6 +56,7 @@ function stubGmail() {
   vi.stubGlobal('fetch', async (url: string) => {
     const href = String(url);
     const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+    const visible = threads.filter((t) => !archived.has(t.id));
 
     if (/users\/me\/profile/.test(href)) {
       return json({ emailAddress: 'marc@ferrum.dev', threadsTotal: threads.length });
@@ -63,7 +66,20 @@ function stubGmail() {
     if (/messages\?/.test(href)) return json({ messages: [] });
 
     if (/threads\?/.test(href)) {
-      return json({ threads: threads.map((t) => ({ id: t.id, historyId: '1' })) });
+      return json({ threads: visible.map((t) => ({ id: t.id, historyId: '1' })) });
+    }
+
+    /*
+     * Enough of the label API for `silence` to actually do something. Without
+     * it, declining is a no-op here and the two §2.3 reversal rules below
+     * cannot tell a provider that honours them from one that doesn't — the
+     * fixture would pass either way.
+     */
+    if (/\/labels$/.test(href)) return json({ labels: [{ id: 'lbl-1', name: 'Pigeon/Declined' }] });
+    if (/\/modify$/.test(href)) {
+      const id = href.match(/threads\/([^/]+)\/modify/)?.[1];
+      if (id) archived.add(id);
+      return json({ id });
     }
 
     const id = href.match(/threads\/([^?/]+)/)?.[1];
@@ -151,6 +167,56 @@ describe.each(IMPLEMENTATIONS)('$name honours the provider contract', ({ make })
       last = threads.length;
     });
     expect(last).toBe(all.length);
+  });
+
+  /**
+   * §2.3 states these two "explicitly for the coding agent", and both turn on
+   * what the sender was *before* the decision — which neither provider looked
+   * at. A reversed decline pushed the old held mail into the inbox as if it had
+   * just arrived, and declining an already-approved sender took away the mail
+   * the user had been reading.
+   */
+  describe('§2.3 reversals', () => {
+    it('does not surface old mail when a decline is reversed', async () => {
+      const held = await provider.listHeld();
+      const target = held[0];
+      expect(target, 'the fixture needs a held sender').toBeTruthy();
+
+      const before = (await provider.listThreads('inbox')).length;
+      await provider.decideSender(target.sender.id, 'declined');
+      await provider.decideSender(target.sender.id, 'approved');
+
+      // "Reversing a decline in Settings only affects mail received after the
+      // reversal."
+      expect((await provider.listThreads('inbox')).length).toBe(before);
+    });
+
+    it('leaves an approved sender’s threads alone when they are later declined', async () => {
+      const held = await provider.listHeld();
+      const target = held[0];
+      expect(target).toBeTruthy();
+
+      await provider.decideSender(target.sender.id, 'approved');
+      const approved = (await provider.listThreads('inbox')).length;
+
+      await provider.decideSender(target.sender.id, 'declined');
+
+      // "Declining a previously approved sender leaves their existing inbox
+      // threads in place and silences future mail."
+      expect((await provider.listThreads('inbox')).length).toBe(approved);
+    });
+
+    it('still silences mail that was only ever waiting in the Screener', async () => {
+      const held = await provider.listHeld();
+      const target = held[0];
+      const before = (await provider.listThreads('inbox')).length;
+
+      await provider.decideSender(target.sender.id, 'declined');
+
+      // D7 — declining from the Screener silences what was waiting; it must not
+      // quietly add anything either.
+      expect((await provider.listThreads('inbox')).length).toBeLessThanOrEqual(before);
+    });
   });
 
   it('refuses to download an attachment that does not exist', async () => {

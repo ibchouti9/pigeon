@@ -234,6 +234,31 @@ export class GmailMailProvider implements MailProvider {
     return this.decisions[email.toLowerCase()]?.status === 'declined';
   }
 
+  /**
+   * The Screener holds mail from senders the user has not ruled on yet. A
+   * decided sender is never held — including a declined one, whose *existing*
+   * mail §2.3 leaves in place; it is `silencedByDecline` that hides what
+   * arrives afterwards.
+   */
+  private heldInScreener(email: string): boolean {
+    const key = email.toLowerCase();
+    return !this.decisions[key] && !this.known.has(key);
+  }
+
+  /**
+   * §2.3 — declining "silences future mail" and, when the sender was already
+   * approved, "leaves their existing inbox threads in place". So a decline
+   * hides what arrives after it, not what was already being read. Mail that was
+   * only ever waiting in the Screener is silenced by `silence()` at the moment
+   * of the decision (D7), which archives it out of the inbox entirely — so
+   * anything still here that predates the decline is mail the user had approved.
+   */
+  private silencedByDecline(thread: Thread, email: string): boolean {
+    const decision = this.decisions[email.toLowerCase()];
+    if (decision?.status !== 'declined') return false;
+    return thread.lastMessageAt >= decision.at;
+  }
+
   async getAccount(): Promise<Account> {
     if (this.account) return this.account;
 
@@ -615,8 +640,8 @@ export class GmailMailProvider implements MailProvider {
     return threads.filter((thread) => {
       const sender = this.threadSender(thread);
       if (!sender) return true; // A thread the user started stays visible.
-      if (this.isDeclined(sender.email)) return false;
-      return place === 'archive' || this.isKnown(sender.email);
+      if (this.silencedByDecline(thread, sender.email)) return false;
+      return place === 'archive' || !this.heldInScreener(sender.email);
     });
   }
 
@@ -731,13 +756,25 @@ export class GmailMailProvider implements MailProvider {
 
   async decideSender(senderId: string, decision: 'approved' | 'declined'): Promise<void> {
     const email = senderId.toLowerCase();
+    const previous = this.decisions[email]?.status;
     this.decisions[email] = { status: decision, at: new Date().toISOString() };
     writeDecisions(this.userEmail(), this.decisions);
 
     if (decision === 'approved') {
-      // Their mail is already in the inbox; nothing to change in Gmail.
+      // Their mail is already in the inbox; nothing to change in Gmail. And
+      // §2.3 — reversing a decline "only affects mail received after the
+      // reversal", so what `silence` archived stays archived.
       return;
     }
+
+    /*
+     * §2.3 — "reversing an approval (declining a previously approved sender)
+     * leaves their existing inbox threads in place and silences future mail."
+     * D7's silencing is for mail that was still waiting in the Screener; a
+     * sender the user had already approved has mail they have been reading, and
+     * archiving it out from under them is not what declining them means.
+     */
+    if (previous === 'approved') return;
 
     /*
      * D7 — "declined senders' future mail is archived in Gmail under the label

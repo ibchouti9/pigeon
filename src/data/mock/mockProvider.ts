@@ -262,12 +262,23 @@ export class MockMailProvider implements MailProvider {
   async decideSender(senderId: string, decision: 'approved' | 'declined'): Promise<void> {
     const sender = this.sender(senderId);
     const now = new Date().toISOString();
+    /*
+     * §2.3's two reversal rules both turn on what the sender was *before*:
+     * "reversing a decline only affects mail received after the reversal", and
+     * "declining a previously approved sender leaves their existing inbox
+     * threads in place and silences future mail". Deciding without looking at
+     * the previous status broke both — a reversed decline pushed the old held
+     * mail into the inbox as if it had just arrived, and declining someone
+     * already approved deleted the mail of theirs the user had been reading.
+     */
+    const previous = sender.status;
     sender.status = decision;
     sender.decidedAt = now;
 
     if (decision === 'approved') {
-      // §2.3 — held messages move to the Inbox, unread, dated today.
-      const held = this.state.held.find((h) => h.senderId === senderId);
+      // §2.3 — held messages move to the Inbox, unread, dated today. Only mail
+      // still waiting in the Screener; a reversal in Settings surfaces nothing.
+      const held = previous === 'declined' ? undefined : this.state.held.find((h) => h.senderId === senderId);
       if (held) {
         for (const m of held.messages) {
           const existing = this.state.threads.find((t) => t.id === m.threadId);
@@ -288,8 +299,10 @@ export class MockMailProvider implements MailProvider {
           });
         }
       }
-    } else {
-      // D7 — declining silences. Held threads leave Pigeon entirely.
+    } else if (previous !== 'approved') {
+      // D7 — declining silences. Held threads leave Pigeon entirely. Only mail
+      // that was still waiting: §2.3 leaves an approved sender's inbox threads
+      // where they are, and silences their future mail instead.
       const held = this.state.held.find((h) => h.senderId === senderId);
       if (held) {
         const ids = new Set(held.messages.map((m) => m.threadId));
