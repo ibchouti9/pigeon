@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
+import { virtualWindow } from '../../lib/virtualWindow';
 
 export interface VirtualList {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -41,15 +42,25 @@ export function useVirtualList(itemCount: number, rowHeight: number, overscan = 
     };
   }, []);
 
-  const visibleCount = Math.ceil(viewportHeight / rowHeight) + overscan * 2;
-  const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
-  const endIndex = Math.min(itemCount, startIndex + visibleCount);
+  // A shrinking list also has to move the scroll position itself, or the
+  // container stays scrolled past its own new content.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const maxScroll = Math.max(0, itemCount * rowHeight - el.clientHeight);
+    if (el.scrollTop > maxScroll) {
+      el.scrollTop = maxScroll;
+      setScrollTop(maxScroll);
+    }
+  }, [itemCount, rowHeight]);
 
-  return {
-    containerRef,
-    startIndex,
-    endIndex,
-    topPad: startIndex * rowHeight,
-    bottomPad: Math.max(0, (itemCount - endIndex) * rowHeight),
-  };
+  const window_ = virtualWindow({
+    scrollTop,
+    viewportHeight,
+    itemCount,
+    rowHeight,
+    overscan,
+  });
+
+  return { containerRef, ...window_ };
 }

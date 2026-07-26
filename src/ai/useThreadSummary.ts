@@ -61,14 +61,25 @@ export function useThreadSummary(thread: Thread | null): ThreadSummary {
     [client, account?.email],
   );
 
+  // Keyed on the thread *id*, not the object.
+  //
+  // Marking a thread read replaces it in the store with `{ ...t, unread: false }`
+  // — a new object with the same id — 1.2 seconds after it opens. Depending on
+  // the object identity meant that every eligible unread thread threw away its
+  // finished summary and regenerated it a second after the reader appeared.
+  const threadRef = useRef(thread);
+  threadRef.current = thread;
+
   useEffect(() => {
     setState('idle');
     setBullets([]);
     requestedFor.current = null;
-    if (!thread || !client || !autoSummarize) return;
-    if (!shouldAutoSummarize(thread)) return;
-    void run(thread);
-  }, [thread, client, autoSummarize, run]);
+
+    const target = threadRef.current;
+    if (!target || !client || !autoSummarize) return;
+    if (!shouldAutoSummarize(target)) return;
+    void run(target);
+  }, [threadId, client, autoSummarize, run]);
 
   const summarize = useCallback(() => {
     if (thread) void run(thread);

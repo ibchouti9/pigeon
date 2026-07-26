@@ -126,7 +126,11 @@ export function useScreenerAi(): ScreenerAi {
           setReads((prev) => ({ ...prev, [entry.sender.id]: sentence }));
         })
         .catch(() => {
-          // §5.7 — a failed read omits the section. No error on the card.
+          // §5.7 — a failed read omits the section, with no error on the card.
+          // But release the dedupe: leaving the id marked as requested meant a
+          // single provider hiccup silently disabled that sender's read for the
+          // rest of the session, even if they left the queue and came back.
+          readRequests.current.delete(entry.sender.id);
         });
     }
   }, [client, screenerReads, held]);

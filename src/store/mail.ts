@@ -189,12 +189,16 @@ export const useMail = create<MailState>((set, get) => ({
   },
 
   markRead: async (threadId) => {
+    const epoch = get().providerEpoch;
     const before = get().inbox;
     if (!before.some((t) => t.id === threadId && t.unread)) return;
     set({ inbox: before.map((t) => (t.id === threadId ? { ...t, unread: false } : t)) });
     try {
       await get().provider.markRead(threadId, true);
     } catch {
+      // Rolling back after a provider swap would restore the previous
+      // account's inbox over the new one's.
+      if (get().providerEpoch !== epoch) return;
       set({ inbox: before });
     }
   },
@@ -205,6 +209,7 @@ export const useMail = create<MailState>((set, get) => ({
     const thread = source.find((t) => t.id === threadId);
     if (!thread) return;
 
+    const epoch = get().providerEpoch;
     const snapshot = { inbox: get().inbox, archive: get().archive };
     const moved = { ...thread, place };
     set({
@@ -222,6 +227,8 @@ export const useMail = create<MailState>((set, get) => ({
         () => void get().setPlace(threadId, from),
       );
     } catch {
+      // An optimistic rollback belongs to the provider that started it.
+      if (get().providerEpoch !== epoch) return;
       set(snapshot);
       toast.error(
         place === 'archive'
@@ -233,6 +240,7 @@ export const useMail = create<MailState>((set, get) => ({
   },
 
   decide: async (senderId, decision) => {
+    const epoch = get().providerEpoch;
     const held = get().held;
     const entry = held.find((h) => h.sender.id === senderId);
     if (!entry) return false;
@@ -262,6 +270,9 @@ export const useMail = create<MailState>((set, get) => ({
       return true;
     } catch {
       // §3.2 3d — roll back before the toast appears; never leave the card gone.
+      // Unless the provider changed underneath, in which case these belong to
+      // another account.
+      if (get().providerEpoch !== epoch) return false;
       set({ held });
       toast.error(
         `Couldn't ${decision === 'approved' ? 'approve' : 'decline'} ${displayName(entry.sender)}. Check your connection and try again.`,
@@ -323,6 +334,7 @@ export const useMail = create<MailState>((set, get) => ({
     const sender = list.find((s) => s.id === senderId);
     if (!sender) return false;
 
+    const epoch = get().providerEpoch;
     const snapshot = { approved: get().approved, declined: get().declined };
     set({
       [from]: list.filter((s) => s.id !== senderId),
@@ -348,6 +360,7 @@ export const useMail = create<MailState>((set, get) => ({
       );
       return true;
     } catch {
+      if (get().providerEpoch !== epoch) return false;
       set(snapshot);
       toast.error(
         `Couldn't change ${displayName(sender)}. Check your connection and try again.`,
