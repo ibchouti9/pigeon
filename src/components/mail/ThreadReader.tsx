@@ -165,8 +165,11 @@ export function ThreadReader({
   const showBack = breakpoint === 'narrow' && backLabel;
   const showSummaryBlock =
     !hiddenSummaryFor[thread.id] && (summary !== undefined || summaryState !== undefined);
-  const showSummarizeButton =
-    !showSummaryBlock && Boolean(onSummarize) && hasProvider !== false;
+  // C-28 — with no provider the button is rendered *disabled* with a tooltip,
+  // not hidden. Removing it would make the capability invisible rather than
+  // unavailable, and a user would never learn it exists.
+  const showSummarizeButton = !showSummaryBlock && Boolean(onSummarize);
+  const summarizeDisabled = hasProvider === false;
 
   const archiveLabel = place === 'inbox' ? 'Archive' : 'Move to inbox';
   const archiveIcon: IconName = place === 'inbox' ? 'archive' : 'inbox';
@@ -183,11 +186,18 @@ export function ThreadReader({
         <div className={styles.headerRow1}>
           <h1 className={cn('t-display-sm', styles.subject)}>{thread.subject}</h1>
           <div className={styles.actions}>
-            {showSummarizeButton && (
-              <Button variant="tertiary" size="sm" onClick={onSummarize}>
-                Summarize thread
-              </Button>
-            )}
+            {showSummarizeButton &&
+              (summarizeDisabled ? (
+                <Tooltip label="Connect a provider in Settings → Assistant">
+                  <Button variant="tertiary" size="sm" disabled>
+                    Summarize thread
+                  </Button>
+                </Tooltip>
+              ) : (
+                <Button variant="tertiary" size="sm" onClick={onSummarize}>
+                  Summarize thread
+                </Button>
+              ))}
             {HEADER_ICONS.map(({ mode, icon, label }) => (
               <Tooltip key={mode} label={label}>
                 <Button

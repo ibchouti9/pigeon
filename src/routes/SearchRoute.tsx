@@ -369,7 +369,7 @@ export function SearchRoute() {
             backLabel="Results"
             onBack={() => navigate('/search')}
             onArchive={thread ? () => void setPlace(thread.id, 'archive') : undefined}
-            summary={summary.hidden ? undefined : summary.bullets}
+            summary={summary.hidden || summary.bullets.length === 0 ? undefined : summary.bullets}
             summaryState={summary.state === 'idle' ? undefined : summary.state}
             onRetrySummary={summary.summarize}
             onSummarize={summary.summarize}

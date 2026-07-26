@@ -221,7 +221,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           onRetryLoad={() => void loadThreads(place)}
           onArchive={() => threadId && archiveOne(threadId)}
           onReply={reply}
-          summary={summary.hidden ? undefined : summary.bullets}
+          summary={summary.hidden || summary.bullets.length === 0 ? undefined : summary.bullets}
           summaryState={summary.state === 'idle' ? undefined : summary.state}
           onRetrySummary={summary.summarize}
           onSummarize={summary.summarize}
