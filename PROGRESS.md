@@ -282,6 +282,20 @@ found by driving the running app, not by reading the code.
   `userinfo.email` to `email` in the response, and the code compared strings.
 - **The user's own alias-sent mail put them in their own Screener.**
 - **The sync bar counted the whole mailbox**, so it sat near 1% throughout.
+- **A contacts failure could never reach the screen built to explain it.** §7.6
+  has the row and O4 has the state; the provider swallowed the error, so O4 said
+  "Pigeon didn't find anyone to propose" while the inbox looked empty and the
+  Screener held hundreds. Enabling the People API is a separate console step
+  from enabling the Gmail API, so this is a likely first run.
+- **The shared walk kept only the first caller's progress callback**, so §5.2b's
+  counter could sit still for the whole sync.
+- **Every non-UTF-8 message would have rendered as replacement characters** —
+  the decoder ignored the part's own charset.
+- **The attribution line leaked into the body of most threaded replies** — Gmail
+  wraps it and the splitter wanted it on one line.
+- Four smaller ones: the body's own newlines went out without CRLF, the
+  HTML-escaped snippet was rendered raw, the Screener sorted by each sender's
+  oldest held message, and the archive query excluded the wrong things.
 
 ## Deliberate deviations from the spec
 
