@@ -4,6 +4,7 @@ import { useMail, useHeldCount, useUnreadCount } from '../../store/mail';
 import { useCompose } from '../../store/compose';
 import { getSyncProgress, subscribeSync } from '../onboarding/syncSession';
 import { useOnline } from '../../hooks/useOnline';
+import { Badge } from '../primitives/Controls';
 import { Button } from '../primitives/Button';
 import { Icon, type IconName } from '../primitives/Icon';
 import { Monogram } from '../primitives/Monogram';
@@ -151,17 +152,9 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
           >
             <Icon name={item.icon} size={20} className={styles.itemIcon} />
             {!compact && <span className={styles.itemLabel}>{item.label}</span>}
-            {!compact && item.count ? (
-              item.countVariant === 'ring' ? (
-                <span className={cn('t-mono-sm', styles.ringCount)} aria-hidden="true">
-                  {item.count > 99 ? '99+' : formatCount(item.count)}
-                </span>
-              ) : (
-                <span className={cn('t-mono-sm', styles.count)} aria-hidden="true">
-                  {formatCount(item.count)}
-                </span>
-              )
-            ) : null}
+            {!compact && (
+              <Badge value={item.count ?? 0} variant={item.countVariant} className={styles.badge} />
+            )}
             {compact && item.count ? <span className={styles.dot} aria-hidden="true" /> : null}
           </NavLink>
         ))}

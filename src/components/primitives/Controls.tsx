@@ -228,7 +228,13 @@ export function Badge({
   className?: string;
 }) {
   if (!value) return null;
-  const text = value > 99 ? '99+' : formatCount(value);
+  /*
+   * §6 C-4 puts "values above 99 render 99+" on the `ring` line, and the reason
+   * is in the geometry: the ring is a fixed 24px circle. The plain variant is
+   * free-width text the spec asks for *tabular figures* on, which only matters
+   * for lining up multi-digit numbers — so it shows the count it has.
+   */
+  const text = variant === 'ring' && value > 99 ? '99+' : formatCount(value);
   return (
     <span
       aria-hidden="true"
