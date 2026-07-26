@@ -254,6 +254,10 @@ export function BulkReview({
           e.preventDefault();
           break;
         case 'Escape':
+          // §8.1's Esc is a layer stack. The global handler preventDefaults
+          // when it minimizes the composer; without this the selection went
+          // with it on the same press.
+          if (e.defaultPrevented) return;
           onCheckedChange(new Set());
           break;
         default:

@@ -37,6 +37,16 @@ export function ComposeDock() {
   const [sending, setSending] = useState(false);
 
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // The dock is mounted for the life of the shell and only returns null when
+  // there is no draft, so its state outlives the draft that produced it. A
+  // failed send used to put its red banner on the *next* composer the user
+  // opened, about a message they had never tried to send.
+  const errorFor = useRef<string | null>(null);
+  if (draft && errorFor.current !== draft.id) {
+    errorFor.current = draft.id;
+    if (sendError) setSendError(null);
+  }
   const [pulsing, setPulsing] = useState(false);
   const firstPulse = useRef(pulse);
 

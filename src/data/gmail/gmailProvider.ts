@@ -248,7 +248,7 @@ export class GmailMailProvider implements MailProvider {
     const profile = await this.call<{ threadsTotal?: number }>(`${GMAIL}/profile`);
     const total = profile.threadsTotal ?? 0;
 
-    await this.hydrate('inbox', (done) => onProgress({ total, done, step: 'history' }));
+    await this.hydrate('inbox', (done) => onProgress({ total, done, step: 'history' }), true);
 
     onProgress({ total, done: total, step: 'senders' });
     onProgress({ total, done: total, step: 'complete' });
@@ -296,6 +296,13 @@ export class GmailMailProvider implements MailProvider {
   private async hydrate(
     place: 'inbox' | 'archive',
     onProgress?: (done: number) => void,
+    /**
+     * §3.1 3b's resumption. Only a sync resumes: `listThreads` has to go back
+     * to Gmail every time or new mail would never arrive and an unread flag set
+     * on another device would never clear — the cache would freeze the mailbox
+     * at whatever it looked like on first load.
+     */
+    resume = false,
   ): Promise<Thread[]> {
     await this.getAccount();
 
@@ -316,7 +323,7 @@ export class GmailMailProvider implements MailProvider {
      */
     const pending: string[] = [];
     for (const id of ids) {
-      const cached = this.threads.get(id);
+      const cached = resume ? this.threads.get(id) : undefined;
       if (cached && cached.place === place) out.push(cached);
       else pending.push(id);
     }

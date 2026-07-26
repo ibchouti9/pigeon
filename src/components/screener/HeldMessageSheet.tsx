@@ -35,10 +35,23 @@ export function HeldMessageSheet() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  const entry = senderId ? held.find((h) => h.sender.id === senderId) : undefined;
-  // The sheet knows which sender it is even when the message didn't load, and
-  // §5.9 keeps the decision available in that state.
-  const sheetSender = entry?.sender ?? (senderId ? { id: senderId } : null);
+  const deciding = useMail((s) => s.deciding);
+
+  /*
+   * `decide` removes the sender from `held` the moment it is called and only
+   * puts it back if the call fails, so the entry vanishes for the whole
+   * round-trip. The sheet used to read that as "this message didn't load" and
+   * show a red error over the user's own approve — a flash on the mock, a
+   * visible false error on a real connection. It keeps rendering what it opened
+   * with until the decision resolves.
+   */
+  const live = senderId ? held.find((h) => h.sender.id === senderId) : undefined;
+  const lastEntry = useRef(live);
+  if (live) lastEntry.current = live;
+  const entry = live ?? (deciding > 0 ? lastEntry.current : undefined);
+  /** Narrowed once so the error branch's footer can use it. */
+  const retained = lastEntry.current;
+
   const open = Boolean(senderId);
 
   useEffect(() => {
@@ -151,18 +164,19 @@ export function HeldMessageSheet() {
             </Button>
           </div>
           {/*
-            §5.9 — "the decision buttons stay enabled" in the error state. They
-            were absent entirely, which is what makes this state a dead end: a
+            §5.9 — "the decision buttons stay enabled" in the error state: a
             sender whose message won't load is exactly one you still want to be
-            able to decline.
+            able to decline. They only appear when there is actually a held
+            sender to decide on — for a stale link to someone already decided,
+            buttons that silently do nothing are worse than none.
           */}
-          {sheetSender && (
+          {retained && (
             <footer className={styles.footer}>
               <Button
                 variant="secondary-destructive"
                 disabled={!online}
                 onClick={() =>
-                  void decide(sheetSender.id, 'declined').then((ok) => {
+                  void decide(retained.sender.id, 'declined').then((ok) => {
                     if (ok) closeHeldSheet();
                   })
                 }
@@ -173,7 +187,7 @@ export function HeldMessageSheet() {
                 variant="primary"
                 disabled={!online}
                 onClick={() =>
-                  void decide(sheetSender.id, 'approved').then((ok) => {
+                  void decide(retained.sender.id, 'approved').then((ok) => {
                     if (ok) closeHeldSheet();
                   })
                 }

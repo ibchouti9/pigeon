@@ -62,8 +62,10 @@ describe('undo returns the card to the top (§3.2 3c)', () => {
     });
 
     await waitFor(() => expect(topCardName()).toBe(first.sender.name));
-    // Consumed, so a later re-render doesn't yank the stack back again.
-    expect(useMail.getState().restoredSenderId).toBeNull();
+    // Consumed once the fade has run, so a later re-render doesn't yank the
+    // stack back again. Cleared on the timer rather than immediately: clearing
+    // it first cancelled the very timer meant to reset the animation.
+    await waitFor(() => expect(useMail.getState().restoredSenderId).toBeNull());
   });
 
   it('fades the card in rather than replaying the stamp', async () => {
@@ -80,5 +82,8 @@ describe('undo returns the card to the top (§3.2 3c)', () => {
       expect(document.querySelector('[class*="_restoring_"]')).toBeTruthy();
     });
     expect(document.querySelector('[class*="_rising_"]')).toBeNull();
+
+    // And it comes off again, so the next decision animates from a clean slate.
+    await waitFor(() => expect(document.querySelector('[class*="_restoring_"]')).toBeNull());
   });
 });

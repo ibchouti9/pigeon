@@ -296,16 +296,16 @@ describe('sync resumes where it stopped (§3.1 3b)', () => {
     return requests.filter((r) => new RegExp(`threads/${id}\\?`).test(r.url)).length;
   }
 
-  it('does not re-fetch a thread it already holds', async () => {
+  it('does not re-fetch a thread a previous sync already hydrated', async () => {
     routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
     const provider = new GmailMailProvider();
 
-    await provider.listThreads('inbox');
+    await provider.sync(() => {});
     expect(fetchesFor('t1')).toBe(1);
     expect(fetchesFor('t3')).toBe(1);
 
-    // Second pass — the same three threads, already hydrated.
-    await provider.listThreads('inbox');
+    // "Start sync again" over the same three threads.
+    await provider.sync(() => {});
     expect(fetchesFor('t1')).toBe(1);
     expect(fetchesFor('t3')).toBe(1);
   });
@@ -321,21 +321,37 @@ describe('sync resumes where it stopped (§3.1 3b)', () => {
       threadRoute('t3'),
     ];
     const provider = new GmailMailProvider();
-    await provider.listThreads('inbox');
+    await provider.sync(() => {});
     expect(fetchesFor('t2')).toBe(1);
 
     routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
-    await provider.listThreads('inbox');
+    await provider.sync(() => {});
 
     expect(fetchesFor('t2')).toBe(2);
     expect(fetchesFor('t1')).toBe(1);
     expect(fetchesFor('t3')).toBe(1);
   });
 
+  /**
+   * Resumption is a property of sync alone. If `listThreads` shared the cache,
+   * a new message on an already-hydrated thread — or an unread flag cleared on
+   * another device — would never arrive, and the mailbox would be frozen at
+   * whatever it looked like on first load.
+   */
+  it('still goes back to Gmail on an ordinary list', async () => {
+    routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
+    const provider = new GmailMailProvider();
+
+    await provider.listThreads('inbox');
+    await provider.listThreads('inbox');
+
+    expect(fetchesFor('t1')).toBe(2);
+  });
+
   it('reports the threads it already had as progress, not as zero', async () => {
     routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
     const provider = new GmailMailProvider();
-    await provider.listThreads('inbox');
+    await provider.sync(() => {});
 
     const seen: number[] = [];
     await provider.sync((p) => {

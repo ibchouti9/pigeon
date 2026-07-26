@@ -129,11 +129,15 @@ export function ScreenerRoute() {
   const prevHeldCount = useRef(held.length);
 
   useEffect(() => {
+    // The guard comes first. Recording the count while a decision was still in
+    // flight stamped it at zero, so by the time `deciding` dropped the effect
+    // believed nothing had ever been there and skipped the settle entirely —
+    // which is the exact pop-in the delay exists to prevent.
+    if (deciding > 0) return;
+
     const hadHeld = prevHeldCount.current > 0;
     prevHeldCount.current = held.length;
 
-    // A decision is still resolving; some of these rows may be coming back.
-    if (deciding > 0) return;
     if (!rawEmpty) {
       setIsEmpty(false);
       return;

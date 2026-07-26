@@ -77,6 +77,14 @@ export function SearchRoute() {
   const [status, setStatus] = useState<Status>('empty');
   const [recent, setRecent] = useState<string[]>(readRecent);
   const [cursor, setCursor] = useState(0);
+  /**
+   * §7.6's "Search didn't run. Try again." needs something for the search
+   * effect to react to. It used to re-set `draftQuery` to a trimmed copy of
+   * itself — but the debounce trims before it searches, so the value was
+   * always already identical, React bailed out, and the button was a permanent
+   * no-op: the only way out of a failed search was editing the query.
+   */
+  const [retry, setRetry] = useState(0);
   // C-21 — no sub-200ms flash of skeleton rows on a fast search.
   const showSkeleton = useMinimumVisible(status === 'loading');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -135,7 +143,7 @@ export function SearchRoute() {
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [draftQuery, includeHeld, search, setQuery]);
+  }, [draftQuery, includeHeld, search, setQuery, retry]);
 
   const groups = useMemo(
     () =>
@@ -349,7 +357,7 @@ export function SearchRoute() {
             level="component"
             body="Search didn't run. Try again."
             action={
-              <Button variant="secondary" onClick={() => setDraftQuery(`${draftQuery} `.trim())}>
+              <Button variant="secondary" onClick={() => setRetry((n) => n + 1)}>
                 Try again
               </Button>
             }

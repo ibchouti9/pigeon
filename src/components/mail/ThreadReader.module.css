@@ -2,7 +2,14 @@
 
 .pane {
   flex: 1;
-  min-width: 480px;
+  /*
+   * Not a min-width. §5.5's tablet range starts at 880px, where the remainder
+   * after the 56px rail and the 380px list is 444px — so a 480px floor here
+   * pushed the layout 37px wider than the window and scrolled the whole page
+   * sideways at exactly the breakpoint (§8.5 item 9). The reader's content is
+   * capped by --measure-read anyway.
+   */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;

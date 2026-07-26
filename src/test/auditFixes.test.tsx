@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { useMail } from '../store/mail';
@@ -401,5 +401,70 @@ describe('composer edges', () => {
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: 'Message body' })).toHaveFocus(),
     );
+  });
+});
+
+/**
+ * The dock is mounted for the life of the shell and only returns null when
+ * there is no draft, so its send-error state outlived the draft that produced
+ * it — a failed send put its red banner on the next composer the user opened,
+ * about a message they had never tried to send.
+ */
+describe('a failed send does not haunt the next draft', () => {
+  beforeEach(resetStores);
+  afterEach(() => {
+    cleanup();
+    useCompose.getState().close();
+  });
+
+  it('clears the banner when a new draft opens', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(useMail.getState().provider, 'send').mockRejectedValue(new Error('nope'));
+
+    useCompose.getState().open({ to: [{ name: 'Dana', email: 'dana@lumen.com' }] });
+    render(
+      <MemoryRouter>
+        <ComposeDock />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/didn't accept this message/);
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    act(() => useCompose.getState().open());
+
+    await waitFor(() => expect(screen.getByLabelText('Subject')).toBeInTheDocument());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+/** §7.6's "Search didn't run. Try again." has to actually run it again. */
+describe('the search retry (§7.6)', () => {
+  beforeEach(resetStores);
+  afterEach(cleanup);
+
+  it('issues a fresh search rather than doing nothing', async () => {
+    const user = userEvent.setup();
+    const search = vi
+      .spyOn(useMail.getState().provider, 'search')
+      .mockRejectedValue(new Error('down'));
+
+    render(
+      <MemoryRouter initialEntries={['/search?q=window']}>
+        <Routes>
+          <Route path="/search" element={<SearchRoute />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const retry = await screen.findByRole('button', { name: 'Try again' }, { timeout: 3000 });
+    const before = search.mock.calls.length;
+
+    await user.click(retry);
+
+    await waitFor(() => expect(search.mock.calls.length).toBeGreaterThan(before), {
+      timeout: 3000,
+    });
   });
 });

@@ -246,13 +246,41 @@ describe('the held sheet while the list is still loading (§5.9)', () => {
     expect(screen.getByText(/didn't load/)).toBeInTheDocument();
   });
 
-  it('keeps the decision buttons in the error state', () => {
+  it('offers no decision on a stale link to someone already decided', () => {
     useMail.setState((s) => ({ held: [], status: { ...s.status, held: 'ready' } }));
     useUi.getState().openHeldSheet('gone');
     renderSheet();
 
-    expect(screen.getByRole('button', { name: 'Decline sender' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Approve sender' })).toBeEnabled();
+    // §5.9 keeps the buttons in the error state, but only where there is a
+    // sender to act on. For a link to someone no longer held they would call
+    // decide() on a missing entry and silently do nothing, which reads as a
+    // broken button.
+    expect(screen.getByText(/didn't load/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Decline sender' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * `decide` removes the sender optimistically, so the entry vanishes for the
+   * whole round-trip. The sheet read that as "this message didn't load" and put
+   * a red error over the user's own approve.
+   */
+  it('does not flash an error over its own decision', async () => {
+    const user = userEvent.setup();
+    await useMail.getState().loadHeld();
+    const sender = useMail.getState().held[0].sender.id;
+
+    let release: () => void = () => {};
+    vi.spyOn(useMail.getState().provider, 'decideSender').mockImplementation(
+      () => new Promise<void>((r) => (release = () => r())),
+    );
+
+    useUi.getState().openHeldSheet(sender);
+    renderSheet();
+
+    await user.click(screen.getByRole('button', { name: 'Approve sender' }));
+
+    expect(screen.queryByText(/didn't load/)).not.toBeInTheDocument();
+    release();
   });
 });
 

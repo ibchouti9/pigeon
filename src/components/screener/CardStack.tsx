@@ -55,8 +55,13 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
     if (!held.some((h) => h.sender.id === restoredSenderId)) return;
     setTopId(restoredSenderId);
     setEnter('restore');
-    useMail.setState({ restoredSenderId: null });
-    const timer = setTimeout(() => setEnter(null), MOTION.base());
+    const timer = setTimeout(() => {
+      setEnter(null);
+      // Cleared last. Clearing it first notified this effect's own subscriber,
+      // so the dep changed, React ran the cleanup, and the timeout that resets
+      // `enter` was cancelled before it could ever fire.
+      useMail.setState({ restoredSenderId: null });
+    }, MOTION.base());
     return () => clearTimeout(timer);
   }, [restoredSenderId, held]);
 

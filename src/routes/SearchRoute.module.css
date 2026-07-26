@@ -13,9 +13,16 @@
   background: var(--color-surface);
 }
 
+/*
+ * `min-width: 0` is what lets this shrink. A flex item defaults to
+ * `min-width: auto`, i.e. its min-content width — and the rows inside are sized
+ * for the desktop list column, so below 880px the column stayed 1200px wide
+ * inside a 663px parent and the whole page scrolled sideways (§8.5 item 9).
+ */
 .fullWidth {
   width: auto;
   flex: 1;
+  min-width: 0;
 }
 
 /* 52px query bar replacing the list header (§5.11) */

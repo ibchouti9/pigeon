@@ -374,6 +374,7 @@ export const useMail = create<MailState>((set, get) => ({
 
   decideMany: async (senderIds, decision) => {
     const held = get().held;
+    const epoch = get().providerEpoch;
     const wanted = new Set(senderIds);
     set((st) => ({
       held: held.filter((h) => !wanted.has(h.sender.id)),
@@ -389,14 +390,20 @@ export const useMail = create<MailState>((set, get) => ({
     async function decideAll() {
       const ok: string[] = [];
       const failed: string[] = [];
+      // Pinned, not re-read each iteration: a provider swap mid-batch would
+      // otherwise split the decisions across two accounts.
+      const provider = get().provider;
       for (const id of senderIds) {
         try {
-          await get().provider.decideSender(id, decision);
+          await provider.decideSender(id, decision);
           ok.push(id);
         } catch {
           failed.push(id);
         }
       }
+
+      // These belong to the account that started the batch.
+      if (get().providerEpoch !== epoch) return { ok, failed };
 
       await Promise.all([get().loadHeld(), get().loadThreads('inbox'), get().loadSenders()]);
 
