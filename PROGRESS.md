@@ -401,6 +401,14 @@ Each is a considered call, not an oversight.
    ever requested and the state is unreachable. §5.9's copy about blocked
    images still holds — it just describes a property the renderer has by
    construction rather than one a placeholder announces.
+15. **The reader opens a long thread at the first expanded message** — §5.6
+   fixes which messages collapse but not where the pane starts. Its own example
+   thread has four messages, so the question never comes up; at forty, its rule
+   collapses the first thirty-four and the pane opened on 1,088px of history
+   above the first thing anyone came to read. The pane now scrolls to the first
+   expanded message, leaving one collapsed row visible so the history above
+   doesn't disappear. A short thread is untouched and still opens on the summary
+   block. Found by driving `?scenario=crowded`.
 
 ## Where to look next
 
