@@ -555,11 +555,41 @@ reversed an earlier one, each measured from when the conversation started. The
 contract test could not have caught the first: its Gmail stub returns the same
 list for both places and all three §2.3 cases only ever asked for the inbox.
 
+A fourth pass, over that rework, found three more — including the worst defect
+of the session:
+
+- **Approving a sender hid their mail.** "This approval reversed a decline" was
+  recorded for *any* previous decline, including one that had deliberately kept
+  the sender's conversations on screen. So approve → decline → approve made
+  everything of theirs vanish from both lists, with no way back: from a declined
+  state the only offered action is Approve, which lands in the same place again.
+  Measured 1 → 1 → 0. The flag is now only set when the decline it reverses
+  actually hid something.
+- **A three-step cycle resurfaced D7-silenced mail** — the same regression as
+  before, reachable in three decisions instead of one. What a Screener decline
+  archived is now remembered on the decision and carried across every later one.
+- **Search reached past the filter entirely.** D7's "never appears in Pigeon" is
+  three places, not two, and fixing the Archive had closed the second and missed
+  the third.
+- **Undoing a decline restored nothing on Gmail.** §3.2 3c promises the card
+  comes back; `silence()` had archived the mail and the walk that builds the
+  Screener could never see it again. The decision now remembers what it silenced
+  so the undo can put it back.
+
 **The lesson is about where the yield is.** Three spec audits over §8 found
 nothing on this scale; three review passes over recent commits have now found
 twelve real defects, most of them introduced hours earlier by the fix for
 something else. A fix to intricate rules deserves its own review pass before it
-is trusted.
+is trusted — and so does the fix for that, which is how the fourth pass
+found an approval that hid mail. Two of the four passes found defects
+introduced by the pass before.
+
+Still open from the last report, recorded rather than fixed: decisions stored
+before these flags existed read as Screener declines, which would hide an
+existing user's history on upgrade — there are no users yet, and a migration
+for a product with none is speculative. And the mock and Gmail providers reach
+§2.3's four cases by different mechanisms; the contract test pins the outcomes
+but not a third decision or an undo.
 
 ## Deliberate deviations from the spec
 
