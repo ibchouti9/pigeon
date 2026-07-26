@@ -92,6 +92,11 @@ interface Decisions {
      * from the Screener silences everything (D7), which is the default.
      */
     keptExisting?: boolean;
+    /**
+     * Set when an approval reversed a decline. §2.3 surfaces only mail received
+     * after the reversal, so their older conversations stay hidden.
+     */
+    reversedDecline?: boolean;
   };
 }
 
@@ -263,35 +268,44 @@ export class GmailMailProvider implements MailProvider {
    * of the decision (D7), which archives it out of the inbox entirely — so
    * anything still here that predates the decline is mail the user had approved.
    */
-  private silencedByDecline(thread: Thread, email: string): boolean {
-    const decision = this.decisions[email.toLowerCase()];
-    if (decision?.status !== 'declined') return false;
-
-    /*
-     * D7 — a sender declined from the Screener "never appears in Pigeon", and
-     * that has to mean both places. Asking only whether a thread postdates the
-     * decline left everything older visible in the *Archive*: `silence()` takes
-     * those threads out of the Gmail inbox, which is exactly what makes them
-     * match the archive query on the next walk.
-     */
-    if (!decision.keptExisting) return true;
-
-    /*
-     * §2.3's carve-out: a decline that reversed an approval keeps what was
-     * already there and silences only what arrives afterwards.
-     *
-     * Measured from when the conversation *started*, not when it was last
-     * touched. A Gmail thread is one unit, so asking about `lastMessageAt` let
-     * a single reply drag an entire history out of both lists — and the user's
-     * own reply did it too, since the thread is still attributed to the sender.
-     * "Their mail stays in your inbox; new mail stops" has to mean the
-     * conversation stays.
-     */
-    const startedAt = thread.messages.reduce(
+  /**
+   * When a thread started. A Gmail thread is one unit, so every rule below is
+   * about the conversation rather than its latest message — asking about
+   * `lastMessageAt` let a single reply drag an entire history across a cutoff.
+   */
+  private static startedAt(thread: Thread): string {
+    return thread.messages.reduce(
       (earliest, m) => (m.date < earliest ? m.date : earliest),
       thread.lastMessageAt,
     );
-    return startedAt >= decision.at;
+  }
+
+  /**
+   * §2.3's decision rules, in one place, because all four cases turn on the
+   * same two facts: what the sender's decision is, and whether it reversed an
+   * earlier one.
+   *
+   * - Declined from the Screener — nothing of theirs appears, in either place
+   *   (D7: "never appears in Pigeon").
+   * - Declined after being approved — their existing conversations stay, and
+   *   anything starting later is silenced ("their mail stays in your inbox;
+   *   new mail stops").
+   * - Approved after being declined — only mail from the reversal onwards
+   *   ("reversing a decline only affects mail received after the reversal").
+   * - Approved from the Screener — everything of theirs is theirs to see.
+   */
+  private hiddenByDecision(thread: Thread, email: string): boolean {
+    const decision = this.decisions[email.toLowerCase()];
+    if (!decision) return false;
+
+    const startedAt = GmailMailProvider.startedAt(thread);
+
+    if (decision.status === 'declined') {
+      if (!decision.keptExisting) return true;
+      return startedAt >= decision.at;
+    }
+
+    return decision.reversedDecline === true && startedAt < decision.at;
   }
 
   async getAccount(): Promise<Account> {
@@ -675,7 +689,7 @@ export class GmailMailProvider implements MailProvider {
     return threads.filter((thread) => {
       const sender = this.threadSender(thread);
       if (!sender) return true; // A thread the user started stays visible.
-      if (this.silencedByDecline(thread, sender.email)) return false;
+      if (this.hiddenByDecision(thread, sender.email)) return false;
       return place === 'archive' || !this.heldInScreener(sender.email);
     });
   }
@@ -796,6 +810,7 @@ export class GmailMailProvider implements MailProvider {
       status: decision,
       at: new Date().toISOString(),
       keptExisting: decision === 'declined' && previous === 'approved',
+      reversedDecline: decision === 'approved' && previous === 'declined',
     };
     writeDecisions(this.userEmail(), this.decisions);
 

@@ -1281,6 +1281,39 @@ describe('a conversation that was already there survives a reply', () => {
     expect(inbox.map((t) => t.id)).toEqual(['conv']);
   });
 
+  /**
+   * §2.3 — "reversing a decline in Settings only affects mail received after
+   * the reversal." Approving simply stopped hiding, so everything that had
+   * arrived during the declined period reappeared at once.
+   */
+  it('surfaces nothing older when a decline is reversed', async () => {
+    // A conversation that predates the reversal: exactly what §2.3 says stays
+    // hidden. (A conversation starting *after* it is the mail that should come
+    // through, which is the case above.)
+    stubConversation([{ id: 'm1', date: BEFORE, from: THEM }]);
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+
+    await provider.decideSender('sam@example.com', 'declined');
+    expect(await provider.listThreads('inbox')).toEqual([]);
+
+    await provider.decideSender('sam@example.com', 'approved');
+    expect(await provider.listThreads('inbox')).toEqual([]);
+  });
+
+  it('does surface a conversation that starts after the reversal', async () => {
+    // The other half of the same rule: a reversal is not a permanent silence,
+    // it moves the line. Mail from here on is theirs to see again.
+    stubConversation([{ id: 'm1', date: AFTER, from: THEM }]);
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+
+    await provider.decideSender('sam@example.com', 'declined');
+    await provider.decideSender('sam@example.com', 'approved');
+
+    expect((await provider.listThreads('inbox')).map((t) => t.id)).toEqual(['conv']);
+  });
+
   it('silences a conversation that only starts after the decline', async () => {
     stubConversation([{ id: 'm1', date: AFTER, from: THEM }]);
     const provider = await declineAfterApproving();
