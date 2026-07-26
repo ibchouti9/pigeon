@@ -165,6 +165,22 @@ export function SearchRoute() {
     );
   }
 
+  /**
+   * §5.11 renders the reader beside the results, so opening one has to keep the
+   * search alive. The query and the held toggle live in the query string and
+   * `/search/t/:id` drops it, which cleared the query, threw away the results,
+   * and left the screen showing recent searches next to an open thread.
+   */
+  function openResult(threadId: string) {
+    const search = params.toString();
+    navigate(`/search/t/${threadId}${search ? `?${search}` : ''}`);
+  }
+
+  function closeResult() {
+    const search = params.toString();
+    navigate(`/search${search ? `?${search}` : ''}`);
+  }
+
   function focusRow(index: number) {
     document.querySelector<HTMLElement>(`[data-search-row="${index}"]`)?.focus();
   }
@@ -208,7 +224,7 @@ export function SearchRoute() {
         case 'Enter':
         case 'o': {
           const thread = flatThreads[cursor];
-          if (thread) navigate(`/search/t/${thread.id}`);
+          if (thread) openResult(thread.id);
           e.preventDefault();
           break;
         }
@@ -382,7 +398,7 @@ export function SearchRoute() {
                       place={t.place}
                       online={online}
                       tabIndex={index === cursor ? 0 : -1}
-                      onOpen={() => navigate(`/search/t/${t.id}`)}
+                      onOpen={() => openResult(t.id)}
                       onToggleCheck={() => {}}
                       onArchive={() => void setPlace(t.id, 'archive')}
                       buttonRef={(el) => {
@@ -436,7 +452,7 @@ export function SearchRoute() {
             online={online}
             breakpoint={bp}
             backLabel="Results"
-            onBack={() => navigate('/search')}
+            onBack={closeResult}
             onArchive={thread ? () => void setPlace(thread.id, 'archive') : undefined}
             summary={summary.hidden || summary.bullets.length === 0 ? undefined : summary.bullets}
             summaryState={summary.state === 'idle' ? undefined : summary.state}
