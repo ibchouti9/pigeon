@@ -37,11 +37,16 @@ export interface UsageStats {
   month: string;
 }
 
+/** Drives the status pill in Settings → Assistant (§5.13c). */
+export type ConnectionStatus = 'unknown' | 'connected' | 'rejected';
+
 interface SettingsState {
   provider: ProviderConfig;
   behaviour: BehaviourFlags;
   appearance: Appearance;
   usage: UsageStats;
+  /** Result of the last connection test, so the pill survives a reload. */
+  connection: ConnectionStatus;
   /** True once O1–O5 have been completed for this account. */
   onboarded: boolean;
   /** Set when the user chose "Continue without the assistant" on O2. */
@@ -51,6 +56,7 @@ interface SettingsState {
   removeKey: () => void;
   setBehaviour: (flags: Partial<BehaviourFlags>) => void;
   setAppearance: (a: Appearance) => void;
+  setConnection: (status: ConnectionStatus) => void;
   recordCall: (usd: number, ms: number) => void;
   setOnboarded: (v: boolean) => void;
   setSkippedProvider: (v: boolean) => void;
@@ -90,17 +96,20 @@ export const useSettings = create<SettingsState>()(
       },
       appearance: 'system',
       usage: { spendUsd: 0, calls: 0, month: currentMonth() },
+      connection: 'unknown',
       onboarded: false,
       skippedProvider: false,
 
       setProvider: (config) =>
         set((s) => ({ provider: { ...s.provider, ...config } })),
 
-      removeKey: () => set({ provider: { ...emptyProvider } }),
+      removeKey: () => set({ provider: { ...emptyProvider }, connection: 'unknown' }),
 
       setBehaviour: (flags) => set((s) => ({ behaviour: { ...s.behaviour, ...flags } })),
 
       setAppearance: (appearance) => set({ appearance }),
+
+      setConnection: (connection) => set({ connection }),
 
       recordCall: (usd, ms) => {
         const month = currentMonth();
