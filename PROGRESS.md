@@ -721,6 +721,11 @@ it confirmed:
   with the same sender back on *top* of the stack, and §8.4's live region says
   "Approved Devon Ricci. 7 senders waiting. Now showing QuickPitch." in one
   utterance.
+- **§5.9's held-message sheet, at 120 held senders.** Opens on `o`, is
+  `aria-modal` with focus on its close button inside the trap, renders the
+  sender, postmark date, subject and message body, and `d` from inside it
+  decides and dismisses — the counter goes 120 → 119. 169 nodes, no horizontal
+  overflow. The one §5 screen that had never been driven.
 - **All nine routes walked at this scale** with no uncaught error, no blank
   screen and no horizontal overflow at 1280px.
 
