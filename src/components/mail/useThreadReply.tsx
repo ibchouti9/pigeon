@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Draft, Thread } from '../../types';
 import { InlineReply } from './InlineReply';
 import type { ReplyMode } from './ThreadReader';
@@ -33,6 +33,24 @@ export function useThreadReply(thread: Thread | undefined, online: boolean): Thr
   const [restoredDraft, setRestoredDraft] = useState<Draft | null>(null);
   // Set when ⌘J opened the reply, so the composer starts drafting on mount.
   const [draftWithPigeon, setDraftWithPigeon] = useState(false);
+
+  /*
+   * A reply belongs to the thread it was opened on. Nothing cleared it when
+   * the reader moved, so opening a reply on one thread and then opening
+   * another showed a composer nobody asked for on the second — and if the
+   * first had been opened with ⌘J, `draftWithPigeon` was still set, so the
+   * new one immediately asked Pigeon for a draft of a thread the user had
+   * only just arrived at.
+   *
+   * Keyed on the thread, so an undo reopening the composer on the *same*
+   * thread (§3.4 step 6) is untouched.
+   */
+  const threadId = thread?.id;
+  useEffect(() => {
+    setMode(null);
+    setRestoredDraft(null);
+    setDraftWithPigeon(false);
+  }, [threadId]);
 
   function open(next: ReplyMode) {
     // D21 — offline is read-only, so there is nothing to open into.
