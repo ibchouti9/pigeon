@@ -98,9 +98,15 @@
   border-top: var(--border-hairline);
 }
 
+/*
+ * §5.13c asks for --color-text-disabled here, but §8.3 marks that token
+ * "exempt (disabled)" at 3.2:1 and this is live informational copy, not a
+ * disabled label. §8.5's contrast floor wins, the same way it does over
+ * --mono-xs's 10px. Measured 3.43:1 before, tertiary clears 4.5.
+ */
 .note {
   margin-left: auto;
-  color: var(--color-text-disabled);
+  color: var(--color-text-tertiary);
 }
 
 .empty {

@@ -216,3 +216,13 @@
   background: var(--color-accent);
   transition: width var(--duration-base) var(--ease-standard);
 }
+
+/*
+ * §8.3's table covers tertiary ink on the background and on a surface, not on
+ * the selected item's fill — where it measures 4.24:1, under AA. Same omission
+ * as the one on filled thread rows. One step darker clears it.
+ */
+.itemSelected .ringCount,
+.itemSelected .count {
+  color: var(--color-text-secondary);
+}

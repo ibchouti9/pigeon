@@ -59,9 +59,12 @@ Every screen in §5 is built and runs against the demo account.
    `:focus-visible` heuristics and is not separately asserted.
 3. Keyboard-only operation — driven end to end in the browser for approve,
    reply-with-draft (`j` → `o` → `r` → type → ⌘Enter) and reverse.
-4. Contrast — the token block is §4.3 verbatim, so §8.3's table holds by
-   construction, plus one pairing the table omits, fixed on filled rows.
-   **Not independently re-measured.**
+4. Contrast — **measured in the running app**, both themes, on all eight
+   screens plus the reader with an AI summary and both composers: every text
+   node's computed colour against its effective background, at the AA threshold
+   its own size and weight call for. Zero failures. Disabled controls are
+   excluded, which §8.3 exempts. Two pairings the spec's table omits were found
+   and fixed this way.
 5. `prefers-reduced-motion` — every keyframe that moves a transform ships a
    fade-only fallback, enforced by `src/test/motion.test.ts`. The composer's
    max-height expansion is the one animation outside that rule.
@@ -208,6 +211,11 @@ found by driving the running app, not by reading the code.
 - **"Start sync again" re-fetched everything** it had already hydrated, so a
   retry was exactly as slow as the first run and §3.1 3b's "Pigeon will pick up
   where it stopped" was false.
+- **Two AA contrast failures in light theme**, both on pairings §8.3's table
+  doesn't cover: the rail count on a selected item (4.24:1) and Settings'
+  "Stored in this browser only" note (3.43:1).
+- **Route-change focus fired on sub-routes**, so opening a thread yanked focus
+  off the row the user had just opened.
 
 ## Deliberate deviations from the spec
 
@@ -259,7 +267,11 @@ Each is a considered call, not an oversight.
     for the tooltip, §5.0 says "labels become `title` + `aria-label`" for this
     exact case. The code follows §5.0; §8.4's "no control relies on `title`
     alone" holds either way.
-13. **No blocked-images state for C-8** — the component specifies a placeholder
+13. **The action-row note is tertiary ink, not disabled ink** — §5.13c line 1367
+    asks for `--color-text-disabled`, but §8.3 marks that token "exempt
+    (disabled)" at 3.2:1 and this is live informational copy. Measured 3.43:1;
+    §8.5's contrast floor wins, as it does over `--mono-xs`'s 10px.
+14. **No blocked-images state for C-8** — the component specifies a placeholder
    for images suppressed until a sender is approved. Message bodies render as
    plain text everywhere in this build (the Gmail parser walks the MIME tree
    for `text/plain` and falls back to stripping HTML), so no remote image is
