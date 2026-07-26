@@ -11,6 +11,7 @@ import { ComposeDock } from '../components/compose/ComposeDock';
 import { BulkReview } from '../components/screener/BulkReview';
 import { AssistantSettings } from '../routes/settings/AssistantSettings';
 import { ThreadRow } from '../components/mail/ThreadRow';
+import { HeldMessageSheet } from '../components/screener/HeldMessageSheet';
 import { useMinimumVisible } from '../hooks/useMinimumVisible';
 import { makeHeldList } from '../components/screener/__tests__/fixtures';
 
@@ -205,5 +206,50 @@ describe('useMinimumVisible (C-21)', () => {
     await new Promise((r) => setTimeout(r, 20));
     rerender({ active: false });
     await waitFor(() => expect(result.current).toBe(false));
+  });
+});
+
+/**
+ * §5.9's loading state. Deep-linking to /screener/s/:id on a cold start fell
+ * straight through to "This message didn't load." while the held list was still
+ * on its way — a false error, on the one path where the sheet is the first
+ * thing a user sees.
+ */
+describe('the held sheet while the list is still loading (§5.9)', () => {
+  beforeEach(resetStores);
+  afterEach(cleanup);
+
+  function renderSheet() {
+    render(
+      <MemoryRouter>
+        <HeldMessageSheet />
+      </MemoryRouter>,
+    );
+  }
+
+  it('shows skeleton bars, not an error', () => {
+    useMail.setState((s) => ({ held: [], status: { ...s.status, held: 'loading' } }));
+    useUi.getState().openHeldSheet('s-held-0');
+    renderSheet();
+
+    expect(screen.getByText('Loading message')).toBeInTheDocument();
+    expect(screen.queryByText(/didn't load/)).not.toBeInTheDocument();
+  });
+
+  it('shows the error once the list has arrived without it', () => {
+    useMail.setState((s) => ({ held: [], status: { ...s.status, held: 'ready' } }));
+    useUi.getState().openHeldSheet('gone');
+    renderSheet();
+
+    expect(screen.getByText(/didn't load/)).toBeInTheDocument();
+  });
+
+  it('keeps the decision buttons in the error state', () => {
+    useMail.setState((s) => ({ held: [], status: { ...s.status, held: 'ready' } }));
+    useUi.getState().openHeldSheet('gone');
+    renderSheet();
+
+    expect(screen.getByRole('button', { name: 'Decline sender' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Approve sender' })).toBeEnabled();
   });
 });

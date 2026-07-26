@@ -168,6 +168,29 @@ found by driving the running app, not by reading the code.
 - **"Test connection" opened the provider form** instead of testing anything.
 - **One Esc closed two layers** — the global handler minimized the composer and
   the list then cleared its selection on the same press.
+- **Enter in the subject line sent the message.** A single text input in a form
+  means the browser submits it, and §5.12 binds send to ⌘Enter — so leaving the
+  subject line sent the mail, with only the 8s undo to catch it.
+- **A rejected key showed a green "Connected" pill.** §5.13c specifies three
+  states; one was built, gated on whether a key string existed rather than on
+  whether it worked. The test result was in the store and nothing read it.
+- **The inline composer was crushed to 2px** on any thread long enough to
+  overflow the reader — a scrolling flex column shrinks its children before it
+  scrolls.
+- **The bulk stamp rendered "RETURNED" at 4.6px** (§4.2 sizes postmark text at
+  `S * 0.115` and the call passed `S = 40`), under §8.5's 11px floor.
+- **The bulk row's AI read had no hidden prefix**, so the row's accessible name
+  ran the AI sentence straight on from the subject — §8.5 item 6.
+- **The card rise was never seen.** The depart waits out the stamp with a 260ms
+  delay; the rise had none, so it played underneath the departing card.
+- **The arrival ring never expired** — §4.2 gives it 24 hours; it was keyed on
+  the presence of an approval date.
+- **Deep-linking to a held message showed a false error** while the held list
+  was still loading, and the sheet's error state dropped the decision buttons
+  §5.9 says stay enabled.
+- **The demo assistant's tone buttons did nothing** — its retone echoed the
+  draft back unchanged, so §3.4 4a was unobservable on the only provider that
+  runs without a key.
 
 ## Deliberate deviations from the spec
 
@@ -208,7 +231,18 @@ Each is a considered call, not an oversight.
    same copy as one run-on string. The implementation follows §3.6/§5.13c.
 9. **Bulk rows omit the sender's address** — §3.3 lists it in the row; §5.8's
    column spec for the same rows does not. The implementation follows §5.8.
-10. **No blocked-images state for C-8** — the component specifies a placeholder
+10. **The toast stack puts the newest at the bottom** — §5.14 says "newest on
+    top", which for a bottom-anchored stack reads either as z-order (moot, they
+    do not overlap) or as position. Newest nearest the corner it grows from is
+    the reading that keeps a toast from jumping as the next one arrives.
+11. **The API key is fully masked, not "masked to the last 4 characters"** —
+    §5.2 asks for both that and `type="password"`, and a password field cannot
+    reveal its last four. The 10-second "Show" reveal is the escape hatch.
+12. **The compact rail uses `title`, not the 400ms C-25 tooltip** — C-19 asks
+    for the tooltip, §5.0 says "labels become `title` + `aria-label`" for this
+    exact case. The code follows §5.0; §8.4's "no control relies on `title`
+    alone" holds either way.
+13. **No blocked-images state for C-8** — the component specifies a placeholder
    for images suppressed until a sender is approved. Message bodies render as
    plain text everywhere in this build (the Gmail parser walks the MIME tree
    for `text/plain` and falls back to stripping HTML), so no remote image is

@@ -6,6 +6,7 @@ import { cn } from '../../lib/cn';
 import { displayName, formatBytes, formatMessageTimestamp, formatPostmarkDate, plural } from '../../lib/format';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
+import { SkeletonBar } from '../primitives/Feedback';
 import { linkifyBody } from './linkify';
 import styles from './HeldMessageSheet.module.css';
 
@@ -25,6 +26,7 @@ export function HeldMessageSheet() {
   const senderId = useUi((s) => s.heldSheetSenderId);
   const closeHeldSheet = useUi((s) => s.closeHeldSheet);
   const held = useMail((s) => s.held);
+  const heldStatus = useMail((s) => s.status.held);
   const decide = useMail((s) => s.decide);
   const loadHeld = useMail((s) => s.loadHeld);
   const online = useOnline();
@@ -94,6 +96,35 @@ export function HeldMessageSheet() {
 
   function onScrimMouseDown(e: React.MouseEvent) {
     if (e.target === e.currentTarget) closeHeldSheet();
+  }
+
+  if (!entry && (heldStatus === 'loading' || heldStatus === 'idle')) {
+    // §5.9's loading state. Deep-linking to /screener/s/:id on a cold start
+    // used to fall straight through to "This message didn't load." while the
+    // held list was still on its way — a false error, on the one path where
+    // the sheet is the first thing a user sees.
+    return (
+      <div className={styles.scrim} onMouseDown={onScrimMouseDown}>
+        <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Message" className={styles.sheet}>
+          <header className={styles.header}>
+            <div className={styles.headerRow}>
+              <span className="t-lg" style={{ fontWeight: 600 }}>
+                Message
+              </span>
+              <button ref={closeRef} type="button" aria-label="Close" className={styles.close} onClick={closeHeldSheet}>
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+          </header>
+          <div className={styles.body} aria-busy="true">
+            <span className="visually-hidden">Loading message</span>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <SkeletonBar key={i} width={['92%', '86%', '94%', '70%', '40%'][i]} height={12} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!entry) {

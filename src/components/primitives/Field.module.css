@@ -34,8 +34,11 @@
   border-color: var(--color-text-tertiary);
 }
 
+/* C-27 — "accent border + 3px accent glow at 16% opacity". Only the border
+   was here, so a focused key field looked barely different from a rested one. */
 .input:focus-visible {
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 
 .invalid {
