@@ -339,6 +339,20 @@ found by driving the running app, not by reading the code.
   distinguish a revoked token from a rejected message, and both call sites went
   on hardcoding "check the recipient addresses" in their catch. Both found by
   going back over the same day's work rather than by any test.
+- **A reader URL for a thread the list didn't hold was a dead end.** The reader
+  resolved the open thread out of the loaded list alone, so a bookmark, a shared
+  link, or on a real account any thread past the walk's 2,000-thread ceiling hit
+  §5.6's "This thread didn't load" with a "Try again" that reloads the same list
+  and still won't contain it. `getThread` was on both providers, covered by the
+  contract test, and called by nothing — it is now what fills that gap. Search
+  had always fallen back to its own results, which is why it never surfaced
+  there. Found by asking why a contract method had no callers.
+- **A guard that could never fire.** The single-thread fetch was written with
+  both an effect cleanup and a `providerEpoch` check, matching the store's
+  house style. Mutation-testing showed each passed the suite alone, and reading
+  it through showed why: `setProvider` resets the place's status, which tears
+  the effect down, so the epoch could never differ by the time the check ran.
+  Removed rather than left as untested, unreachable code.
 
 ## Deliberate deviations from the spec
 
