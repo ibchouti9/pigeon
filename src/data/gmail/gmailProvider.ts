@@ -36,6 +36,13 @@ const PAGE_SIZE = 100;
  */
 const MAX_THREADS = 2000;
 
+/**
+ * §5.11's meta line states a count, so the count has to mean something. Deep
+ * enough that a realistic search is complete; a query matching more than this
+ * wants narrowing, which is what "Try fewer words" already tells the user.
+ */
+const MAX_SEARCH_RESULTS = 200;
+
 interface Decisions {
   /** Lowercased email → decision + ISO date. */
   [email: string]: { status: 'approved' | 'declined'; at: string; name?: string };
@@ -656,13 +663,34 @@ export class GmailMailProvider implements MailProvider {
     const q = query.trim();
     if (q.length < 2) return { inbox: [], archive: [], held: [] };
 
-    const list = await this.call<{ threads?: { id: string }[] }>(
-      `${GMAIL}/threads?${new URLSearchParams({ q, maxResults: '50' })}`,
-    );
+    /*
+     * Paginated to a ceiling, like the main walk. One page of 50 meant §5.11's
+     * meta line said "50 results" for a query that matched five hundred — the
+     * count is the whole point of that line, and it was stating the size of the
+     * page rather than the size of the answer.
+     */
+    const ids: string[] = [];
+    let pageToken: string | undefined;
+    do {
+      const params = new URLSearchParams({ q, maxResults: String(PAGE_SIZE) });
+      if (pageToken) params.set('pageToken', pageToken);
+      const page = await this.call<{ threads?: { id: string }[]; nextPageToken?: string }>(
+        `${GMAIL}/threads?${params}`,
+      );
+      ids.push(...(page.threads ?? []).map((t) => t.id));
+      pageToken = page.nextPageToken;
+    } while (pageToken && ids.length < MAX_SEARCH_RESULTS);
 
-    const threads = await Promise.all(
-      (list.threads ?? []).map((t) => this.getThread(t.id).catch(() => null)),
-    );
+    // Batched for the same reason the walk is: Gmail rate-limits hard on
+    // parallel fetches, and this used to fire one request per result at once.
+    const threads: (Thread | null)[] = [];
+    for (let i = 0; i < ids.length; i += 10) {
+      threads.push(
+        ...(await Promise.all(
+          ids.slice(i, i + 10).map((id) => this.getThread(id).catch(() => null)),
+        )),
+      );
+    }
 
     const inbox: Thread[] = [];
     const archive: Thread[] = [];

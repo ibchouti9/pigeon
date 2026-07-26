@@ -403,3 +403,95 @@ describe('the thread walk (§3.1 3b)', () => {
     expect(fetchesFor('p2')).toBe(1);
   });
 });
+
+/**
+ * §5.11's meta line states a count, so the count has to mean something. Search
+ * asked for one page of 50 and stopped, so a query matching five hundred
+ * threads reported "50 results" — the size of the page, not of the answer. It
+ * also fired one thread fetch per result at once, which is exactly what the
+ * main walk batches to avoid.
+ */
+describe('search (§5.11)', () => {
+  function detail(id: string) {
+    return {
+      id,
+      messages: [
+        {
+          id: `m-${id}`,
+          threadId: id,
+          internalDate: '1750000000000',
+          labelIds: ['INBOX'],
+          payload: {
+            headers: [
+              { name: 'From', value: 'Dana Whitlock <dana@lumen.com>' },
+              { name: 'To', value: 'marc@ferrum.dev' },
+              { name: 'Subject', value: `Subject ${id}` },
+            ],
+            mimeType: 'text/plain',
+            body: { data: encodeBase64Url('Body.') },
+          },
+        },
+      ],
+    };
+  }
+
+  /** Serves `pages` listing pages of `per` threads each, then stops. */
+  function stubSearch(pages: number, per: number) {
+    let served = 0;
+    const inFlight = { now: 0, peak: 0 };
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/threads\?/.test(href)) {
+        served += 1;
+        const start = (served - 1) * per;
+        return new Response(
+          JSON.stringify({
+            threads: Array.from({ length: per }, (_, i) => ({ id: `s${start + i}`, historyId: '1' })),
+            nextPageToken: served < pages ? `page${served}` : undefined,
+          }),
+          { status: 200 },
+        );
+      }
+
+      inFlight.now += 1;
+      inFlight.peak = Math.max(inFlight.peak, inFlight.now);
+      await new Promise((r) => setTimeout(r, 1));
+      inFlight.now -= 1;
+      const id = href.match(/threads\/([^?]+)/)?.[1] ?? 'x';
+      return new Response(JSON.stringify(detail(id)), { status: 200 });
+    });
+    return { listings: () => served, peak: () => inFlight.peak };
+  }
+
+  it('follows nextPageToken past the first page', async () => {
+    const stub = stubSearch(3, 50);
+    await new GmailMailProvider().search('atlas', false);
+    expect(stub.listings()).toBeGreaterThan(1);
+  });
+
+  it('stops at the documented ceiling rather than walking forever', async () => {
+    const stub = stubSearch(100, 100);
+    await new GmailMailProvider().search('atlas', false);
+    // 200 results at 100 per page.
+    expect(stub.listings()).toBe(2);
+  });
+
+  it('batches the thread fetches instead of firing them all at once', async () => {
+    const stub = stubSearch(1, 50);
+    await new GmailMailProvider().search('atlas', false);
+    expect(stub.peak()).toBeLessThanOrEqual(10);
+  });
+
+  it('asks for nothing at all below two characters', async () => {
+    const stub = stubSearch(1, 50);
+    const results = await new GmailMailProvider().search('a', false);
+    expect(stub.listings()).toBe(0);
+    expect(results).toEqual({ inbox: [], archive: [], held: [] });
+  });
+});
