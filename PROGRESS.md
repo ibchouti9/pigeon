@@ -263,6 +263,25 @@ found by driving the running app, not by reading the code.
   most expensive thing the client does.
 - **The sent-mail scan fired a metadata request per message at once**, up to a
   hundred concurrently, during onboarding.
+- **Every reply would have started a new thread.** Gmail threads on In-Reply-To
+  and References as well as threadId; neither was set, and the Message-ID they
+  are built from was parsed and discarded.
+- **A throttle read as "Google revoked Pigeon's permission."** Gmail returns
+  rate limits as 429 and as 403 with a rateLimitExceeded reason, and both landed
+  in the auth branch — so the likeliest failure of a first sync told the user to
+  reconnect, which is the one thing that would not have helped.
+- **Declining a sender did nothing in Gmail.** It installed a filter, which
+  needs a fifth scope §3.1's consent copy rules out; every call 403'd silently
+  while Pigeon reported success.
+- **"Whitlock, Dana" became two recipients** — a display name was emitted
+  unquoted — and a non-ASCII attachment filename put raw 8-bit octets in a
+  header.
+- **A lapsed token opened ten Google windows**, nine of which the browser
+  blocks, and a blocked window was reported as the user refusing consent.
+- **The scope check could reject a good grant** — Google normalises
+  `userinfo.email` to `email` in the response, and the code compared strings.
+- **The user's own alias-sent mail put them in their own Screener.**
+- **The sync bar counted the whole mailbox**, so it sat near 1% throughout.
 
 ## Deliberate deviations from the spec
 
@@ -350,6 +369,14 @@ In rough order of expected value:
   run on a decade-old archive cannot spend someone's whole API quota. Thread
   bodies are cached against Gmail's `historyId`, so a body is fetched once and
   then only again when it has actually changed.
+- **Gmail cannot recall a sent message, so §3.4's undo cannot un-send one.**
+  D8 forbids trashing it, and Gmail's own Undo Send works because Google's
+  servers hold the message — a browser client has nowhere to hold it. Pigeon
+  could delay the send for the eight-second window, which would make the promise
+  true, but then closing the tab inside those eight seconds loses the mail
+  silently. That trade is a product decision, not a bug fix: **worth deciding
+  before the first real run.** Everything else about the undo works; on the demo
+  account it un-appends correctly.
 - Toast copy for two of the three Assistant toggles is extrapolated; §7.5 spells
   out only the summaries one. So are the bulk-archive and appearance toasts —
   §7.5 has no row for either, and both follow the shape of the bulk sender lines
