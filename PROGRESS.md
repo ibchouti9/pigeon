@@ -605,15 +605,24 @@ Each is a considered call, not an oversight.
 
 In rough order of expected value:
 
-1. First real Gmail run. O1 now opens Google consent and swaps in
+1. First real Gmail run. O1 opens Google consent and swaps in
    `GmailMailProvider` when `VITE_GOOGLE_CLIENT_ID` is set, but no run against a
    real mailbox has happened. This is the only part of the product that has
-   never executed.
-2. Drive more of the running app. Most of the bugs above were found this way and
-   none of them by any static check. `?scenario=crowded` now reaches the states
-   that used to need hand-edited localStorage. Still undriven: Gmail's own error
-   states, which need a real account.
-3. The audit findings still open, listed below.
+   never executed, and the only place left where a whole class of behaviour is
+   unverified rather than merely unpolished.
+2. **Review passes over recent work, not more spec audits.** Every section of
+   the spec has now been walked — §2.3, §3's flows and branches, §5's screens,
+   §6's components, §7's copy character for character, §8.1/8.2/8.3/8.4/8.5 —
+   and the audits have stopped finding much. Two critique passes over the
+   session's own commits found nine real defects between them, several of them
+   introduced hours earlier by the fix for something else. That is where the
+   yield is now.
+3. Drive the running app. Most of the bugs above were found that way and none of
+   them by any static check. Still undriven: Gmail's own error states, which
+   need a real account.
+4. The decisions waiting on the user, listed under Open items — §3.4's send/undo
+   trade-off and §2.3's "with today's date" both change behaviour and neither
+   should be guessed at.
 
 ## Driven at scale
 
