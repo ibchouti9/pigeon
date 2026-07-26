@@ -43,6 +43,23 @@
   background: var(--color-accent-subtle);
 }
 
+/*
+ * §8.3 lists tertiary ink on `bg` (4.84:1) and on `surface` (5.16:1), but the
+ * open and checked rows put it on `--color-surface-active` and
+ * `--color-accent-subtle`, which the table doesn't cover — and measured in the
+ * running app that pairing is 4.24:1, under the 4.5 AA floor. Meta text on a
+ * filled row steps up one level; it stays quiet against the row's own fill
+ * while clearing the requirement.
+ */
+.fillOpen .snippet,
+.fillOpen .timestampText,
+.fillOpen .senderCount,
+.fillChecked .snippet,
+.fillChecked .timestampText,
+.fillChecked .senderCount {
+  color: var(--color-text-secondary);
+}
+
 .row:not(.fillOpen):not(.fillChecked):hover {
   background: var(--color-surface-hover);
 }
