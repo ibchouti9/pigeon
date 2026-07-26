@@ -13,7 +13,11 @@ import { useLocation } from 'react-router-dom';
  * themselves (§8.4's Screener card) run their own effect afterwards and win.
  */
 export function useRouteFocus(regionRef: React.RefObject<HTMLElement | null>): void {
-  const { pathname } = useLocation();
+  // The region, not the URL. Opening a thread changes the path but not the
+  // screen — the list column stays put and the reader swaps beside it — so
+  // grabbing the heading there would yank focus off the row the user just
+  // opened, and fight the reader's own "focus back to the row on close".
+  const region = useLocation().pathname.split('/')[1] ?? '';
   const first = useRef(true);
 
   useEffect(() => {
@@ -26,5 +30,5 @@ export function useRouteFocus(regionRef: React.RefObject<HTMLElement | null>): v
     if (!heading) return;
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
-  }, [pathname, regionRef]);
+  }, [region, regionRef]);
 }

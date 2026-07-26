@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useMail } from '../store/mail';
 import { useUi } from '../store/ui';
 import { useCompose } from '../store/compose';
@@ -12,7 +12,9 @@ import { BulkReview } from '../components/screener/BulkReview';
 import { AssistantSettings } from '../routes/settings/AssistantSettings';
 import { ThreadRow } from '../components/mail/ThreadRow';
 import { HeldMessageSheet } from '../components/screener/HeldMessageSheet';
+import { useRef } from 'react';
 import { useMinimumVisible } from '../hooks/useMinimumVisible';
+import { useRouteFocus } from '../hooks/useRouteFocus';
 import { makeHeldList } from '../components/screener/__tests__/fixtures';
 
 function resetStores() {
@@ -251,5 +253,66 @@ describe('the held sheet while the list is still loading (§5.9)', () => {
 
     expect(screen.getByRole('button', { name: 'Decline sender' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Approve sender' })).toBeEnabled();
+  });
+});
+
+/**
+ * §8.2 — "focus moves only on: route change (to the region's first heading)".
+ * Scoped to the region, not the URL: opening a thread changes the path but not
+ * the screen, and grabbing the heading there yanks focus off the row the user
+ * just opened.
+ */
+describe('route-change focus (§8.2)', () => {
+  beforeEach(resetStores);
+  afterEach(cleanup);
+
+  function Harness() {
+    const ref = useRef<HTMLDivElement>(null);
+    useRouteFocus(ref);
+    return (
+      <div ref={ref}>
+        <h1>{useLocation().pathname.split('/')[1] || 'root'}</h1>
+        <button type="button">a row</button>
+      </div>
+    );
+  }
+
+  function renderAt(entry: string) {
+    const nav: { go: (to: string) => void } = { go: () => {} };
+    function Nav() {
+      const navigate = useNavigate();
+      nav.go = navigate;
+      return null;
+    }
+    render(
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route path="/*" element={<><Harness /><Nav /></>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    return nav;
+  }
+
+  it('does not take focus on first mount', () => {
+    renderAt('/inbox');
+    expect(document.body).toHaveFocus();
+  });
+
+  it('takes the heading when the region changes', async () => {
+    const nav = renderAt('/inbox');
+    act(() => nav.go('/archive'));
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
+  });
+
+  it('leaves focus alone when only the sub-route changes', async () => {
+    const nav = renderAt('/inbox');
+    const row = screen.getByRole('button', { name: 'a row' });
+    row.focus();
+
+    act(() => nav.go('/inbox/t/t1'));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(row).toHaveFocus();
   });
 });
