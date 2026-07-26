@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingColumn } from '../../components/onboarding/OnboardingColumn';
 import { StepList, type Step, type StepState } from '../../components/onboarding/StepList';
@@ -59,6 +59,20 @@ export function SyncRoute() {
   const counterText =
     total === null ? 'Counting your threads' : `${formatCount(done)} of ${formatCount(total)} threads`;
 
+  // §8.4 — "Progress updates are announced at most once every 10 seconds via a
+  // role="status" region". The counter itself ticks several times a second;
+  // putting a live region on that would read the whole sync aloud, number by
+  // number. Completion is announced immediately whatever the clock says.
+  const [announced, setAnnounced] = useState('');
+  const lastAnnouncedAt = useRef(0);
+
+  useEffect(() => {
+    const now = performance.now();
+    if (!complete && now - lastAnnouncedAt.current < 10_000) return;
+    lastAnnouncedAt.current = now;
+    setAnnounced(complete ? 'Your mail is ready.' : counterText);
+  }, [counterText, complete]);
+
   async function handleContinue() {
     setChecking(true);
     try {
@@ -68,6 +82,19 @@ export function SyncRoute() {
         provider.listThreads('archive'),
       ]);
       const quiet = inbox.length + archive.length < 50;
+
+      // §3.1 3c — a quiet account skips O4, but the branch still says "known
+      // senders are seeded from Contacts only". Skipping the screen used to
+      // skip the seeding with it, so every contact started life in the
+      // Screener and the user had to approve people they already knew.
+      if (quiet) {
+        const known = await provider.getKnownSenders();
+        const fromContacts = known.filter((s) => s.knownReason === 'contact');
+        if (fromContacts.length) {
+          await provider.approveKnownSenders(fromContacts.map((s) => s.id));
+        }
+      }
+
       navigate(quiet ? '/setup/screener' : '/setup/senders', { state: { quietInbox: quiet } });
     } finally {
       setChecking(false);
@@ -79,6 +106,10 @@ export function SyncRoute() {
   return (
     <OnboardingColumn width={480}>
       <h1 className={cn('t-display-md', styles.heading)}>{heading}</h1>
+
+      <p className="visually-hidden" role="status">
+        {announced}
+      </p>
 
       {progress.error ? (
         <div className={styles.errorBlock} role="alert">
@@ -106,6 +137,12 @@ export function SyncRoute() {
 
           <hr className={styles.divider} />
 
+          {/*
+            §5.2b — at completion Continue "becomes the only focusable element".
+            It already is: nothing else on this screen takes focus. Hiding the
+            finished step list would only cost a screen reader the summary of
+            what just happened.
+          */}
           <StepList steps={steps} />
 
           {skippedProvider && (

@@ -1,6 +1,7 @@
 /* O3 step list (§5.2b) */
 
 .list {
+  list-style: none;
   display: flex;
   flex-direction: column;
 }

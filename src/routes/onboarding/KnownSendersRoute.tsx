@@ -106,15 +106,25 @@ export function KnownSendersRoute() {
       const dir = e.key === 'ArrowDown' ? 1 : -1;
       const next = clamp(cursorIndex + dir, 0, filtered.length - 1);
 
-      if (e.shiftKey && anchorIndex !== null && rangeTarget !== null) {
-        const lo = Math.min(anchorIndex, next);
-        const hi = Math.max(anchorIndex, next);
+      if (e.shiftKey) {
+        // §5.3 — "Shift+↑/↓ extends a toggle range". It used to need a Space
+        // first, because only Space set the anchor; arrowing to a row and
+        // holding Shift just moved the cursor. Shift starts its own range from
+        // wherever the cursor is, and extends by ticking, which is what Shift
+        // does everywhere else in the product.
+        const anchor = anchorIndex ?? cursorIndex;
+        const target = rangeTarget ?? true;
+        if (anchorIndex === null) setAnchorIndex(anchor);
+        if (rangeTarget === null) setRangeTarget(target);
+
+        const lo = Math.min(anchor, next);
+        const hi = Math.max(anchor, next);
         setTicked((prev) => {
           const copy = new Set(prev);
           for (let i = lo; i <= hi; i++) {
             const id = filtered[i]?.id;
             if (!id) continue;
-            if (rangeTarget) copy.add(id);
+            if (target) copy.add(id);
             else copy.delete(id);
           }
           return copy;

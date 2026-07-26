@@ -27,10 +27,15 @@ class StubSyncProvider implements MailProvider {
     this.onProgress = onProgress;
     return new Promise(() => {});
   }
+  known: Sender[] = [];
+  approved: string[] = [];
+
   async getKnownSenders(): Promise<Sender[]> {
-    return [];
+    return this.known;
   }
-  async approveKnownSenders(_ids: string[]): Promise<void> {}
+  async approveKnownSenders(ids: string[]): Promise<void> {
+    this.approved.push(...ids);
+  }
   async listThreads(_place: 'inbox' | 'archive'): Promise<Thread[]> {
     return [];
   }
@@ -113,5 +118,44 @@ describe('O3 sync progress (§5.2b)', () => {
     act(() => provider.onProgress!({ total: 11_908, done: 2_500, step: 'history' }));
     await screen.findByText('2,500 of 11,908 threads');
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  /**
+   * §3.1 3c — a quiet account skips O4, but "known senders are seeded from
+   * Contacts only". Skipping the screen skipped the seeding with it, so every
+   * contact landed in the Screener and the user had to approve people they
+   * already had in their address book.
+   */
+  describe('the quiet-account branch (§3.1 3c)', () => {
+    function quietProvider() {
+      const provider = new StubSyncProvider();
+      provider.known = [
+        { id: 'dana', name: 'Dana', email: 'dana@lumen.com', status: 'unknown', knownReason: 'contact' },
+        { id: 'sana', name: 'Sana', email: 'sana@north.io', status: 'unknown', knownReason: 'contact' },
+        { id: 'ci', name: 'CI', email: 'ci@atlas.dev', status: 'unknown', knownReason: 'replies' },
+      ];
+      useMail.setState({
+        provider,
+        account: {
+          email: 'marc@ferrum.dev',
+          name: 'Marc Ferrum',
+          connectedAt: new Date().toISOString(),
+        },
+      });
+      resetSyncSessionForTest();
+      return provider;
+    }
+
+    it('approves the contacts, and only the contacts, before skipping to O5', async () => {
+      const provider = quietProvider();
+      renderRoute();
+      await waitFor(() => expect(provider.onProgress).not.toBeNull());
+
+      act(() => provider.onProgress!({ total: 12, done: 12, step: 'complete' }));
+      const button = await screen.findByRole('button', { name: 'Continue' });
+      button.click();
+
+      await waitFor(() => expect(provider.approved).toEqual(['dana', 'sana']));
+    });
   });
 });
