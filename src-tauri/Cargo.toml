@@ -33,6 +33,11 @@ urlencoding = "2.1"
 
 # The refresh token belongs in the macOS Keychain, not in web storage.
 keyring = { version = "3", features = ["apple-native"] }
+imap = "2"
+native-tls = "0.2.13"
+mail-parser = "0.11.5"
+lettre = "0.11.19"
+chrono = "0.4.45"
 
 [features]
 # Used for production builds, where the frontend is served from the bundle

@@ -1,4 +1,5 @@
 mod google;
+mod mail;
 
 use serde::Serialize;
 use tauri_plugin_dialog::DialogExt;
@@ -114,6 +115,18 @@ pub fn run() {
             google_cancel_sign_in,
             google_refresh,
             google_sign_out,
+            mail::mail_status,
+            mail::mail_connect,
+            mail::mail_disconnect,
+            mail::mail_list_threads,
+            mail::mail_search,
+            mail::mail_get_thread,
+            mail::mail_set_place,
+            mail::mail_mark_read,
+            mail::mail_silence,
+            mail::mail_send,
+            mail::mail_sent_recipients,
+            mail::mail_attachment,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
