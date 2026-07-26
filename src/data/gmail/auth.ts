@@ -1,17 +1,33 @@
 /**
- * Google sign-in for a client with no server.
+ * Google sign-in, in two flavours.
  *
- * Pigeon has no backend (D41), so it uses the Google Identity Services token
- * flow: the browser gets a short-lived access token directly and there is no
- * refresh token to store anywhere. When the token expires, Pigeon asks for
- * another one silently.
+ * Pigeon has no backend (D41), and how it reaches Google depends on where it is
+ * running:
+ *
+ *  - **The macOS app** uses Google's installed-app flow, implemented in Rust
+ *    (`src-tauri/src/google.rs`): PKCE, the system browser, a loopback
+ *    redirect, and a refresh token kept in the Keychain. Consent survives a
+ *    restart, and there is no redirect URI to register or mistype.
+ *  - **The web build** uses Google Identity Services, which hands the page a
+ *    one-hour access token and no refresh token. When it lapses Pigeon asks for
+ *    another, and Google's guidance is that the ask needs a user gesture behind
+ *    it — so a lapse mid-session can surface as a blocked pop-up.
+ *
+ * Everything below the dispatchers at the end of this file belongs to one
+ * flavour or the other. Callers see one surface and should not care.
  */
+
+import { invoke, isDesktop } from '../../lib/desktop';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
 /**
  * The four permissions §3.1 branch 2b refers to. Consent shows one checkbox per
  * scope; Pigeon needs all four, and says so when a user unticks one.
+ *
+ * The desktop flow asks for the same four, from `SCOPES` in
+ * `src-tauri/src/google.rs`. The list is stated twice because it is needed on
+ * both sides of a language boundary; if one changes, change the other.
  */
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.modify',
@@ -89,7 +105,13 @@ function loadGis(): Promise<void> {
   return scriptPromise;
 }
 
-export function googleClientId(): string | null {
+/**
+ * The web build's client, baked in at build time.
+ *
+ * The desktop build has no equivalent: its credentials live in the Keychain and
+ * are set from inside the app, so nothing here is consulted there.
+ */
+function webClientId(): string | null {
   const id = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   return typeof id === 'string' && id.length > 0 ? id : null;
 }
@@ -202,12 +224,11 @@ function request(clientId: string, prompt: string): Promise<StoredToken> {
   });
 }
 
-/** Opens Google's consent screen. Called only from O1. */
-export async function signIn(): Promise<void> {
-  const clientId = googleClientId();
+async function webSignIn(): Promise<void> {
+  const clientId = webClientId();
   if (!clientId) {
     throw new AuthError(
-      'Pigeon needs a Google client ID. Add VITE_GOOGLE_CLIENT_ID to .env.local — the README explains how.',
+      'This copy of Pigeon has no Google client configured, so it can only show the demo account. The macOS app can connect real mail.',
       'no-client-id',
     );
   }
@@ -219,10 +240,6 @@ export async function signIn(): Promise<void> {
 let renewal: Promise<StoredToken> | null = null;
 
 /**
- * Returns a live access token, renewing it when the last one lapsed. Throws
- * when Google has revoked Pigeon's permission, which the shell renders as the
- * token-revoked state in §5.5.
- *
  * The renewal is shared. Every Gmail request calls this, and the walk issues
  * ten at a time — so when the hour-long token lapsed mid-walk, all ten found no
  * token and each opened its own Google window. The browser blocks nine of them,
@@ -233,14 +250,14 @@ let renewal: Promise<StoredToken> | null = null;
  * fetch may be blocked whatever we do. Sharing it at least means one prompt
  * rather than ten, and an honest message when it is blocked.
  */
-export async function accessToken(): Promise<string> {
+async function webAccessToken(): Promise<string> {
   const existing = readToken();
   if (existing) return existing.accessToken;
 
-  const clientId = googleClientId();
+  const clientId = webClientId();
   if (!clientId) {
     throw new AuthError(
-      'Pigeon needs a Google client ID. Add VITE_GOOGLE_CLIENT_ID to .env.local — the README explains how.',
+      'This copy of Pigeon has no Google client configured.',
       'no-client-id',
     );
   }
@@ -256,11 +273,7 @@ export async function accessToken(): Promise<string> {
   return token.accessToken;
 }
 
-export function isSignedIn(): boolean {
-  return readToken() !== null;
-}
-
-export async function signOut(): Promise<void> {
+async function webSignOut(): Promise<void> {
   const token = readToken();
   clearToken();
   if (!token) return;
@@ -272,4 +285,155 @@ export async function signOut(): Promise<void> {
     }
     window.google.accounts.oauth2.revoke(token.accessToken, resolve);
   });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Desktop — the installed-app flow, over the Tauri bridge                      */
+/* -------------------------------------------------------------------------- */
+
+interface Session {
+  accessToken: string;
+  /** Epoch ms, so it compares against `Date.now()` directly. */
+  expiresAt: number;
+}
+
+/**
+ * Answered once at startup by `primeAuth`, then kept current by the setup
+ * calls below.
+ *
+ * It is a cache rather than a lookup because the screens that need it need it
+ * *synchronously*: `useRestoreProvider` picks the mail provider during the
+ * first render, before an effect could have resolved a promise, and getting
+ * that wrong shows a signed-in user the demo mailbox.
+ */
+let desktopSetup = { hasClient: false, hasSession: false };
+
+/** The live access token, or null when there isn't one yet. */
+let desktopSession: Session | null = null;
+
+/** Shared, for the same reason the web renewal is: a walk asks ten at a time. */
+let desktopRenewal: Promise<Session> | null = null;
+
+/** Rust returns `Err(String)`; every one of them is already user-facing copy. */
+function asAuthError(error: unknown): AuthError {
+  if (error instanceof AuthError) return error;
+  const message =
+    typeof error === 'string'
+      ? error
+      : error instanceof Error
+        ? error.message
+        : "Pigeon couldn't reach Google. Try connecting again.";
+  return new AuthError(message, 'denied');
+}
+
+async function desktopSignIn(): Promise<void> {
+  try {
+    desktopSession = await invoke<Session>('google_sign_in');
+    desktopSetup = { ...desktopSetup, hasSession: true };
+  } catch (error) {
+    throw asAuthError(error);
+  }
+}
+
+async function desktopAccessToken(): Promise<string> {
+  // A minute of headroom, matching the web path: a token about to lapse is
+  // treated as already gone rather than raced against.
+  if (desktopSession && desktopSession.expiresAt - 60_000 > Date.now()) {
+    return desktopSession.accessToken;
+  }
+
+  if (!desktopRenewal) {
+    desktopRenewal = invoke<Session>('google_refresh').finally(() => {
+      desktopRenewal = null;
+    });
+  }
+
+  try {
+    desktopSession = await desktopRenewal;
+    return desktopSession.accessToken;
+  } catch (error) {
+    // Rust has already dropped a refresh token Google retired, so the shell
+    // must stop believing there is a session behind it.
+    desktopSession = null;
+    desktopSetup = { ...desktopSetup, hasSession: false };
+    throw asAuthError(error);
+  }
+}
+
+async function desktopSignOut(): Promise<void> {
+  desktopSession = null;
+  desktopSetup = { ...desktopSetup, hasSession: false };
+  await invoke('google_sign_out').catch(() => undefined);
+}
+
+/* -------------------------------------------------------------------------- */
+/* What the screens see                                                        */
+/* -------------------------------------------------------------------------- */
+
+export interface GmailStatus {
+  /** "Connect Gmail" will reach Google rather than the demo account. */
+  canConnect: boolean;
+  /** This build can set up a Google client from inside the app. */
+  canSetUp: boolean;
+  /** A stored grant survives, so connecting needs no consent screen. */
+  hasSession: boolean;
+}
+
+/**
+ * Synchronous on purpose — see `desktopSetup`. Accurate from the moment
+ * `primeAuth` has resolved, which `main.tsx` awaits before the first render.
+ */
+export function gmailStatus(): GmailStatus {
+  if (!isDesktop()) {
+    return { canConnect: webClientId() !== null, canSetUp: false, hasSession: false };
+  }
+  return {
+    canConnect: desktopSetup.hasClient,
+    canSetUp: true,
+    hasSession: desktopSetup.hasSession,
+  };
+}
+
+/** Called by the setup panel once it has stored, or dropped, a client. */
+export function noteClientChanged(hasClient: boolean): void {
+  desktopSetup = { hasClient, hasSession: hasClient && desktopSetup.hasSession };
+  if (!hasClient) desktopSession = null;
+}
+
+/**
+ * Reads the Keychain once, before anything renders. A no-op on the web, where
+ * the answer is a build-time constant.
+ */
+export async function primeAuth(): Promise<void> {
+  if (!isDesktop()) return;
+  try {
+    desktopSetup = await invoke<{ hasClient: boolean; hasSession: boolean }>(
+      'google_setup_state',
+    );
+  } catch {
+    // A Keychain that will not answer is indistinguishable from an empty one,
+    // and both mean the same thing to the user: set the client up again.
+  }
+}
+
+/** Opens Google's consent screen. Called only from O1. */
+export async function signIn(): Promise<void> {
+  return isDesktop() ? desktopSignIn() : webSignIn();
+}
+
+/**
+ * Returns a live access token, renewing it when the last one lapsed. Throws
+ * when Google has revoked Pigeon's permission, which the shell renders as the
+ * token-revoked state in §5.5.
+ */
+export async function accessToken(): Promise<string> {
+  return isDesktop() ? desktopAccessToken() : webAccessToken();
+}
+
+export function isSignedIn(): boolean {
+  return isDesktop() ? desktopSetup.hasSession : readToken() !== null;
+}
+
+export async function signOut(): Promise<void> {
+  return isDesktop() ? desktopSignOut() : webSignOut();
 }

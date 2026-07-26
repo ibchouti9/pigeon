@@ -1,0 +1,146 @@
+/* The one-time Google client setup, shown inside O1 and Settings → Account. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  text-align: left;
+}
+
+.why {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-top: var(--border-hairline);
+}
+
+.step:first-child {
+  border-top: none;
+}
+
+.number {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-tertiary);
+}
+
+.stepBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.stepTitle {
+  margin: 0;
+  font-weight: 500;
+}
+
+.optional {
+  color: var(--color-text-tertiary);
+  font-weight: 400;
+}
+
+.stepDetail {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-tertiary);
+}
+
+.open {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 28px;
+  padding: 0 var(--space-2);
+  background: none;
+  border: var(--border-hairline);
+  border-radius: var(--radius-md);
+  color: var(--color-text-accent);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.open:hover {
+  background: var(--color-surface-hover);
+}
+
+.drop {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--color-border-control);
+  border-radius: var(--radius-lg);
+  transition: background var(--motion-fast, 120ms) ease, border-color var(--motion-fast, 120ms) ease;
+}
+
+.dropOver {
+  border-color: var(--color-text-accent);
+  background: var(--color-surface-hover);
+}
+
+.dropTitle {
+  margin: 0;
+  font-weight: 500;
+}
+
+.dropHint {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-tertiary);
+}
+
+.link {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pasteBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.paste {
+  width: 100%;
+  padding: var(--space-2);
+  border: var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-primary);
+  resize: vertical;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-text-destructive);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}

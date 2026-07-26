@@ -1,36 +1,53 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingColumn } from '../../components/onboarding/OnboardingColumn';
+import { GoogleSetup } from '../../components/onboarding/GoogleSetup';
 import { Button } from '../../components/primitives/Button';
 import { PostmarkRing } from '../../components/primitives/Postmark';
 import { useMail } from '../../store/mail';
-import { AuthError, googleClientId, signIn } from '../../data/gmail/auth';
+import { AuthError, gmailStatus, signIn } from '../../data/gmail/auth';
 import { GmailMailProvider } from '../../data/gmail/gmailProvider';
 import styles from './WelcomeRoute.module.css';
 
 /**
  * §3.1 branches 2a/2b. Both come straight off Google's consent screen, so the
  * copy lives with the AuthError that carries it.
+ *
+ * The screen has three shapes, and which one a user sees depends on what this
+ * build can reach:
+ *
+ *  - **macOS app, client already set up** — "Connect Gmail" opens consent.
+ *  - **macOS app, first run** — "Connect Gmail" opens the five-minute setup,
+ *    then consent, without the user having to know those are two things.
+ *  - **Web build** — real mail needs a client baked in at build time, so
+ *    without one the only honest offer is the demo account.
+ *
+ * The demo is a first-class choice in all three, not a consolation. It is the
+ * one path that works in the first ten seconds after a download, and a mail
+ * client nobody can look inside is a mail client nobody adopts.
  */
 export function WelcomeRoute() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasOAuth = googleClientId() !== null;
+  const [settingUp, setSettingUp] = useState(false);
+  const status = gmailStatus();
 
-  async function handleConnect() {
-    if (loading) return;
+  async function enterWith(provider: 'gmail' | 'demo') {
+    if (provider === 'gmail') useMail.getState().setProvider(new GmailMailProvider());
+    await useMail.getState().loadAccount();
+    navigate('/setup/provider');
+  }
+
+  /** Consent, then in. Shared by the direct path and the post-setup one. */
+  async function connect() {
     setError(null);
     setLoading(true);
     try {
-      if (hasOAuth) {
-        // §3.1 step 2 — this is the navigation to Google consent. Nothing
-        // reaches the Gmail API until it resolves.
-        await signIn();
-        useMail.getState().setProvider(new GmailMailProvider());
-      }
-      await useMail.getState().loadAccount();
-      navigate('/setup/provider');
+      // A grant already in the Keychain needs no consent screen — asking again
+      // would be a second trip through Google for nothing.
+      if (!gmailStatus().hasSession) await signIn();
+      await enterWith('gmail');
     } catch (e) {
       // AuthError already carries §3.1's branch copy; anything else is a
       // network or GIS-loading failure, which reads the same to the user.
@@ -44,21 +61,50 @@ export function WelcomeRoute() {
     }
   }
 
+  async function handleConnect() {
+    if (loading) return;
+    if (status.canConnect || status.hasSession) return connect();
+    if (status.canSetUp) {
+      setSettingUp(true);
+      return;
+    }
+    // Web build with no client of its own: the demo is all there is.
+    setError(null);
+    setLoading(true);
+    try {
+      await enterWith('demo');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDemo() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await enterWith('demo');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Enter') return;
       const target = e.target as HTMLElement | null;
-      // A focused button already handles its own Enter via the click event.
+      // A focused button already handles its own Enter via the click event,
+      // and the setup panel has fields of its own that Enter belongs to.
+      if (settingUp) return;
       if (target && (target.tagName === 'BUTTON' || target.tagName === 'A')) return;
       void handleConnect();
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [loading, settingUp]);
 
   return (
-    <OnboardingColumn width={480}>
+    <OnboardingColumn width={settingUp ? 620 : 480}>
       <div className={styles.wrap}>
         <PostmarkRing size={48} strokeWidth={1.5} className={styles.mark} />
         <h1 className="t-display-lg">Pigeon</h1>
@@ -66,32 +112,47 @@ export function WelcomeRoute() {
           Mail from people you&apos;ve chosen. Everyone else waits at the door.
         </p>
 
-        <div className={styles.actions}>
-          {error && (
-            <div className={`t-sm ${styles.errorBlock}`} role="alert">
-              {error}
+        {settingUp ? (
+          <GoogleSetup
+            onReady={() => {
+              setSettingUp(false);
+              void connect();
+            }}
+            onSkip={handleDemo}
+          />
+        ) : (
+          <>
+            <div className={styles.actions}>
+              {error && (
+                <div className={`t-sm ${styles.errorBlock}`} role="alert">
+                  {error}
+                </div>
+              )}
+              <Button
+                variant="primary"
+                fullWidth
+                loading={loading}
+                onClick={handleConnect}
+                style={{ height: 44 }}
+              >
+                Connect Gmail
+              </Button>
+              <Button variant="tertiary" fullWidth onClick={handleDemo} disabled={loading}>
+                Try the demo instead
+              </Button>
             </div>
-          )}
-          <Button
-            variant="primary"
-            fullWidth
-            loading={loading}
-            onClick={handleConnect}
-            style={{ height: 44 }}
-          >
-            Connect Gmail
-          </Button>
-        </div>
 
-        <p className={`t-xs ink-tertiary ${styles.legal}`}>
-          Pigeon reads and sends mail on your behalf. It never sends anything you haven&apos;t
-          seen.
-        </p>
-        {!hasOAuth && (
-          <p className={`t-xs ink-tertiary ${styles.demoNote}`}>
-            No Google client is configured, so this connects Pigeon&apos;s demo mail account.
-            Add VITE_GOOGLE_CLIENT_ID to .env.local for real mail — the README explains how.
-          </p>
+            <p className={`t-xs ink-tertiary ${styles.legal}`}>
+              Pigeon reads and sends mail on your behalf. It never sends anything you
+              haven&apos;t seen.
+            </p>
+            {!status.canConnect && !status.canSetUp && (
+              <p className={`t-xs ink-tertiary ${styles.demoNote}`}>
+                This is the web build, which has no Google client of its own, so Connect Gmail
+                shows the demo account. The macOS app can connect real mail.
+              </p>
+            )}
+          </>
         )}
       </div>
     </OnboardingColumn>

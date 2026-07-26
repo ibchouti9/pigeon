@@ -10,6 +10,7 @@ import type {
 } from '../../types';
 import { MailError, type MailProvider, type SearchResults } from '../provider';
 import { accessToken, AuthError } from './auth';
+import { httpFetch } from '../../lib/http';
 import {
   buildRawMessage,
   toMessage,
@@ -185,7 +186,7 @@ export class GmailMailProvider implements MailProvider {
     for (let attempt = 0; ; attempt++) {
       let response: Response;
       try {
-        response = await fetch(url, {
+        response = await httpFetch(url, {
           ...init,
           headers: { ...init.headers, authorization: `Bearer ${token}` },
         });

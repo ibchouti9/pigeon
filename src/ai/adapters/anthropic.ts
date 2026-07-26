@@ -1,4 +1,5 @@
 import type { Adapter, ModelPricing, TestResult } from '../types';
+import { httpFetch } from '../../lib/http';
 import { AiError } from '../types';
 import type { ProviderConfig } from '../../store/settings';
 
@@ -82,7 +83,7 @@ async function post(
   let response: Response;
 
   try {
-    response = await fetch(ENDPOINT, {
+    response = await httpFetch(ENDPOINT, {
       method: 'POST',
       headers: headers(config.apiKey),
       body: JSON.stringify({

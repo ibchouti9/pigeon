@@ -1,4 +1,5 @@
 import type { Adapter, TestResult } from '../types';
+import { httpFetch } from '../../lib/http';
 import { AiError } from '../types';
 import type { ProviderConfig } from '../../store/settings';
 
@@ -29,7 +30,7 @@ interface OllamaChat {
 }
 
 async function listModels(baseUrl: string): Promise<string[]> {
-  const response = await fetch(`${trimBase(baseUrl)}/api/tags`);
+  const response = await httpFetch(`${trimBase(baseUrl)}/api/tags`);
   if (!response.ok) throw unreachable(baseUrl);
   const body = (await response.json().catch(() => null)) as OllamaTags | null;
   return (body?.models ?? [])
@@ -47,7 +48,7 @@ async function post(
   let response: Response;
 
   try {
-    response = await fetch(`${trimBase(config.baseUrl)}/api/chat`, {
+    response = await httpFetch(`${trimBase(config.baseUrl)}/api/chat`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({

@@ -1,4 +1,5 @@
 import type { Adapter, ModelPricing, TestResult } from '../types';
+import { httpFetch } from '../../lib/http';
 import { AiError } from '../types';
 import type { ProviderConfig } from '../../store/settings';
 
@@ -57,7 +58,7 @@ async function post(
   try {
     // The key rides in a header rather than the query string: a key in a URL
     // ends up in history and logs (§C-27 security rules).
-    response = await fetch(`${BASE}/${encodeURIComponent(config.model)}:generateContent`, {
+    response = await httpFetch(`${BASE}/${encodeURIComponent(config.model)}:generateContent`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
