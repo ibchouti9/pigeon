@@ -23,6 +23,7 @@ import { shortcutsBlocked } from '../../store/ui';
 import { Button } from '../primitives/Button';
 import { EmptyState, SkeletonRows } from '../primitives/Feedback';
 import { groupThreadsByDate } from './grouping';
+import { groupedWindow, rowOffset } from '../../lib/groupedWindow';
 import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { ThreadRow } from './ThreadRow';
 import { RevokedState } from './RevokedState';
@@ -76,6 +77,10 @@ function isNewlyApproved(approvedAt: string | undefined): boolean {
   const age = Date.now() - new Date(approvedAt).getTime();
   return age >= 0 && age < 24 * 60 * 60 * 1000;
 }
+
+/** §5.5 — 56px thread rows under sticky 32px date headers. */
+const ROW_HEIGHT = 56;
+const GROUP_HEADER_HEIGHT = 32;
 
 export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnProps>(
   function MailListColumn(
@@ -147,10 +152,41 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
       setCursorIndex(clamped);
       const id = threads[clamped]?.id;
       if (!id) return;
+
       const btn = buttonRefs.current.get(id);
-      // jsdom has no scrollIntoView implementation; guard for tests too.
-      btn?.scrollIntoView?.({ block: 'nearest' });
-      if (focus) btn?.focus();
+      if (btn) {
+        // jsdom has no scrollIntoView implementation; guard for tests too.
+        btn.scrollIntoView?.({ block: 'nearest' });
+        if (focus) btn.focus();
+        return;
+      }
+
+      /*
+       * The row is outside the window, so there is no node to scroll to. Move
+       * the container by arithmetic instead and focus once the row has been
+       * rendered — otherwise `j` past the fold walks the cursor somewhere
+       * nobody can see, which is what bulk review did before it was windowed.
+       */
+      const element = scrollRef.current;
+      const offset = rowOffset(
+        groupsRef.current.map((g) => ({ label: g.label, rows: g.threads })),
+        clamped,
+        ROW_HEIGHT,
+        GROUP_HEADER_HEIGHT,
+      );
+      if (!element || offset === null) return;
+
+      const top = element.scrollTop;
+      const bottom = top + element.clientHeight;
+      // `block: 'nearest'` by hand: only move if the row is actually outside.
+      if (offset < top) element.scrollTop = offset - GROUP_HEADER_HEIGHT;
+      else if (offset + ROW_HEIGHT > bottom) {
+        element.scrollTop = offset + ROW_HEIGHT - element.clientHeight;
+      }
+
+      if (focus) {
+        requestAnimationFrame(() => buttonRefs.current.get(id)?.focus());
+      }
     }
 
     // Keep the cursor in range as the list shrinks (e.g. after an archive).
@@ -275,6 +311,57 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
       [threads, place],
     );
 
+    /*
+     * §5.5's list rendered every thread it had. At the 2,000-thread ceiling the
+     * Gmail walk uses that measured 43,411 DOM nodes and a 299ms lag on a
+     * single `j` — worse than any animation in the product, on its most-used
+     * key. The spec asks for virtualization on O4 and on Settings → Senders and
+     * is silent here, because it describes date-group headers rather than a
+     * plain list; this keeps the headers and windows around them.
+     */
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [scrollTop, setScrollTop] = useState(0);
+    const [viewportHeight, setViewportHeight] = useState(800);
+
+    useEffect(() => {
+      const element = scrollRef.current;
+      if (!element) return;
+      // The fallback matters: a viewport of 0 would render an empty window, so
+      // a height we cannot measure has to be generous rather than nothing.
+      const measure = () => setViewportHeight(element.clientHeight || 800);
+      measure();
+
+      window.addEventListener('resize', measure);
+      // The column also changes height without the window doing so — the
+      // offline banner appearing, the bulk bar replacing the header.
+      const observer =
+        typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+      observer?.observe(element);
+
+      return () => {
+        window.removeEventListener('resize', measure);
+        observer?.disconnect();
+      };
+    }, []);
+
+    // setCursor runs before `groups` exists in source order, and needs the
+    // current value rather than the one captured when it was defined.
+    const groupsRef = useRef(groups);
+    groupsRef.current = groups;
+
+    const windowed = useMemo(
+      () =>
+        groupedWindow({
+          groups: groups.map((g) => ({ label: g.label, rows: g.threads })),
+          scrollTop,
+          viewportHeight,
+          rowHeight: ROW_HEIGHT,
+          headerHeight: GROUP_HEADER_HEIGHT,
+          overscan: 6,
+        }),
+      [groups, scrollTop, viewportHeight],
+    );
+
     const ariaLabel =
       place === 'inbox' && unreadCount
         ? `${title}, ${formatCount(unreadCount)} unread`
@@ -337,18 +424,31 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
             onSendTest={onSendTest}
           />
         ) : (
-          <div className={styles.scroll}>
+          <div
+            className={styles.scroll}
+            ref={scrollRef}
+            onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+          >
             <div role="list" aria-label={ariaLabel} className={styles.list}>
+              <div style={{ height: windowed.topPad }} aria-hidden="true" />
               {(() => {
-                let rowIndex = -1;
-                return groups.map((group) => (
-                  <Fragment key={group.label}>
-                    <div className={cn('t-mono-sm', styles.groupHeader)} aria-hidden="true">
-                      {group.label}
-                    </div>
-                    {group.threads.map((t) => {
-                      rowIndex += 1;
-                      const idx = rowIndex;
+                return windowed.items.map((item) => {
+                  if (item.kind === 'header') {
+                    return (
+                      <div
+                        key={`h-${item.label}`}
+                        className={cn('t-mono-sm', styles.groupHeader)}
+                        aria-hidden="true"
+                      >
+                        {item.label}
+                      </div>
+                    );
+                  }
+                  return (
+                    <Fragment key={item.value!.id}>
+                    {(() => {
+                      const t = item.value!;
+                      const idx = item.rowIndex!;
                       const last = t.messages[t.messages.length - 1];
                       const senderAddr = last?.isFromUser
                         ? (t.messages.find((m) => !m.isFromUser)?.from ?? last.from)
@@ -386,10 +486,12 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
                           }}
                         />
                       );
-                    })}
-                  </Fragment>
-                ));
+                    })()}
+                    </Fragment>
+                  );
+                });
               })()}
+              <div style={{ height: windowed.bottomPad }} aria-hidden="true" />
             </div>
           </div>
         )}
