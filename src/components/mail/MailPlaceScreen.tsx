@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useCompose } from '../../store/compose';
@@ -21,6 +21,7 @@ import styles from './MailPlaceScreen.module.css';
 export function MailPlaceScreen({ place }: { place: Place }) {
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const bp = useBreakpoint();
   const online = useOnline();
 
@@ -81,8 +82,19 @@ export function MailPlaceScreen({ place }: { place: Place }) {
     return () => clearTimeout(timer);
   }, [place, openThread, markRead]);
 
+  /**
+   * Every navigation inside a place carries the query string. Nothing
+   * user-facing lives there today, but `?scenario=` does — and dropping it on
+   * the first thread you open made the dev harness lie about which state it
+   * was showing (§8.5 item 1 rests on that harness).
+   */
+  function pathIn(suffix = ''): string {
+    const search = params.toString();
+    return `/${place}${suffix}${search ? `?${search}` : ''}`;
+  }
+
   function goTo(id: string) {
-    navigate(`/${place}/t/${id}`);
+    navigate(pathIn(`/t/${id}`));
   }
 
   /**
@@ -95,7 +107,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
     if (id === threadId) {
       const idx = threads.findIndex((t) => t.id === id);
       const next = threads[idx + 1] ?? threads[idx - 1];
-      navigate(next ? `/${place}/t/${next.id}` : `/${place}`, { replace: true });
+      navigate(next ? pathIn(`/t/${next.id}`) : pathIn(), { replace: true });
     }
     void setPlace(id, otherPlace);
   }
@@ -103,12 +115,12 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   function archiveMany(ids: string[]) {
     const includesOpen = Boolean(threadId) && ids.includes(threadId as string);
     ids.forEach((id) => void setPlace(id, otherPlace));
-    if (includesOpen) navigate(`/${place}`, { replace: true });
+    if (includesOpen) navigate(pathIn(), { replace: true });
   }
 
   function closeThread(focusBack: boolean) {
     const prevId = threadId;
-    navigate(`/${place}`);
+    navigate(pathIn());
     if (focusBack && prevId) {
       requestAnimationFrame(() => listRef.current?.focusThread(prevId));
     }

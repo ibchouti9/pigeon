@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MockMailProvider } from '../../../data/mock/mockProvider';
 import type {
   Account,
   Address,
@@ -128,5 +130,50 @@ describe('archiving a thread', () => {
       expect(useMail.getState().inbox.map((t) => t.id)).toEqual(['t2']);
     });
     expect(useMail.getState().archive.map((t) => t.id)).toEqual(['t1']);
+  });
+});
+
+/**
+ * `?scenario=` is how §8.5 item 1's dev harness picks which empty/loading/error
+ * state a screen renders. Every navigation inside a place used to rebuild the
+ * path from scratch, so opening the first thread dropped the parameter and the
+ * harness stopped saying which state it was showing.
+ */
+describe('navigation inside a place keeps the query string', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    MockMailProvider.reset();
+    useMail.getState().setProvider(new MockMailProvider());
+  });
+
+  it('carries ?scenario through opening and closing a thread', async () => {
+    const user = userEvent.setup();
+    await useMail.getState().loadThreads('inbox');
+    const first = useMail.getState().inbox[0];
+    let url = '';
+    function Spy() {
+      const location = useLocation();
+      url = location.pathname + location.search;
+      return null;
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/inbox?scenario=normal']}>
+        <Routes>
+          <Route path="/inbox" element={<MailPlaceScreen place="inbox" />} />
+          <Route path="/inbox/t/:threadId" element={<MailPlaceScreen place="inbox" />} />
+        </Routes>
+        <Spy />
+      </MemoryRouter>,
+    );
+
+    const sender =
+      first.messages.find((m) => !m.isFromUser)?.from ?? first.messages[0].from;
+    const row = await screen.findByRole('button', {
+      name: new RegExp(sender.name || sender.email),
+    });
+    await user.click(row);
+
+    await waitFor(() => expect(url).toMatch(/^\/inbox\/t\/.+\?scenario=normal$/));
   });
 });
