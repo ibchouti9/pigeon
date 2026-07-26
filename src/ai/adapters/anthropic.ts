@@ -8,6 +8,12 @@ const API_VERSION = '2023-06-01';
 /**
  * USD per million tokens. Reported in Settings → Assistant; Pigeon never caps
  * or bills (D46).
+ *
+ * These keys are also the curated model list O2 offers, via CURATED_MODELS.
+ * `claude-sonnet-5` is deliberate and is not a typo for the `claude-sonnet-4-5`
+ * §C-27 names: Sonnet 5 is the current model and 4-5 is the previous
+ * generation. D45's whole rationale is that this list gets updated in one
+ * place — this is that place.
  */
 const PRICING: Record<string, ModelPricing> = {
   'claude-sonnet-5': { input: 3, output: 15 },

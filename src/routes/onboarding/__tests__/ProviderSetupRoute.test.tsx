@@ -8,6 +8,14 @@ import type { TestResult } from '../../../ai/types';
 
 vi.mock('../../../ai/client', () => ({
   testConnection: vi.fn(),
+  CURATED_MODELS: {
+    anthropic: ['claude-sonnet-4-5', 'claude-haiku-4-5'],
+    openai: ['gpt-5.1', 'gpt-5.1-mini'],
+    google: ['gemini-3-pro', 'gemini-3-flash'],
+    local: [],
+    demo: ['demo'],
+    none: [],
+  },
 }));
 
 const mockedTest = vi.mocked(testConnection);

@@ -9,7 +9,13 @@ import styles from './SenderCard.module.css';
 
 export interface SenderCardProps {
   entry: HeldSender;
-  hasProvider: boolean;
+  /**
+   * The live AI read for this sender (`useScreenerAi().reads[senderId]`).
+   * Undefined for any reason — no provider, the Screener-reads toggle is
+   * off, still loading, or the call failed — and section 5 is simply
+   * omitted (§5.7 "Per-card AI read failed"), never shown empty.
+   */
+  aiRead?: string;
   /** Set while an approve/decline decision is animating out (§4.6). */
   deciding?: 'approved' | 'declined' | null;
   /**
@@ -37,7 +43,7 @@ export interface SenderCardProps {
 export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function SenderCard(
   {
     entry,
-    hasProvider,
+    aiRead,
     deciding = null,
     enter,
     error,
@@ -52,10 +58,10 @@ export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function Send
 ) {
   const nameId = useId();
   const subjectId = useId();
-  const { sender, messages, aiRead } = entry;
+  const { sender, messages } = entry;
   const first = messages[0];
   const heldMany = messages.length > 1;
-  const showRead = hasProvider && Boolean(aiRead);
+  const showRead = Boolean(aiRead);
 
   return (
     <article

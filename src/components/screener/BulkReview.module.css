@@ -109,8 +109,12 @@
   }
 }
 
-/* §3.3 ROW DEPART — opacity first, then height + margin collapse. */
+/* §3.3 ROW DEPART — opacity first, then height + margin collapse, staggered
+   30ms per row via the `--stagger` custom property (set inline per row, since
+   a plain inline `transition-delay` would clobber the two-step delay below
+   instead of composing with it). */
 .collapsing {
+  --stagger: 0ms;
   overflow: hidden;
   opacity: 0;
   height: 0 !important;
@@ -118,10 +122,10 @@
   padding-bottom: 0;
   border-bottom-width: 0;
   transition:
-    opacity 90ms var(--ease-exit),
-    height 90ms var(--ease-exit) 90ms,
-    padding 90ms var(--ease-exit) 90ms,
-    border-width 90ms var(--ease-exit) 90ms;
+    opacity 90ms var(--ease-exit) var(--stagger),
+    height 90ms var(--ease-exit) calc(var(--stagger) + 90ms),
+    padding 90ms var(--ease-exit) calc(var(--stagger) + 90ms),
+    border-width 90ms var(--ease-exit) calc(var(--stagger) + 90ms);
 }
 
 .failed {

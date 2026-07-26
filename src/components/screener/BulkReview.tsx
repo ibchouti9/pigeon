@@ -16,7 +16,8 @@ import styles from './BulkReview.module.css';
 export interface BulkReviewProps {
   held: HeldSender[];
   status: LoadStatus;
-  hasProvider: boolean;
+  /** Sender id → live AI read, from `useScreenerAi().reads`. */
+  reads: Record<string, string>;
   online: boolean;
   checked: Set<string>;
   onCheckedChange: (next: Set<string>) => void;
@@ -39,7 +40,7 @@ interface Acting {
 export function BulkReview({
   held,
   status,
-  hasProvider,
+  reads,
   online,
   checked,
   onCheckedChange,
@@ -234,7 +235,7 @@ export function BulkReview({
                 isFailed && styles.failed,
                 cursorId === id && styles.cursor,
               )}
-              style={isActing ? { transitionDelay: `${index * 30}ms` } : undefined}
+              style={isActing ? ({ '--stagger': `${index * 30}ms` } as React.CSSProperties) : undefined}
             >
               <span className={styles.checkboxCell} onClick={(e) => e.stopPropagation()}>
                 <Checkbox
@@ -254,9 +255,7 @@ export function BulkReview({
                 <Monogram name={row.sender.name} email={row.sender.email} size={28} />
                 <span className={cn('t-base', 'truncate', styles.name)}>{displayName(row.sender)}</span>
                 <span className={cn('t-sm', 'truncate', styles.subject)}>{first.subject}</span>
-                {hasProvider && row.aiRead && (
-                  <span className={cn('t-xs', styles.aiRead)}>◆ {row.aiRead}</span>
-                )}
+                {reads[id] && <span className={cn('t-xs', styles.aiRead)}>◆ {reads[id]}</span>}
               </button>
 
               {isActing && acting && (

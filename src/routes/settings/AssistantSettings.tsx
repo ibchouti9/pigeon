@@ -105,7 +105,13 @@ export function AssistantSettings() {
       <section className={styles.providerBlock}>
         <h2 className="visually-hidden">Provider</h2>
 
-        {editing && <ProviderPanel mount="settings" />}
+        {editing && (
+          <ProviderPanel
+            mount="settings"
+            onSaved={() => setEditing(false)}
+            onCancel={() => setEditing(false)}
+          />
+        )}
 
         {!editing && !connected && (
           <div className={styles.empty}>

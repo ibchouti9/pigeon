@@ -14,7 +14,8 @@ import styles from './CardStack.module.css';
 export interface CardStackProps {
   held: HeldSender[];
   status: LoadStatus;
-  hasProvider: boolean;
+  /** Sender id → live AI read, from `useScreenerAi().reads`. */
+  reads: Record<string, string>;
   online: boolean;
   onRead: (senderId: string) => void;
   onToggleView: () => void;
@@ -29,7 +30,7 @@ type Overlay =
  * behind cards are decorative fills positioned with opposing insets against
  * a 560px wrapper that takes its height from the live card.
  */
-export function CardStack({ held, status, hasProvider, online, onRead, onToggleView }: CardStackProps) {
+export function CardStack({ held, status, reads, online, onRead, onToggleView }: CardStackProps) {
   const decide = useMail((s) => s.decide);
   const heldSheetSenderId = useUi((s) => s.heldSheetSenderId);
   const countId = useId();
@@ -82,8 +83,8 @@ export function CardStack({ held, status, hasProvider, online, onRead, onToggleV
       setTopId(next.sender.id);
       setEnter(dir === 1 ? 'fromRight' : 'fromLeft');
       const ms = MOTION.base();
-      window.setTimeout(() => setOverlay(null), ms);
-      window.setTimeout(() => setEnter(null), ms);
+      setTimeout(() => setOverlay(null), ms);
+      setTimeout(() => setEnter(null), ms);
     },
     [overlay, ordered],
   );
@@ -104,7 +105,7 @@ export function CardStack({ held, status, hasProvider, online, onRead, onToggleV
       setEnter('rise');
 
       const totalMs = Math.max(MOTION.departDelay() + MOTION.base(), MOTION.stamp());
-      const clearTimer = window.setTimeout(() => {
+      const clearTimer = setTimeout(() => {
         setOverlay(null);
         setEnter(null);
       }, totalMs);
@@ -112,13 +113,13 @@ export function CardStack({ held, status, hasProvider, online, onRead, onToggleV
       const ok = await decide(senderId, decision);
       if (!ok) {
         // §3.2 3d — roll the local animation back too; never leave the card gone.
-        window.clearTimeout(clearTimer);
+        clearTimeout(clearTimer);
         setOverlay(null);
         setEnter(null);
         setTopId(senderId);
         setErrorId(senderId);
         if (errorTimer.current) clearTimeout(errorTimer.current);
-        errorTimer.current = window.setTimeout(() => setErrorId(null), 3000);
+        errorTimer.current = setTimeout(() => setErrorId(null), 3000);
         return;
       }
 
@@ -198,10 +199,11 @@ export function CardStack({ held, status, hasProvider, online, onRead, onToggleV
         {position} of {plural(held.length, 'sender')} waiting.
       </p>
 
-      <div className={styles.wrapper}>
+      <div className={styles.wrapper} data-testid="card-stack-wrapper">
         {behind2 && (
           <div
             aria-hidden="true"
+            data-testid="card-behind-2"
             className={cn(styles.behind, styles.behind2)}
             style={{
               left: BEHIND_INSETS[1].left,
@@ -214,6 +216,7 @@ export function CardStack({ held, status, hasProvider, online, onRead, onToggleV
         {behind1 && (
           <div
             aria-hidden="true"
+            data-testid="card-behind-1"
             className={styles.behind}
             style={{
               left: BEHIND_INSETS[0].left,
@@ -227,7 +230,7 @@ export function CardStack({ held, status, hasProvider, online, onRead, onToggleV
         <SenderCard
           ref={cardRef}
           entry={top}
-          hasProvider={hasProvider}
+          aiRead={reads[top.sender.id]}
           disabled={!online}
           enter={enter}
           error={errorId === top.sender.id}
@@ -246,7 +249,7 @@ export function CardStack({ held, status, hasProvider, online, onRead, onToggleV
           >
             <SenderCard
               entry={overlay.entry}
-              hasProvider={hasProvider}
+              aiRead={reads[overlay.entry.sender.id]}
               interactive={false}
               deciding={overlay.kind === 'approved' || overlay.kind === 'declined' ? overlay.kind : null}
             />

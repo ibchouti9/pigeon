@@ -11,23 +11,29 @@ export interface ScreenerDigestProps {
   heldCount: number;
   digest?: Digest;
   state: 'loading' | 'ready' | 'failed';
+  /** A provider is connected at all (§5.13c Provider block). */
   hasProvider: boolean;
+  /** The "Read new senders for the Screener" toggle (§5.13c Behaviour block). */
+  readsEnabled: boolean;
   onRetry: () => void;
   /** A grouping chip was clicked — switch to Bulk review with those senders checked. */
   onSelectGroup: (senderIds: string[]) => void;
 }
 
 /**
- * §5.7 digest block (C-10 `AiBlock kind="digest"`), degrading per C-28 when
- * no provider is connected and per §7.6 "Digest failed" when the assistant
- * call itself errors. The AI call that produces `digest` lives in
- * `useScreenerDigest`; this component only renders what it's given.
+ * §5.7 digest block (C-10 `AiBlock kind="digest"`). Degrades per C-28 when no
+ * provider is connected, and to a bare count (no body/action) when the user
+ * has switched the Screener-reads toggle off (§5.13c) — both distinct from
+ * the "Digest failed" state, which keeps the same plain count plus
+ * [Try again] (§7.6). The AI call itself lives in `src/ai/useScreenerAi`;
+ * this component only renders what it's given.
  */
 export function ScreenerDigest({
   heldCount,
   digest,
   state,
   hasProvider,
+  readsEnabled,
   onRetry,
   onSelectGroup,
 }: ScreenerDigestProps) {
@@ -47,6 +53,10 @@ export function ScreenerDigest({
         }
       />
     );
+  }
+
+  if (!readsEnabled) {
+    return <DegradedAiBlock className={styles.wrap} headline={plainCount} />;
   }
 
   if (state === 'failed') {

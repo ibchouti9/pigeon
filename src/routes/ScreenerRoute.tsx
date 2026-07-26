@@ -11,7 +11,8 @@ import { ScreenerDigest } from '../components/screener/ScreenerDigest';
 import { CardStack } from '../components/screener/CardStack';
 import { BulkReview } from '../components/screener/BulkReview';
 import { HeldMessageSheet } from '../components/screener/HeldMessageSheet';
-import { useScreenerDigest } from '../components/screener/useScreenerDigest';
+import { useScreenerAi } from '../ai/useScreenerAi';
+import { useAssistant, useBehaviour } from '../ai/useAssistant';
 import styles from './ScreenerRoute.module.css';
 
 type View = 'stack' | 'list';
@@ -68,7 +69,9 @@ export function ScreenerRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, held.length, view]);
 
-  const digestQuery = useScreenerDigest(held, status === 'ready');
+  const { digest, digestState, retryDigest, reads } = useScreenerAi();
+  const { connected } = useAssistant();
+  const { screenerReads } = useBehaviour();
 
   function setView(next: View) {
     const params = new URLSearchParams(searchParams);
@@ -138,10 +141,11 @@ export function ScreenerRoute() {
           <>
             <ScreenerDigest
               heldCount={held.length}
-              digest={digestQuery.digest}
-              state={digestQuery.state}
-              hasProvider={digestQuery.hasProvider}
-              onRetry={digestQuery.retry}
+              digest={digest ?? undefined}
+              state={digestState === 'idle' ? 'loading' : digestState}
+              hasProvider={connected}
+              readsEnabled={screenerReads}
+              onRetry={retryDigest}
               onSelectGroup={selectGroup}
             />
 
@@ -150,7 +154,7 @@ export function ScreenerRoute() {
                 <CardStack
                   held={held}
                   status={status}
-                  hasProvider={digestQuery.hasProvider}
+                  reads={reads}
                   online={online}
                   onRead={openSheet}
                   onToggleView={() => setView('list')}
@@ -161,7 +165,7 @@ export function ScreenerRoute() {
                 <BulkReview
                   held={held}
                   status={status}
-                  hasProvider={digestQuery.hasProvider}
+                  reads={reads}
                   online={online}
                   checked={checked}
                   onCheckedChange={setChecked}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';
-import { testConnection } from '../../ai/client';
+import { CURATED_MODELS, testConnection } from '../../ai/client';
 import {
   DEFAULT_BASE_URL,
   PROVIDER_LABELS,
@@ -27,16 +27,15 @@ type Status =
   | 'offline';
 
 /**
- * The curated lists from C-27. Kept local rather than imported from
- * `src/ai/client.ts`'s `CURATED_MODELS` — that map currently has a typo
- * (`claude-sonnet-5` instead of `claude-sonnet-4-5`), so this is the
- * spec-accurate source of truth for the select. See the task report for the
- * cross-agent flag on that bug.
+ * D45 — a curated list per provider, updated in one place. That one place is
+ * `CURATED_MODELS`, which the adapters also price against; duplicating it here
+ * is how the select and the billing table drift apart.
  */
 const MODEL_OPTIONS: Record<RemoteProvider, string[]> = {
-  anthropic: ['claude-sonnet-4-5', 'claude-haiku-4-5'],
-  openai: ['gpt-5.1', 'gpt-5.1-mini'],
-  google: ['gemini-3-pro', 'gemini-3-flash'],
+  anthropic: CURATED_MODELS.anthropic,
+  openai: CURATED_MODELS.openai,
+  google: CURATED_MODELS.google,
+  demo: CURATED_MODELS.demo,
 };
 
 function statusMessage(status: Status, providerName: string, baseUrl: string, ms?: number): string {
@@ -79,6 +78,9 @@ function statusDotClass(status: Status): string | null {
 function provenanceNote(providerId: SelectableProvider): string {
   if (providerId === 'local') {
     return 'Nothing leaves your machine. Pigeon talks to the endpoint above and nowhere else.';
+  }
+  if (providerId === 'demo') {
+    return 'Demo replies are canned, not generated — nothing is sent anywhere. Connect a real provider any time in Settings → Assistant.';
   }
   return `Pigeon has no servers of its own — your key never leaves this browser except to reach ${PROVIDER_LABELS[providerId]}. Rotate or remove it any time in Settings → Assistant.`;
 }
@@ -142,6 +144,11 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
       setApiKey('');
       setModel('');
       setStatus(baseUrl.trim() ? 'entered' : 'empty');
+    } else if (id === 'demo') {
+      // No key, no base URL — canned replies, ready to test immediately.
+      setApiKey('');
+      setModel(MODEL_OPTIONS[id][0]);
+      setStatus('entered');
     } else {
       setApiKey('');
       setModel(MODEL_OPTIONS[id][0]);
@@ -215,6 +222,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
   }
 
   const isLocal = providerId === 'local';
+  const isDemo = providerId === 'demo';
   const providerName = providerId ? PROVIDER_LABELS[providerId] : '';
   const invalid =
     status === 'rejected' ||
@@ -224,7 +232,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
   const canTest =
     providerId !== null &&
     status !== 'testing' &&
-    (isLocal ? baseUrl.trim().length > 0 : apiKey.trim().length > 0);
+    (isDemo || (isLocal ? baseUrl.trim().length > 0 : apiKey.trim().length > 0));
   const canSave = status === 'connected' && (!isLocal || Boolean(model));
 
   const modelOptions: string[] =
@@ -240,25 +248,29 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
       {providerId && (
         <>
           <section className={styles.section}>
-            <label htmlFor="provider-key" className={cn('t-mono-xs', styles.sectionLabel)}>
-              {isLocal ? 'BASE URL' : 'API KEY'}
-            </label>
+            {!isDemo && (
+              <label htmlFor="provider-key" className={cn('t-mono-xs', styles.sectionLabel)}>
+                {isLocal ? 'BASE URL' : 'API KEY'}
+              </label>
+            )}
             <div className={styles.keyRow}>
-              <Input
-                id="provider-key"
-                size="xs"
-                mono={!isLocal}
-                type={isLocal ? 'text' : revealed ? 'text' : 'password'}
-                autoComplete="off"
-                spellCheck={false}
-                value={isLocal ? baseUrl : apiKey}
-                onChange={(e) => (isLocal ? updateBaseUrl(e.target.value) : updateKey(e.target.value))}
-                invalid={invalid}
-                aria-describedby="provider-status"
-                className={styles.keyInput}
-                placeholder={isLocal ? DEFAULT_BASE_URL : undefined}
-              />
-              {!isLocal && (
+              {!isDemo && (
+                <Input
+                  id="provider-key"
+                  size="xs"
+                  mono={!isLocal}
+                  type={isLocal ? 'text' : revealed ? 'text' : 'password'}
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={isLocal ? baseUrl : apiKey}
+                  onChange={(e) => (isLocal ? updateBaseUrl(e.target.value) : updateKey(e.target.value))}
+                  invalid={invalid}
+                  aria-describedby="provider-status"
+                  className={styles.keyInput}
+                  placeholder={isLocal ? DEFAULT_BASE_URL : undefined}
+                />
+              )}
+              {!isDemo && !isLocal && (
                 <button
                   type="button"
                   aria-pressed={revealed}
