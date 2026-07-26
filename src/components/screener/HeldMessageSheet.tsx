@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import type { HeldSender } from '../../types';
 import { useMail } from '../../store/mail';
 import { isTypingTarget, useUi } from '../../store/ui';
 import { useOnline } from '../../hooks/useOnline';
@@ -35,21 +36,28 @@ export function HeldMessageSheet() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  const deciding = useMail((s) => s.deciding);
-
   /*
-   * `decide` removes the sender from `held` the moment it is called and only
-   * puts it back if the call fails, so the entry vanishes for the whole
-   * round-trip. The sheet used to read that as "this message didn't load" and
-   * show a red error over the user's own approve — a flash on the mock, a
-   * visible false error on a real connection. It keeps rendering what it opened
-   * with until the decision resolves.
+   * `decide` removes the sender from `held` the moment it is called, and on
+   * success it never comes back — so the entry is gone for the whole round-trip
+   * and for the frame between the call resolving and the sheet closing.
+   * Reading that as "this message didn't load" put a red error over the user's
+   * own approve.
+   *
+   * The sheet holds what it opened with for as long as it is open on that
+   * sender, and forgets it when it opens on another. The error branch is
+   * therefore reached in one case only: a sender this sheet never had — a
+   * stale link to someone already decided.
    */
   const live = senderId ? held.find((h) => h.sender.id === senderId) : undefined;
-  const lastEntry = useRef(live);
+  const lastEntry = useRef<HeldSender | undefined>(undefined);
+  const lastSenderId = useRef(senderId);
+  if (senderId !== lastSenderId.current) {
+    lastSenderId.current = senderId;
+    lastEntry.current = undefined;
+  }
   if (live) lastEntry.current = live;
-  const entry = live ?? (deciding > 0 ? lastEntry.current : undefined);
-  /** Narrowed once so the error branch's footer can use it. */
+
+  const entry = live ?? lastEntry.current;
   const retained = lastEntry.current;
 
   const open = Boolean(senderId);
