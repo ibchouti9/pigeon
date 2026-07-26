@@ -68,6 +68,12 @@ Vitest and Testing Library. Test behaviour the spec names, not implementation
 detail — "declining silences without touching the inbox" is a good test;
 "`decideSender` sets `status`" is not.
 
+**Check that your test bites.** After writing a regression test, break the fix
+on purpose — delete the guard, revert the line — and confirm the test fails.
+Several tests in this codebase passed against the bug they were written for
+until they were checked this way; one asserted a cap that *was* the bug. A test
+that cannot fail is worse than no test, because it reads as coverage.
+
 ## Commits
 
 Small and focused. Explain *why* in the body, not what — the diff already says
