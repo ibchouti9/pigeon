@@ -111,6 +111,29 @@ describe('sender list keyboard (§8.1)', () => {
     expect(active.closest('[data-sender-row]')?.getAttribute('data-sender-row')).toBe('1');
   });
 
+  /**
+   * The cursor lands on the row rather than its Decline button, so the row has
+   * to say who it is. Without a name it was an unlabelled generic — and the
+   * change that moved focus there was made for screen-reader users.
+   */
+  it('names the row it puts the cursor on', async () => {
+    const user = userEvent.setup();
+    await renderSenders();
+
+    await user.keyboard('j');
+    await waitFor(() =>
+      expect((document.activeElement as HTMLElement).getAttribute('data-sender-row')).toBe('1'),
+    );
+
+    const row = document.activeElement as HTMLElement;
+    const label = row.getAttribute('aria-label') ?? '';
+    expect(row).toHaveAttribute('role', 'listitem');
+    expect(label).toMatch(/@/);
+    expect(label).toMatch(/approved|declined/);
+    // The name comes first, so it is what a screen reader says on arrival.
+    expect(label.split(',')[0].trim().length).toBeGreaterThan(0);
+  });
+
   it('resets to the top when the filter changes', async () => {
     const user = userEvent.setup();
     await renderSenders();

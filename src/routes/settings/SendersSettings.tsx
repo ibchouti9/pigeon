@@ -244,7 +244,7 @@ export function SendersSettings() {
         )}
 
         {status === 'ready' && list.length > 0 && (
-          <div ref={containerRef} className={styles.list}>
+          <div ref={containerRef} className={styles.list} role="list">
             <div style={{ height: topPad }} aria-hidden="true" />
             {visible.map((sender, i) => {
               const index = startIndex + i;
@@ -253,6 +253,17 @@ export function SendersSettings() {
                 key={sender.id}
                 data-testid={`sender-row-${sender.id}`}
                 data-sender-row={index}
+                role="listitem"
+                /*
+                 * The cursor lands here rather than on the row's Decline
+                 * button, so the row has to say who it is. Without a name it
+                 * was an unlabelled generic — and the change that moved focus
+                 * here was made for screen-reader and keyboard users in the
+                 * first place.
+                 */
+                aria-label={`${sender.name}, ${sender.email}, ${
+                  tab === 'approved' ? 'approved' : 'declined'
+                }`}
                 tabIndex={index === cursor ? 0 : -1}
                 className={cn(
                   // §8.2 — the ring renders inset on a list row, where an
