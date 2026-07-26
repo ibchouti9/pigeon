@@ -57,7 +57,15 @@ export interface ScreenerAi {
  * fail quietly — a failed read omits the card section rather than showing an
  * error on the card (§5.7).
  */
-export function useScreenerAi(): ScreenerAi {
+/**
+ * @param eager request a read for every held sender rather than a lookahead.
+ * Bulk review (§5.8) puts the read in a column on every row at once, so a
+ * lookahead sized for the stack leaves most of the list permanently blank.
+ */
+/** How far ahead of the top card the stack pre-fetches reads. */
+const STACK_LOOKAHEAD = 4;
+
+export function useScreenerAi({ eager = false }: { eager?: boolean } = {}): ScreenerAi {
   const { client } = useAssistant();
   const { screenerReads } = useBehaviour();
   const held = useMail((s) => s.held);
@@ -112,9 +120,9 @@ export function useScreenerAi(): ScreenerAi {
     const pending = held.filter((h) => !readRequests.current.has(h.sender.id));
     if (pending.length === 0) return;
 
-    // Only the cards a user will actually reach soon; the rest fill in as the
-    // stack advances.
-    for (const entry of pending.slice(0, 4)) {
+    // In the stack, only the cards a user will actually reach soon; the rest
+    // fill in as it advances. In bulk review every row is on screen already.
+    for (const entry of eager ? pending : pending.slice(0, STACK_LOOKAHEAD)) {
       readRequests.current.add(entry.sender.id);
       void client
         .readSender(entry, { replyCount: entry.sender.replyCount ?? 0, frequentContacts: [] })
@@ -133,7 +141,7 @@ export function useScreenerAi(): ScreenerAi {
           readRequests.current.delete(entry.sender.id);
         });
     }
-  }, [client, screenerReads, held]);
+  }, [client, screenerReads, held, eager]);
 
   return { digest, digestState, retryDigest: () => void runDigest(), reads };
 }

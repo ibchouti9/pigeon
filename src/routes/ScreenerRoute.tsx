@@ -93,7 +93,11 @@ export function ScreenerRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, held.length, view, deciding]);
 
-  const { digest, digestState, retryDigest, reads } = useScreenerAi();
+  // §5.8 puts the AI read in a column on every bulk row, so the list needs a
+  // read for all of them, not the stack's lookahead.
+  const { digest, digestState, retryDigest, reads } = useScreenerAi({
+    eager: view === 'list',
+  });
   const { connected } = useAssistant();
   const { screenerReads } = useBehaviour();
 

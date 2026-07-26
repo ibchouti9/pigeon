@@ -10,7 +10,7 @@ import { Monogram } from '../primitives/Monogram';
 import { Postmark } from '../primitives/Postmark';
 import { Icon } from '../primitives/Icon';
 import { SkeletonRows } from '../primitives/Feedback';
-import { MOTION } from './motion';
+import { MOTION, prefersReducedMotion } from './motion';
 import styles from './BulkReview.module.css';
 
 export interface BulkReviewProps {
@@ -54,6 +54,7 @@ export function BulkReview({
   const [anchorId, setAnchorId] = useState<string | null>(null);
   const [acting, setActing] = useState<Acting | null>(null);
   const [failed, setFailed] = useState<Map<string, 'approved' | 'declined'>>(new Map());
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const snapshot = useRef<Map<string, HeldSender>>(new Map());
   const actingRef = useRef<Acting | null>(null);
   const mounted = useRef(true);
@@ -163,19 +164,68 @@ export function BulkReview({
     if (!displayIds.length) return;
     const idx = cursorId ? displayIds.indexOf(cursorId) : -1;
     const next = idx === -1 ? 0 : Math.min(displayIds.length - 1, Math.max(0, idx + dir));
-    setCursorId(displayIds[next]);
+    setCursorTo(displayIds[next]);
+  }
+
+  /** §8.1 Shift+J/K — move the cursor and pull the selection along with it. */
+  function extendCursor(dir: 1 | -1) {
+    if (!displayIds.length) return;
+    const idx = cursorId ? displayIds.indexOf(cursorId) : -1;
+    const next = idx === -1 ? 0 : Math.min(displayIds.length - 1, Math.max(0, idx + dir));
+    const id = displayIds[next];
+    if (!id) return;
+
+    const selection = new Set(checked);
+    if (cursorId) selection.add(cursorId);
+    selection.add(id);
+    onCheckedChange(selection);
+    if (!anchorId) setAnchorId(cursorId ?? id);
+    setCursorTo(id);
+  }
+
+  /** Moving the cursor past the fold has to bring it into view with it. */
+  function setCursorTo(id: string | undefined) {
+    if (!id) return;
+    setCursorId(id);
+    rowRefs.current
+      .get(id)
+      ?.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (shortcutsBlocked(e)) return;
+
+      // §8.1 — Shift+J / Shift+K extend the selection through the list, the
+      // keyboard equivalent of the Shift-click the rows already support.
+      if (e.shiftKey && (e.key === 'J' || e.key === 'K')) {
+        extendCursor(e.key === 'J' ? 1 : -1);
+        e.preventDefault();
+        return;
+      }
+
       switch (e.key) {
         case 'j':
+        case 'ArrowDown':
           moveCursor(1);
           e.preventDefault();
           break;
         case 'k':
+        case 'ArrowUp':
           moveCursor(-1);
+          e.preventDefault();
+          break;
+        case 'Home':
+          setCursorTo(displayIds[0]);
+          e.preventDefault();
+          break;
+        case 'End':
+          setCursorTo(displayIds[displayIds.length - 1]);
+          e.preventDefault();
+          break;
+        case 'Enter':
+        case 'o':
+          if (cursorId) onOpenSheet(cursorId);
           e.preventDefault();
           break;
         case 'x':
@@ -243,6 +293,10 @@ export function BulkReview({
             <div
               key={id}
               role="listitem"
+              ref={(el) => {
+                if (el) rowRefs.current.set(id, el);
+                else rowRefs.current.delete(id);
+              }}
               className={cn(
                 styles.row,
                 isActing && acting?.phase === 'collapse' && styles.collapsing,

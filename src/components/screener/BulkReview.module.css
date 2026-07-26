@@ -44,8 +44,15 @@
   background: var(--color-surface-hover);
 }
 
+/*
+ * D29 — cursor, open thread and bulk selection have to be three distinct
+ * states. A hover-coloured fill made the keyboard cursor invisible the moment
+ * the pointer was anywhere in the list. Same inset outline C-5 uses on a thread
+ * row, which stays legible over any fill.
+ */
 .cursor {
-  background: var(--color-surface-hover);
+  outline: var(--border-width-emphasis) solid var(--color-focus);
+  outline-offset: -2px;
 }
 
 .checkboxCell {
