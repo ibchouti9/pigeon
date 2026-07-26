@@ -1,0 +1,167 @@
+/* C-13 Input, C-14 Checkbox, C-15 Switch */
+
+.input {
+  width: 100%;
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  border: var(--border-width-control) solid var(--color-border-control);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+[data-theme='dark'] .input {
+  background: var(--color-surface-sunken);
+}
+
+.md {
+  height: 40px;
+}
+
+.sm {
+  height: 36px;
+}
+
+.xs {
+  height: 34px;
+}
+
+.input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--color-text-tertiary);
+}
+
+.input:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.invalid {
+  border-color: var(--color-destructive);
+}
+
+.input:disabled {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-disabled);
+  border-color: var(--color-border-subtle);
+  cursor: not-allowed;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.helper {
+  margin-top: var(--space-2);
+  color: var(--color-text-tertiary);
+}
+
+.helperInvalid {
+  color: var(--color-text-destructive);
+}
+
+/* ---------- C-14 Checkbox ---------- */
+.checkbox {
+  appearance: none;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1.5px solid var(--color-border-control);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.checkbox:hover:not(:disabled) {
+  border-color: var(--color-text-primary);
+}
+
+.checkbox::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  background: var(--color-text-inverse);
+  clip-path: polygon(14% 44%, 0 65%, 40% 100%, 100% 16%, 84% 0, 39% 70%);
+}
+
+.checkbox:checked,
+.checkbox:indeterminate {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.checkbox:checked::before {
+  transform: scale(1);
+}
+
+.checkbox:indeterminate::before {
+  transform: scale(1);
+  width: 8px;
+  height: 2px;
+  clip-path: none;
+}
+
+.checkbox:disabled {
+  border-color: var(--color-border-subtle);
+  background: var(--color-surface-sunken);
+  cursor: not-allowed;
+}
+
+/* ---------- C-15 Switch ---------- */
+.switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-border-control);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.switch:hover:not(:disabled) {
+  background: var(--color-text-tertiary);
+}
+
+.switch[aria-checked='true'] {
+  background: var(--color-accent);
+}
+
+.switch[aria-checked='true']::after {
+  transform: translateX(16px);
+  background: var(--color-text-inverse);
+}
+
+.switch:disabled {
+  background: var(--color-border-subtle);
+  cursor: not-allowed;
+}
+
+.switch:disabled::after {
+  background: var(--color-text-disabled);
+}

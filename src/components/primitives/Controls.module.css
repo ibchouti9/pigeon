@@ -1,0 +1,135 @@
+/* C-16 Segmented control, C-17 Tabs, C-18 Chip, C-4 Badge */
+
+/* ---------- C-16 Segmented control ---------- */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
+}
+
+.segment {
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.segmentSelected {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 2px rgb(27 32 39 / 0.025), 0 6px 16px -4px rgb(27 32 39 / 0.05);
+}
+
+/* ---------- C-17 Tabs ---------- */
+.tablist {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: var(--border-hairline);
+}
+
+.tab {
+  position: relative;
+  height: 36px;
+  padding: 0 var(--space-4);
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+
+.tabSelected {
+  color: var(--color-text-primary);
+}
+
+.tabSelected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--color-accent);
+}
+
+/* ---------- C-18 Chip ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.chipFilter,
+.chipTone {
+  height: 28px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px solid var(--color-border-control);
+  color: var(--color-text-primary);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.chipFilter:hover:not(:disabled),
+.chipTone:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.chipSelected {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+}
+
+.chipRecipient {
+  height: 24px;
+  padding: 0 var(--space-2);
+  background: var(--color-surface-sunken);
+  border: 1px solid transparent;
+  color: var(--color-text-primary);
+}
+
+.chipInvalid {
+  border-color: var(--color-destructive);
+}
+
+/* D26 — a placeholder chip is replaced by typing over it, never removed. */
+.chipConfirm {
+  height: 24px;
+  padding: 0 var(--space-2);
+  background: var(--color-destructive-subtle);
+  color: var(--color-text-destructive);
+  font-family: var(--font-mono);
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.chipRemove:hover {
+  color: var(--color-text-primary);
+}
+
+/* ---------- C-4 Badge ---------- */
+.badgePlain {
+  color: var(--color-text-tertiary);
+}
+
+.badgeRing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-full);
+  color: var(--color-text-tertiary);
+}

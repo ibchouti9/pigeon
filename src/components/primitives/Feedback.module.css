@@ -1,0 +1,114 @@
+/* C-20 Empty state, C-21 Skeleton, C-23 Progress bar, C-25 Tooltip */
+
+/* ---------- C-21 Skeleton — static tinted blocks, no shimmer (D33) ---------- */
+.bar {
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-xs);
+}
+
+.circle {
+  flex: none;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-full);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+}
+
+.skeletonRowText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* ---------- C-20 Empty state ---------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 420px;
+  margin: auto;
+  padding: var(--space-8);
+}
+
+.emptyVisual {
+  margin-bottom: var(--space-6);
+  color: var(--color-border-subtle);
+}
+
+.emptyHeadline {
+  margin-bottom: var(--space-3);
+}
+
+.emptyBody {
+  color: var(--color-text-secondary);
+}
+
+.emptyActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+/* The blank card — one of only two visuals in the product (C-20). */
+.blankCard {
+  width: 100%;
+  max-width: var(--layout-card-width);
+  height: 200px;
+  background: var(--color-surface-held);
+  border: 1px dashed var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+}
+
+/* ---------- C-23 Progress bar ---------- */
+.track {
+  width: 100%;
+  height: 4px;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-base) var(--ease-standard);
+}
+
+.fillError {
+  background: var(--color-destructive);
+  transition: none;
+}
+
+/* ---------- C-25 Tooltip ---------- */
+.tooltipWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  padding: var(--space-2);
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
