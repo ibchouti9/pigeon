@@ -3,13 +3,14 @@ import { Icon } from '../../components/primitives/Icon';
 import { cn } from '../../lib/cn';
 import styles from './AboutSettings.module.css';
 
-/**
- * package.json's "version" field, hardcoded here — this route can't add
- * `resolveJsonModule` to tsconfig.app.json (a shared file outside this
- * agent's scope). Keep in sync with package.json manually.
- */
 /** Injected by Vite from package.json at build time. */
 const PIGEON_VERSION = __APP_VERSION__;
+
+/**
+ * Placeholder until the project has a real remote. §5.13d shows the repository
+ * on this page, and a link that 404s is worse than an honest one — change this
+ * and the README together when the repo exists.
+ */
 const REPO_URL = 'https://github.com/pigeon-mail/pigeon';
 
 export function AboutSettings() {

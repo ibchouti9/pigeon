@@ -38,7 +38,10 @@ export interface ThreadReaderProps {
    * hasn't arrived. §5.6 asks the header to show it rather than a skeleton.
    */
   pendingSubject?: string;
-  /** Undefined summary + summaryState renders nothing — another agent wires the AI. */
+  /**
+   * Both undefined renders no block at all — which is C-28's degraded form, not
+   * an empty tinted box. `MailPlaceScreen` supplies them from `useThreadSummary`.
+   */
   summary?: string[];
   summaryState?: AiBlockState;
   onRetrySummary?: () => void;
