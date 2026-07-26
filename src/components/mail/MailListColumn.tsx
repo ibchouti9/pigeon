@@ -19,7 +19,7 @@ import type { Place, Thread } from '../../types';
 import type { LoadStatus } from '../../store/mail';
 import { useUi } from '../../store/ui';
 import { useCompose } from '../../store/compose';
-import { isTypingTarget } from '../../store/ui';
+import { shortcutsBlocked } from '../../store/ui';
 import { Button } from '../primitives/Button';
 import { EmptyState, SkeletonRows } from '../primitives/Feedback';
 import { groupThreadsByDate } from './grouping';
@@ -157,8 +157,7 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
 
     useEffect(() => {
       function onKeyDown(e: KeyboardEvent) {
-        if (isTypingTarget(e.target)) return;
-        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (shortcutsBlocked(e)) return;
         if (threads.length === 0) return;
 
         if (e.shiftKey && (e.key === 'J' || e.key.toLowerCase() === 'j')) {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMail, type LoadStatus } from '../../store/mail';
-import { useUi, isTypingTarget } from '../../store/ui';
+import { shortcutsBlocked } from '../../store/ui';
 import { cn } from '../../lib/cn';
 import { displayName, formatCount, plural } from '../../lib/format';
 import type { HeldSender } from '../../types';
@@ -168,9 +168,7 @@ export function BulkReview({
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (isTypingTarget(e.target)) return;
-      const ui = useUi.getState();
-      if (ui.heldSheetSenderId || ui.dialog || ui.shortcutsOpen) return;
+      if (shortcutsBlocked(e)) return;
       switch (e.key) {
         case 'j':
           moveCursor(1);

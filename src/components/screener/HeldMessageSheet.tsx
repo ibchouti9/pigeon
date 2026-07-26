@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { useMail } from '../../store/mail';
-import { useUi } from '../../store/ui';
+import { isTypingTarget, useUi } from '../../store/ui';
 import { useOnline } from '../../hooks/useOnline';
 import { cn } from '../../lib/cn';
 import { displayName, formatBytes, formatMessageTimestamp, formatPostmarkDate, plural } from '../../lib/format';
@@ -72,8 +72,11 @@ export function HeldMessageSheet() {
     if (!open || !entry) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'a' && e.key !== 'd') return;
-      const target = e.target;
-      if (target instanceof HTMLElement && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      // The sheet is the top layer here, so it checks typing and modifiers
+      // itself rather than going through shortcutsBlocked (which would see its
+      // own open state and refuse).
+      if (isTypingTarget(e.target)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!online || !entry) return;
       e.preventDefault();
       void decide(entry.sender.id, e.key === 'a' ? 'approved' : 'declined').then((ok) => {

@@ -5,6 +5,13 @@ export interface Toast {
   message: string;
   tone: 'confirm' | 'error';
   action?: { label: string; run: () => void | Promise<void> };
+  /**
+   * Whether `action` undoes something. §8.1 binds ⌘Z to "the newest available
+   * action (activates the top toast's undo)" — an error toast's [Try again]
+   * carries an action too, and re-running the thing that just failed is the
+   * opposite of an undo.
+   */
+  undoable?: boolean;
   /** ms. D9 — 8s for undo, 3s for plain confirmations, never for errors. */
   duration: number | null;
 }
@@ -34,7 +41,7 @@ export const useToasts = create<ToastState>((set, get) => ({
   dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
   undoNewest: () => {
-    const newest = get().toasts.find((t) => t.action);
+    const newest = get().toasts.find((t) => t.action && t.undoable);
     if (!newest?.action) return false;
     get().dismiss(newest.id);
     void newest.action.run();
@@ -53,6 +60,7 @@ export const toast = {
       tone: 'confirm',
       duration: 8000,
       action: { label, run },
+      undoable: true,
     });
   },
   error(message: string, action?: { label: string; run: () => void | Promise<void> }) {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUi, isTypingTarget } from '../store/ui';
+import { useUi, isTypingTarget, shortcutsBlocked } from '../store/ui';
 import { useCompose } from '../store/compose';
 import { useToasts } from '../store/toast';
 
@@ -43,7 +43,10 @@ export function useGlobalShortcuts(searchRef: React.RefObject<HTMLInputElement |
         return;
       }
 
-      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+      // Below here everything is an unmodified single key, so the modal layers
+      // block it: `c` must not open a composer behind an open dialog, and
+      // `g i` must not navigate out from under the held-message sheet.
+      if (shortcutsBlocked(e)) return;
 
       // `g` then i / s / a / ,
       if (pendingG.current) {

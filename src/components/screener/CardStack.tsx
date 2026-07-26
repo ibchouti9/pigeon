@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useMail, type LoadStatus } from '../../store/mail';
-import { useUi, isTypingTarget } from '../../store/ui';
+import { shortcutsBlocked, useUi } from '../../store/ui';
 import { displayName, plural } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import type { HeldSender } from '../../types';
@@ -140,9 +140,7 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (isTypingTarget(e.target)) return;
-      const ui = useUi.getState();
-      if (ui.heldSheetSenderId || ui.dialog || ui.shortcutsOpen) return;
+      if (shortcutsBlocked(e)) return;
       switch (e.key) {
         case 'a':
           void handleDecide('approved');

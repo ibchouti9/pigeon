@@ -4,7 +4,7 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useCompose } from '../../store/compose';
 import { useHeldCount, useMail, useUnreadCount } from '../../store/mail';
-import { isTypingTarget } from '../../store/ui';
+import { isTypingTarget, shortcutsBlocked } from '../../store/ui';
 import type { Place } from '../../types';
 import { useAssistant } from '../../ai/useAssistant';
 import { useThreadSummary } from '../../ai/useThreadSummary';
@@ -139,7 +139,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
         return;
       }
 
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (shortcutsBlocked(e)) return;
 
       switch (e.key) {
         case 'e': {
