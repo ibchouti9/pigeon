@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ProviderId = 'anthropic' | 'openai' | 'google' | 'local' | 'none';
+/**
+ * D41 — the user brings their own model. `demo` is the exception: canned
+ * assistant output so the AI surfaces can be run and reviewed without a key.
+ * It is labelled as a demo everywhere it appears.
+ */
+export type ProviderId = 'anthropic' | 'openai' | 'google' | 'local' | 'demo' | 'none';
 export type Appearance = 'system' | 'light' | 'dark';
 
 export interface ProviderConfig {
@@ -58,6 +63,7 @@ export const PROVIDER_LABELS: Record<ProviderId, string> = {
   openai: 'OpenAI',
   google: 'Google',
   local: 'Local',
+  demo: 'Demo',
   none: 'None',
 };
 
@@ -121,6 +127,7 @@ export const useSettings = create<SettingsState>()(
 /** True when an AI surface should render its full form rather than C-28. */
 export function hasProvider(config: ProviderConfig): boolean {
   if (config.provider === 'none') return false;
+  if (config.provider === 'demo') return Boolean(config.model);
   if (config.provider === 'local') return Boolean(config.baseUrl && config.model);
   return Boolean(config.apiKey && config.model);
 }
