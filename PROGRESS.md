@@ -378,6 +378,18 @@ found by driving the running app, not by reading the code.
   search held mail" turned itself off and the results changed underneath, with
   nothing touched but the words. Found by driving §5.11 at 364 results, which
   first needed the crowded scenario to search the crowd rather than the seed.
+- **§5.11's two keyboard sentences didn't compose.** "`/` focuses the field from
+  anywhere" and "`↓` from the field moves the cursor into results" only work
+  together, and `/` always went to the rail's field while `↓` was wired to
+  Search's own query bar. The field took focus and `↓` did nothing. `/` now goes
+  to the query bar when a screen has one.
+- **A measurement that measured nothing.** The first pass at timing the search
+  cursor reported a clean 60fps; the keys were never reaching the handler,
+  because §5.11 moves the cursor only from the field and focus was elsewhere.
+  Two harness key names — `Return` and `Down` — also arrive as an empty string
+  and silently do nothing, which is what made an earlier "Enter doesn't open a
+  thread" look like a product bug. Check that an input actually changed
+  something before recording what it cost.
 
 ## Deliberate deviations from the spec
 
@@ -480,9 +492,11 @@ it confirmed:
 - **O4, 342 senders.** Already the seeded scale, so it needed no amplification:
   175 nodes, 16 windowed rows, no horizontal overflow, filter narrowing right.
 - **Search, 364 results.** 7,966 nodes and no horizontal overflow. Unwindowed,
-  and worth watching — it is the largest unwindowed list in the product, ahead
-  of bulk review's 4,127 at 400 senders — but §5.11's own cursor moves through
-  the group structure rather than re-rendering rows, so nothing measured slow.
+  and the largest unwindowed list in the product — ahead of bulk review's 4,127
+  at 400 senders. Its cursor has not been timed: the first attempt measured a
+  steady 60fps while the keys were in fact going nowhere, so that number was
+  wrong and is not recorded. Worth measuring properly, alongside the bulk-review
+  windowing already deferred below.
 - **All nine routes walked at this scale** with no uncaught error, no blank
   screen and no horizontal overflow at 1280px.
 
