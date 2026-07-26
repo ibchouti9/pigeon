@@ -384,9 +384,25 @@ export function BulkReview({
         })}
       </div>
 
+      {/*
+       * §8.4 — "the status region announces '9 selected' on selection change".
+       * The count used to be announced by an `aria-live` on the visible text
+       * inside the action bar, and the bar only exists once something is
+       * selected: the region and its first content entered the DOM in the same
+       * mutation, which is the case screen readers skip. So the announcement
+       * that mattered most — 0 to 1, the one that says a selection has started
+       * — was the one least likely to be heard, and clearing unmounted the
+       * region rather than saying anything.
+       *
+       * Mounted for the life of the screen, like the stack view's own.
+       */}
+      <div role="status" aria-live="polite" className="visually-hidden">
+        {activeCount > 0 ? plural(activeCount, 'selected', 'selected') : ''}
+      </div>
+
       {activeCount > 0 && (
         <div className={styles.bar} role="region" aria-label="Bulk actions">
-          <span className="t-sm" style={{ fontWeight: 500 }} aria-live="polite">
+          <span className="t-sm" style={{ fontWeight: 500 }}>
             {plural(activeCount, 'selected', 'selected')}
           </span>
           <div className={styles.spacer} />

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useMail } from '../../../store/mail';
 import { useUi } from '../../../store/ui';
@@ -68,13 +68,49 @@ describe('BulkReview — select all', () => {
 
   it('shows the bulk action bar with the selected count once something is checked', () => {
     renderBulk(new Set(['s0']));
-    expect(screen.getByRole('region', { name: 'Bulk actions' })).toBeInTheDocument();
-    expect(screen.getByText('1 selected')).toBeInTheDocument();
+    const bar = screen.getByRole('region', { name: 'Bulk actions' });
+    expect(bar).toBeInTheDocument();
+    // Scoped to the bar: the same words also live in the status region below.
+    expect(within(bar).getByText('1 selected')).toBeInTheDocument();
   });
 
   it('shows no bulk action bar with nothing selected', () => {
     renderBulk(new Set());
     expect(screen.queryByRole('region', { name: 'Bulk actions' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * §8.4 — "the status region announces '9 selected' on selection change". The
+ * count used to be an `aria-live` on the visible text inside the action bar,
+ * and the bar only exists once something is selected — so the region and its
+ * first content entered the DOM in the same mutation, which is the case screen
+ * readers skip. The announcement that mattered most, 0 to 1, was the one least
+ * likely to be heard.
+ */
+describe('BulkReview — selection announcements (§8.4)', () => {
+  function statusRegion(): HTMLElement {
+    return screen.getByRole('status');
+  }
+
+  it('keeps the status region mounted with nothing selected', () => {
+    renderBulk(new Set());
+    expect(statusRegion()).toBeInTheDocument();
+    expect(statusRegion()).toHaveTextContent('');
+  });
+
+  it('announces the count once a selection exists', () => {
+    renderBulk(new Set(['s0', 's1', 's2']));
+    expect(statusRegion()).toHaveTextContent('3 selected');
+  });
+
+  it('does not double-announce from the visible bar', () => {
+    renderBulk(new Set(['s0']));
+    const bar = screen.getByRole('region', { name: 'Bulk actions' });
+    // Nothing inside the visible bar is a live region; the status region below
+    // is what speaks, and two of them would say the count twice.
+    expect(bar.querySelectorAll('[aria-live]')).toHaveLength(0);
+    expect(within(bar).getByText('1 selected')).toBeInTheDocument();
   });
 });
 
