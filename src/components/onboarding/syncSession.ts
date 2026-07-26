@@ -44,10 +44,15 @@ export function subscribeSync(listener: Listener): () => void {
   return () => listeners.delete(listener);
 }
 
-/** Lets "Start sync again" (§3.1 3b) restart a failed run from this screen. */
+/**
+ * §3.1 3b's "Start sync again". The copy says Pigeon "will pick up where it
+ * stopped", so the counter keeps the position it reached — resetting it to zero
+ * made a resumed run look like a restarted one even though the provider skips
+ * what it already has.
+ */
 export function retrySync(): void {
   started = false;
-  latest = { total: null, done: 0, step: 'connect' };
+  latest = { total: latest.total, done: latest.done, step: latest.step };
   startSync();
 }
 

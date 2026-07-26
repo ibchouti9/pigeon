@@ -203,6 +203,11 @@ found by driving the running app, not by reading the code.
 - **The demo assistant's tone buttons did nothing** — its retone echoed the
   draft back unchanged, so §3.4 4a was unobservable on the only provider that
   runs without a key.
+- **The attachment chip said "Download" and had no handler** — an affordance
+  that told the user it would work and didn't.
+- **"Start sync again" re-fetched everything** it had already hydrated, so a
+  retry was exactly as slow as the first run and §3.1 3b's "Pigeon will pick up
+  where it stopped" was false.
 
 ## Deliberate deviations from the spec
 
@@ -281,9 +286,6 @@ In rough order of expected value:
   client ID in `.env.local` (see the README) and a careful first run. Everything
   above it is wired: consent, provider swap, token restore on reload, and
   sign-out clearing the token.
-- **"Start sync again" restarts from zero** despite §3.1 3b's copy promising to
-  "pick up where it stopped". Gmail's list endpoint is walked without a stored
-  page token, so resumption needs a cursor the sync layer does not keep.
 - Toast copy for two of the three Assistant toggles is extrapolated; §7.5 spells
   out only the summaries one. So are the bulk-archive and appearance toasts —
   §7.5 has no row for either, and both follow the shape of the bulk sender lines
@@ -295,10 +297,10 @@ In rough order of expected value:
   enforced by `src/test/typeFloor.test.ts`); Settings sub-nav (§2.2 lists About,
   §7.1 does not — it is built); and the approve/decline failure copy, where §3.6
   and §7.6 differ and the implementation uses each on its own path.
-- Received attachments render as chips but have no download action — there is
-  no file backend behind the demo account. Attaching on compose works end to
-  end (D20): the composer holds files in memory and the Gmail client sends them
-  as `multipart/mixed`.
+- D20 is complete in both directions: the composer attaches up to 25 MB and the
+  Gmail client sends them as `multipart/mixed`; the chip on a received message
+  downloads the real bytes from `messages.attachments.get`. The demo account has
+  no file store, so it hands back a note saying so rather than failing.
 
 ## Notes
 

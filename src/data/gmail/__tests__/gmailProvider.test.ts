@@ -253,3 +253,96 @@ describe('the Screener split', () => {
     expect(held[0].sender.email).toBe('new@example.com');
   });
 });
+
+/**
+ * §3.1 3b — "Start sync again — Pigeon will pick up where it stopped." The
+ * walk re-fetched every thread it had already hydrated, so a retry after a
+ * failure at 4,312 of 11,908 was exactly as slow as the first attempt and the
+ * promise in the copy was false.
+ */
+describe('sync resumes where it stopped (§3.1 3b)', () => {
+  function threadRoute(id: string) {
+    return {
+      match: new RegExp(`threads/${id}\\?`),
+      body: {
+        id,
+        messages: [
+          {
+            id: `m-${id}`,
+            threadId: id,
+            internalDate: '1750000000000',
+            labelIds: ['INBOX'],
+            payload: {
+              headers: [
+                { name: 'From', value: 'Dana Whitlock <dana@lumen.com>' },
+                { name: 'To', value: 'marc@ferrum.dev' },
+                { name: 'Subject', value: `Subject ${id}` },
+              ],
+              mimeType: 'text/plain',
+              body: { data: encodeBase64Url('Body text.') },
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  const LIST = {
+    match: /threads\?/,
+    body: { threads: [{ id: 't1' }, { id: 't2' }, { id: 't3' }] },
+  };
+
+  function fetchesFor(id: string) {
+    return requests.filter((r) => new RegExp(`threads/${id}\\?`).test(r.url)).length;
+  }
+
+  it('does not re-fetch a thread it already holds', async () => {
+    routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
+    const provider = new GmailMailProvider();
+
+    await provider.listThreads('inbox');
+    expect(fetchesFor('t1')).toBe(1);
+    expect(fetchesFor('t3')).toBe(1);
+
+    // Second pass — the same three threads, already hydrated.
+    await provider.listThreads('inbox');
+    expect(fetchesFor('t1')).toBe(1);
+    expect(fetchesFor('t3')).toBe(1);
+  });
+
+  it('fetches only what is actually missing after a partial run', async () => {
+    // t2 fails the first time round, so only it should go back over the wire.
+    routes = [
+      PROFILE,
+      PEOPLE_ME,
+      LIST,
+      threadRoute('t1'),
+      { match: /threads\/t2\?/, status: 500 },
+      threadRoute('t3'),
+    ];
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+    expect(fetchesFor('t2')).toBe(1);
+
+    routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
+    await provider.listThreads('inbox');
+
+    expect(fetchesFor('t2')).toBe(2);
+    expect(fetchesFor('t1')).toBe(1);
+    expect(fetchesFor('t3')).toBe(1);
+  });
+
+  it('reports the threads it already had as progress, not as zero', async () => {
+    routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+
+    const seen: number[] = [];
+    await provider.sync((p) => {
+      if (p.step === 'history') seen.push(p.done);
+    });
+
+    // The first history tick already accounts for everything cached.
+    expect(seen[0]).toBe(3);
+  });
+});

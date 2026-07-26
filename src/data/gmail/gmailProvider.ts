@@ -241,7 +241,10 @@ export class GmailMailProvider implements MailProvider {
     onProgress({ total: null, done: 0, step: 'contacts' });
     await this.buildKnownSet();
 
-    onProgress({ total: null, done: 0, step: 'history' });
+    // Not zero: on a resumed run (§3.1 3b) the count starts at what is already
+    // held, or the step tick alone would make it look like a fresh start.
+    const alreadyHeld = [...this.threads.values()].filter((t) => t.place === 'inbox').length;
+    onProgress({ total: null, done: alreadyHeld, step: 'history' });
     const profile = await this.call<{ threadsTotal?: number }>(`${GMAIL}/profile`);
     const total = profile.threadsTotal ?? 0;
 
@@ -303,12 +306,27 @@ export class GmailMailProvider implements MailProvider {
 
     const ids = (list.threads ?? []).map((t) => t.id);
     const out: Thread[] = [];
-    let done = 0;
+
+    /*
+     * §3.1 3b — "Start sync again … Pigeon will pick up where it stopped".
+     * A retry after a failure at 4,312 of 11,908 threads used to re-fetch all
+     * 4,312, so the promise in the copy was false and the second attempt was
+     * as slow as the first. Threads already hydrated are counted as done and
+     * skipped; only what is actually missing goes back over the wire.
+     */
+    const pending: string[] = [];
+    for (const id of ids) {
+      const cached = this.threads.get(id);
+      if (cached && cached.place === place) out.push(cached);
+      else pending.push(id);
+    }
+    let done = out.length;
+    onProgress?.(done);
 
     // Gmail rate-limits hard on parallel fetches; ten at a time is comfortable.
-    for (let i = 0; i < ids.length; i += 10) {
+    for (let i = 0; i < pending.length; i += 10) {
       const batch = await Promise.all(
-        ids.slice(i, i + 10).map((id) =>
+        pending.slice(i, i + 10).map((id) =>
           this.call<{ id: string; messages?: GmailMessage[] }>(
             `${GMAIL}/threads/${id}?format=full`,
           ).catch(() => null),
