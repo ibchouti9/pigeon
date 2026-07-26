@@ -78,6 +78,16 @@
   gap: var(--space-4);
 }
 
+/*
+ * A scrolling flex column still shrinks its children before it scrolls. On a
+ * thread long enough to overflow, that crushed the inline reply composer to the
+ * 2px of its own border — invisible, on exactly the threads where a reply is
+ * most likely. Nothing in here shrinks; the body scrolls instead.
+ */
+.body > * {
+  flex-shrink: 0;
+}
+
 @media (max-width: 1079px) {
   .body {
     padding: var(--space-8) var(--space-6);

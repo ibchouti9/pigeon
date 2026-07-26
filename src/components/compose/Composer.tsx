@@ -15,6 +15,9 @@ import styles from './Composer.module.css';
 /** D20 — attach on compose up to 25 MB, counted across the whole message. */
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
+/** `--duration-base` — how long the inline composer takes to expand open. */
+const EXPAND_MS = 180;
+
 let attachmentCounter = 0;
 
 function readAsBase64(file: File): Promise<string> {
@@ -88,6 +91,7 @@ export function Composer({
   const [toneDone, setToneDone] = useState<Tone | null>(null);
   const [undoBody, setUndoBody] = useState<string | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // §3.4 step 3 — opening a reply "focus moves into the body field". The
   // recipients are already filled in, so the field the user wants is the body;
@@ -98,7 +102,25 @@ export function Composer({
     // "Send yourself a test" (§5.5), or a forward — wants the body too. Only
     // an empty To field is worth focusing, and that one is handled by the
     // field's own autoFocus.
-    if (variant === 'inline' || draft.to.length > 0) bodyRef.current?.focus();
+    if (variant !== 'inline' && draft.to.length === 0) return;
+    bodyRef.current?.focus();
+
+    /*
+     * §3.4 step 3 puts the composer "at the foot of the thread", which on a long
+     * one is below the fold. focus() alone left it there, and so did scrolling
+     * on the next frame: the composer animates its height open, so for most of
+     * that it is a 44px sliver with nothing worth scrolling to. Scroll when the
+     * expansion actually ends, with a timer as the fallback for the reduced-
+     * motion case where the animation may not fire at all.
+     */
+    const reveal = () => bodyRef.current?.scrollIntoView({ block: 'nearest' });
+    const form = formRef.current;
+    form?.addEventListener('animationend', reveal, { once: true });
+    const timer = setTimeout(reveal, EXPAND_MS * 2);
+    return () => {
+      form?.removeEventListener('animationend', reveal);
+      clearTimeout(timer);
+    };
     // Mount only: refocusing on every keystroke would fight the user.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variant]);
@@ -237,6 +259,7 @@ export function Composer({
 
   return (
     <form
+      ref={formRef}
       className={cn(styles.composer, variant === 'inline' && styles.inline, className)}
       aria-label={draft.mode === 'new' ? 'New message' : `Reply to ${recipientLabel}`}
       onSubmit={(e) => {

@@ -225,7 +225,11 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     // Nothing confirmed a provider save at all. §7.5 splits the copy: a first
     // connection confirms, a change offers to go back.
     const name = PROVIDER_LABELS[providerId as ProviderId] ?? providerId;
-    if (mount === 'settings' && previous?.provider && previous.provider !== providerId) {
+    // 'none' is the absence of a provider, not one to switch away from —
+    // §7.5 splits "Connected to X." from "Switched to X.", and a first
+    // connection after skipping the assistant is the former.
+    const hadOne = previous.provider !== 'none' && previous.provider !== providerId;
+    if (mount === 'settings' && hadOne) {
       toast.undo(`Switched to ${name}.`, 'Undo', () => {
         useSettings.getState().setProvider(previous);
       });
