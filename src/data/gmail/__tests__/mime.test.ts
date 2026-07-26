@@ -185,7 +185,7 @@ describe('buildRawMessage', () => {
     expect(decoded).toContain(`Content-Type: multipart/mixed; boundary="${boundary}"`);
     expect(decoded).toContain('Content-Type: text/plain; charset="UTF-8"');
     expect(decoded).toContain('Attached.');
-    expect(decoded).toContain('Content-Type: application/pdf; name="contract-v3.pdf"');
+    expect(decoded).toContain('Content-Type: application/pdf');
     expect(decoded).toContain(
       'Content-Disposition: attachment; filename="contract-v3.pdf"',
     );
@@ -231,5 +231,121 @@ describe('buildRawMessage', () => {
       .filter((line) => /^A+$/.test(line));
     expect(payloadLines.length).toBe(8);
     expect(payloadLines.every((line) => line.length <= 76)).toBe(true);
+  });
+});
+
+/**
+ * The header builder's two RFC failures. Both were reachable by anyone with a
+ * "Last, First" contact or a filename outside ASCII — which is to say, most
+ * people outside an English-only address book.
+ */
+describe('buildRawMessage header encoding', () => {
+  const base = {
+    from: { name: '', email: 'marc@ferrum.dev' },
+    cc: [],
+    bcc: [],
+    subject: 'Redlines',
+    body: 'Text.',
+  };
+
+  it('quotes a display name containing a comma (RFC 5322)', () => {
+    const raw = buildRawMessage({
+      ...base,
+      to: [{ name: 'Whitlock, Dana', email: 'dana@lumen.com' }],
+    });
+    const to = decodeBase64Url(raw).split('\r\n').find((l) => l.startsWith('To: '));
+    expect(to).toBe('To: "Whitlock, Dana" <dana@lumen.com>');
+    // And it reads back as one address, not two.
+    expect(parseAddressList(to!.slice(4))).toHaveLength(1);
+  });
+
+  it('leaves an ordinary name unquoted', () => {
+    const raw = buildRawMessage({
+      ...base,
+      to: [{ name: 'Dana Whitlock', email: 'dana@lumen.com' }],
+    });
+    expect(decodeBase64Url(raw)).toContain('To: Dana Whitlock <dana@lumen.com>');
+  });
+
+  it('does not quote an RFC 2047 encoded-word', () => {
+    const raw = buildRawMessage({
+      ...base,
+      to: [{ name: 'Inês Carvalho', email: 'ines@carvalho-arq.pt' }],
+    });
+    const to = decodeBase64Url(raw).split('\r\n').find((l) => l.startsWith('To: '))!;
+    expect(to).toContain('=?UTF-8?B?');
+    expect(to).not.toContain('"=?UTF-8?B?');
+  });
+
+  it('encodes a non-ASCII attachment filename per RFC 2231', () => {
+    const raw = buildRawMessage({
+      ...base,
+      to: [{ name: '', email: 'dana@lumen.com' }],
+      attachments: [
+        {
+          id: 'a1',
+          filename: 'Réunion.pdf',
+          size: 4,
+          mimeType: 'application/pdf',
+          data: btoa('data'),
+        },
+      ],
+    });
+
+    const decoded = decodeBase64Url(raw);
+    expect(decoded).toContain("filename*=UTF-8''R%C3%A9union.pdf");
+    // No raw 8-bit octets in a header line.
+    expect(decoded).not.toContain('Réunion.pdf');
+  });
+
+  it('encodes a filename containing a quote rather than breaking the header', () => {
+    const raw = buildRawMessage({
+      ...base,
+      to: [{ name: '', email: 'dana@lumen.com' }],
+      attachments: [
+        {
+          id: 'a1',
+          filename: 'the "final" draft.pdf',
+          size: 4,
+          mimeType: 'application/pdf',
+          data: btoa('data'),
+        },
+      ],
+    });
+    expect(decodeBase64Url(raw)).toContain("filename*=UTF-8''");
+  });
+});
+
+/** Gmail threads on In-Reply-To and References, not on threadId alone. */
+describe('threading headers', () => {
+  it('carries both when replying', () => {
+    const raw = buildRawMessage({
+      from: { name: '', email: 'marc@ferrum.dev' },
+      to: [{ name: '', email: 'dana@lumen.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Re: Redlines',
+      body: 'Agreed.',
+      inReplyTo: '<b@lumen.com>',
+      references: '<a@lumen.com> <b@lumen.com>',
+    });
+
+    const decoded = decodeBase64Url(raw);
+    expect(decoded).toContain('In-Reply-To: <b@lumen.com>');
+    expect(decoded).toContain('References: <a@lumen.com> <b@lumen.com>');
+  });
+
+  it('omits them on a new message', () => {
+    const raw = buildRawMessage({
+      from: { name: '', email: 'marc@ferrum.dev' },
+      to: [{ name: '', email: 'dana@lumen.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Hello',
+      body: 'Hi.',
+    });
+    const decoded = decodeBase64Url(raw);
+    expect(decoded).not.toContain('In-Reply-To:');
+    expect(decoded).not.toContain('References:');
   });
 });

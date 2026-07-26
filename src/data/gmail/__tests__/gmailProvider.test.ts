@@ -626,3 +626,125 @@ describe('the sent-mail scan (D10)', () => {
     expect(inFlight.peak).toBeLessThanOrEqual(10);
   });
 });
+
+/**
+ * Gmail's threading guide is explicit: a reply needs In-Reply-To and References
+ * as well as threadId. Without them every reply Pigeon sent detached into its
+ * own thread, in Gmail and in the recipient's client, and the conversation the
+ * user was reading never updated.
+ */
+describe('replying into a thread', () => {
+  function stub(onSend: (body: unknown) => void) {
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/messages\/send/.test(href)) {
+        onSend(JSON.parse(String(init?.body)));
+        return new Response(JSON.stringify({ id: 'sent1', threadId: 'th1' }), { status: 200 });
+      }
+      if (/threads\/th1\?/.test(href)) {
+        return new Response(
+          JSON.stringify({
+            id: 'th1',
+            messages: [
+              {
+                id: 'm1',
+                threadId: 'th1',
+                internalDate: '1750000000000',
+                labelIds: ['INBOX'],
+                payload: {
+                  headers: [
+                    { name: 'From', value: 'Dana Whitlock <dana@lumen.com>' },
+                    { name: 'To', value: 'marc@ferrum.dev' },
+                    { name: 'Subject', value: 'Redlines' },
+                    { name: 'Message-ID', value: '<first@lumen.com>' },
+                  ],
+                  mimeType: 'text/plain',
+                  body: { data: encodeBase64Url('First.') },
+                },
+              },
+              {
+                id: 'm2',
+                threadId: 'th1',
+                internalDate: '1750000100000',
+                labelIds: ['INBOX'],
+                payload: {
+                  headers: [
+                    { name: 'From', value: 'Dana Whitlock <dana@lumen.com>' },
+                    { name: 'To', value: 'marc@ferrum.dev' },
+                    { name: 'Subject', value: 'Redlines' },
+                    { name: 'Message-ID', value: '<second@lumen.com>' },
+                  ],
+                  mimeType: 'text/plain',
+                  body: { data: encodeBase64Url('Second.') },
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ threads: [] }), { status: 200 });
+    });
+  }
+
+  it('sets In-Reply-To to the newest message and References to the chain', async () => {
+    let body: { raw?: string; threadId?: string } = {};
+    stub((b) => (body = b as typeof body));
+
+    const provider = new GmailMailProvider();
+    await provider.getThread('th1');
+    await provider.send({
+      to: [{ name: '', email: 'dana@lumen.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Re: Redlines',
+      body: 'Agreed.',
+      threadId: 'th1',
+    });
+
+    expect(body.threadId).toBe('th1');
+    const raw = decodeBase64Url(body.raw!);
+    expect(raw).toContain('In-Reply-To: <second@lumen.com>');
+    expect(raw).toContain('References: <first@lumen.com> <second@lumen.com>');
+  });
+
+  it('sends a new message without them', async () => {
+    let body: { raw?: string } = {};
+    stub((b) => (body = b as typeof body));
+
+    await new GmailMailProvider().send({
+      to: [{ name: '', email: 'dana@lumen.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Hello',
+      body: 'Hi.',
+    });
+
+    expect(decodeBase64Url(body.raw!)).not.toContain('In-Reply-To:');
+  });
+
+  it('drops the cached copy of the thread it replied to', async () => {
+    stub(() => {});
+    const provider = new GmailMailProvider();
+    await provider.getThread('th1');
+
+    await provider.send({
+      to: [{ name: '', email: 'dana@lumen.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Re: Redlines',
+      body: 'Agreed.',
+      threadId: 'th1',
+    });
+
+    // A stale copy here is why the reply used not to appear after a reload.
+    const refetched = await provider.getThread('th1');
+    expect(refetched.messages).toHaveLength(2);
+  });
+});

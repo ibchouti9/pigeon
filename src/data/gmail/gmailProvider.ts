@@ -647,6 +647,15 @@ export class GmailMailProvider implements MailProvider {
     attachments?: OutgoingAttachment[];
   }): Promise<Message> {
     const account = await this.getAccount();
+
+    /*
+     * Gmail's own guide is explicit: to add a message to a thread, In-Reply-To
+     * and References must be set per RFC 2822 *and* the subject must match —
+     * threadId alone is not enough. Without them every reply Pigeon sent
+     * detached into its own thread, in Gmail and in the recipient's client, and
+     * the conversation the user was reading never updated.
+     */
+    const parent = draft.threadId ? this.lastMessageOf(draft.threadId) : undefined;
     const raw = buildRawMessage({
       from: { name: account.name, email: account.email },
       to: draft.to,
@@ -655,6 +664,8 @@ export class GmailMailProvider implements MailProvider {
       subject: draft.subject,
       body: draft.body,
       attachments: draft.attachments,
+      inReplyTo: parent?.messageId,
+      references: parent?.references,
     });
 
     let sent: GmailMessage;
@@ -671,7 +682,15 @@ export class GmailMailProvider implements MailProvider {
       );
     }
 
+    // Both: the thread it landed in, and the one it was a reply to. Deleting
+    // only the former left the original's stale copy in place, so the reply
+    // didn't appear after a reload either.
     this.threads.delete(sent.threadId);
+    this.historyIds.delete(sent.threadId);
+    if (draft.threadId) {
+      this.threads.delete(draft.threadId);
+      this.historyIds.delete(draft.threadId);
+    }
     return {
       id: sent.id,
       threadId: sent.threadId,
@@ -689,6 +708,21 @@ export class GmailMailProvider implements MailProvider {
       })),
       isFromUser: true,
     };
+  }
+
+  /**
+   * The newest message in a thread, with the References chain a reply needs.
+   * RFC 5322 says References is the parent's References plus its Message-ID.
+   */
+  private lastMessageOf(threadId: string): { messageId?: string; references?: string } | undefined {
+    const thread = this.threads.get(threadId);
+    const last = thread?.messages[thread.messages.length - 1];
+    if (!last?.messageId) return undefined;
+
+    const chain = thread!.messages
+      .map((m) => m.messageId)
+      .filter((id): id is string => Boolean(id));
+    return { messageId: last.messageId, references: chain.join(' ') };
   }
 
   async downloadAttachment(messageId: string, attachmentId: string): Promise<string> {

@@ -41,6 +41,12 @@ export interface Message {
   date: string;
   attachments: Attachment[];
   isFromUser: boolean;
+  /**
+   * The RFC 5322 `Message-ID` header. Gmail threads a reply on `In-Reply-To`
+   * and `References`, not on `threadId` alone — without this there is nothing
+   * to build those from and every reply starts its own thread.
+   */
+  messageId?: string;
 }
 
 /** Where a thread lives. Every thread is in exactly one place (§2.1). */

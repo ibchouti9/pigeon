@@ -186,6 +186,7 @@ export function toMessage(raw: GmailMessage, userEmail: string): Message {
     body: split.body,
     quoted: split.quoted,
     date: new Date(Number(raw.internalDate ?? Date.now())).toISOString(),
+    messageId: header(headers, 'Message-ID') || undefined,
     attachments: collectAttachments(raw.payload),
     isFromUser: from.email.toLowerCase() === userEmail.toLowerCase(),
   };
@@ -197,8 +198,35 @@ function encodeHeaderValue(value: string): string {
   return /^[\x00-\x7F]*$/.test(value) ? value : `=?UTF-8?B?${btoa(unescape(encodeURIComponent(value)))}?=`;
 }
 
+/**
+ * RFC 5322 needs a display name containing any "special" to be a quoted-string.
+ * Emitting it bare turned `Whitlock, Dana <dana@lumen.com>` into two addresses,
+ * `Whitlock` and `Dana <dana@lumen.com>` — and "Last, First" is exactly how
+ * Google Contacts hands names back. `splitAddressList` above already goes to
+ * some trouble to read that form on the way in; this is the other half.
+ */
 function formatAddress(a: Address): string {
-  return a.name ? `${encodeHeaderValue(a.name)} <${a.email}>` : a.email;
+  if (!a.name) return a.email;
+  const encoded = encodeHeaderValue(a.name);
+  // An RFC 2047 encoded-word is already a token and must not be quoted.
+  if (encoded !== a.name) return `${encoded} <${a.email}>`;
+  const needsQuoting = /[(),.:;<>@[\]\\"]/.test(a.name);
+  const display = needsQuoting ? `"${a.name.replace(/(["\\])/g, '\\$1')}"` : a.name;
+  return `${display} <${a.email}>`;
+}
+
+/**
+ * RFC 2231 for a filename outside ASCII. Headers are 7-bit, so a name like
+ * `Réunion.pdf` used to put raw UTF-8 octets into one — illegal, and the first
+ * attachment anyone outside an ASCII locale sent would have arrived as
+ * `noname` or mojibake. A `"` in the name broke the quoted-string outright.
+ */
+function filenameParams(filename: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (/^[\x20-\x7E]*$/.test(filename) && !/["\\]/.test(filename)) {
+    return `filename="${filename}"`;
+  }
+  return `filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
 /** Wraps base64 at 76 characters, as RFC 2045 requires. */
@@ -254,8 +282,8 @@ export function buildRawMessage(input: {
   for (const file of attachments) {
     lines.push('');
     lines.push(`--${boundary}`);
-    lines.push(`Content-Type: ${file.mimeType}; name="${file.filename}"`);
-    lines.push(`Content-Disposition: attachment; filename="${file.filename}"`);
+    lines.push(`Content-Type: ${file.mimeType}`);
+    lines.push(`Content-Disposition: attachment; ${filenameParams(file.filename)}`);
     lines.push('Content-Transfer-Encoding: base64');
     lines.push('');
     lines.push(wrapBase64(file.data));
