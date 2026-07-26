@@ -1,0 +1,255 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GmailMailProvider } from '../gmailProvider';
+import { MailError } from '../../provider';
+import { encodeBase64Url, decodeBase64Url } from '../mime';
+
+vi.mock('../auth', () => ({
+  accessToken: vi.fn(async () => 'test-token'),
+  AuthError: class AuthError extends Error {},
+}));
+
+/**
+ * The Gmail path has never run against a real account, so its error mapping and
+ * request shapes are covered here instead. These are the parts that decide what
+ * a user sees when something goes wrong, and they are impossible to exercise by
+ * clicking without an OAuth client.
+ */
+
+interface Route {
+  match: RegExp;
+  status?: number;
+  body?: unknown;
+  /** Throws at the transport level, the way an offline fetch does. */
+  networkError?: boolean;
+}
+
+let routes: Route[] = [];
+let requests: { url: string; init?: RequestInit }[] = [];
+
+function stubFetch() {
+  vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+    requests.push({ url: String(url), init });
+    const route = routes.find((r) => r.match.test(String(url)));
+    if (!route) {
+      return new Response(JSON.stringify({}), { status: 200 });
+    }
+    if (route.networkError) throw new TypeError('Failed to fetch');
+    return new Response(JSON.stringify(route.body ?? {}), { status: route.status ?? 200 });
+  });
+}
+
+const PROFILE: Route = {
+  match: /users\/me\/profile/,
+  body: { emailAddress: 'marc@ferrum.dev', threadsTotal: 42 },
+};
+
+const PEOPLE_ME: Route = { match: /people\/me\?/, body: { names: [{ displayName: 'Marc Ferrum' }] } };
+
+beforeEach(() => {
+  routes = [];
+  requests = [];
+  localStorage.clear();
+  stubFetch();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('error mapping', () => {
+  it('maps 401 to the revoked state, not a connection error', async () => {
+    routes = [{ match: /users\/me\/profile/, status: 401 }];
+    const provider = new GmailMailProvider();
+
+    await expect(provider.getAccount()).rejects.toSatisfy(
+      (e: MailError) => e.code === 'revoked',
+    );
+  });
+
+  it('maps 403 to revoked as well', async () => {
+    routes = [{ match: /users\/me\/profile/, status: 403 }];
+    await expect(new GmailMailProvider().getAccount()).rejects.toSatisfy(
+      (e: MailError) => e.code === 'revoked',
+    );
+  });
+
+  it('maps 404 on a thread to not-found with the §7.6 copy', async () => {
+    routes = [PROFILE, PEOPLE_ME, { match: /threads\/t1/, status: 404 }];
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+
+    await expect(provider.getThread('t1')).rejects.toSatisfy(
+      (e: MailError) => e.code === 'not-found' && e.message === "This thread didn't load. It's still in Gmail.",
+    );
+  });
+
+  it('maps a transport failure to unreachable, not revoked', async () => {
+    routes = [{ match: /users\/me\/profile/, networkError: true }];
+    await expect(new GmailMailProvider().getAccount()).rejects.toSatisfy(
+      (e: MailError) => e.code === 'unreachable',
+    );
+  });
+
+  it('maps a 500 to unreachable', async () => {
+    routes = [{ match: /users\/me\/profile/, status: 500 }];
+    await expect(new GmailMailProvider().getAccount()).rejects.toSatisfy(
+      (e: MailError) => e.code === 'unreachable',
+    );
+  });
+});
+
+describe('authorization', () => {
+  it('sends the bearer token on every request', async () => {
+    routes = [PROFILE, PEOPLE_ME];
+    await new GmailMailProvider().getAccount();
+
+    expect(requests.length).toBeGreaterThan(0);
+    for (const request of requests) {
+      const headers = request.init?.headers as Record<string, string>;
+      expect(headers.authorization).toBe('Bearer test-token');
+    }
+  });
+
+  it('never puts the token in a URL', async () => {
+    routes = [PROFILE, PEOPLE_ME];
+    await new GmailMailProvider().getAccount();
+    for (const request of requests) {
+      expect(request.url).not.toContain('test-token');
+    }
+  });
+});
+
+describe('send', () => {
+  it('builds an RFC 5322 message and posts it base64url-encoded', async () => {
+    routes = [
+      PROFILE,
+      PEOPLE_ME,
+      { match: /messages\/send/, body: { id: 'm1', threadId: 't1' } },
+    ];
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+
+    await provider.send({
+      to: [{ name: 'Dana Whitlock', email: 'dana@lumenpartners.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Re: Contract redlines',
+      body: 'Happy with 750 as a middle.',
+    });
+
+    const sendRequest = requests.find((r) => /messages\/send/.test(r.url));
+    expect(sendRequest).toBeDefined();
+
+    const payload = JSON.parse(String(sendRequest!.init!.body)) as { raw: string };
+    const decoded = decodeBase64Url(payload.raw);
+    expect(decoded).toContain('From: Marc Ferrum <marc@ferrum.dev>');
+    expect(decoded).toContain('To: Dana Whitlock <dana@lumenpartners.com>');
+    expect(decoded).toContain('Happy with 750 as a middle.');
+  });
+
+  it('reports a rejected send with the §7.6 copy', async () => {
+    routes = [PROFILE, PEOPLE_ME, { match: /messages\/send/, status: 400 }];
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+
+    await expect(
+      provider.send({
+        to: [{ name: '', email: 'dana@lumenpartners.com' }],
+        cc: [],
+        bcc: [],
+        subject: 'x',
+        body: 'y',
+      }),
+    ).rejects.toSatisfy(
+      (e: MailError) =>
+        e.message ===
+        "Gmail didn't accept this message. Check the recipient addresses and send again.",
+    );
+  });
+});
+
+describe('declining a sender (D7)', () => {
+  it('creates a Pigeon/Declined filter that archives future mail, and deletes nothing', async () => {
+    routes = [
+      PROFILE,
+      PEOPLE_ME,
+      { match: /users\/me\/labels$/, body: { labels: [] } },
+      { match: /settings\/filters/, body: { id: 'f1' } },
+    ];
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+
+    await provider.decideSender('spam@example.com', 'declined');
+
+    const labelCreate = requests.find(
+      (r) => /users\/me\/labels$/.test(r.url) && r.init?.method === 'POST',
+    );
+    expect(JSON.parse(String(labelCreate!.init!.body)).name).toBe('Pigeon/Declined');
+
+    const filter = requests.find((r) => /settings\/filters/.test(r.url) && r.init?.method === 'POST');
+    const payload = JSON.parse(String(filter!.init!.body)) as {
+      criteria: { from: string };
+      action: { addLabelIds: string[]; removeLabelIds: string[] };
+    };
+    expect(payload.criteria.from).toBe('spam@example.com');
+    expect(payload.action.removeLabelIds).toContain('INBOX');
+
+    // D8 — nothing is ever deleted.
+    expect(requests.some((r) => r.init?.method === 'DELETE')).toBe(false);
+  });
+
+  it('records an approval without touching Gmail', async () => {
+    routes = [PROFILE, PEOPLE_ME];
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+    const before = requests.length;
+
+    await provider.decideSender('dana@lumenpartners.com', 'approved');
+
+    // Their mail is already in the inbox; there is nothing to change.
+    expect(requests.length).toBe(before);
+    expect(await provider.listSenders('approved')).toHaveLength(1);
+  });
+});
+
+describe('the Screener split', () => {
+  it('keeps unknown senders out of the inbox and holds them instead', async () => {
+    const message = (id: string, from: string, subject: string) => ({
+      id,
+      threadId: `t-${id}`,
+      labelIds: ['INBOX'],
+      internalDate: '1750000000000',
+      payload: {
+        mimeType: 'text/plain',
+        headers: [
+          { name: 'From', value: from },
+          { name: 'To', value: 'marc@ferrum.dev' },
+          { name: 'Subject', value: subject },
+        ],
+        body: { data: encodeBase64Url('Hello.') },
+      },
+    });
+
+    routes = [
+      PROFILE,
+      PEOPLE_ME,
+      // No contacts, and no sent mail — so nobody is known.
+      { match: /people\/me\/connections/, body: { connections: [] } },
+      { match: /users\/me\/messages\?/, body: { messages: [] } },
+      { match: /users\/me\/threads\?/, body: { threads: [{ id: 't-a' }] } },
+      {
+        match: /threads\/t-a/,
+        body: { id: 't-a', messages: [message('a', 'Stranger <new@example.com>', 'Hi')] },
+      },
+    ];
+
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+
+    expect(await provider.listThreads('inbox')).toHaveLength(0);
+
+    const held = await provider.listHeld();
+    expect(held).toHaveLength(1);
+    expect(held[0].sender.email).toBe('new@example.com');
+  });
+});
