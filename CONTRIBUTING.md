@@ -74,6 +74,22 @@ Several tests in this codebase passed against the bug they were written for
 until they were checked this way; one asserted a cap that *was* the bug. A test
 that cannot fail is worse than no test, because it reads as coverage.
 
+**A mutation that doesn't fail is a finding about the test.** Not a pass — a
+result to explain. Either the code you broke was unreachable, in which case
+delete it rather than leaving it there untested, or the test isn't reaching what
+you think. Both have happened here: a guard that could never fire because an
+earlier line already covered it, and a test whose harness put two hooks in one
+component when the bug depends on one being a child of the other.
+
+**Aim the mutation at the line you mean.** Anchor on enough surrounding context
+to be sure — two checks in this codebase silently patched an identically written
+element earlier in the same file and proved nothing while appearing to pass.
+
+**Some rules jsdom cannot express.** Effect ordering between a parent and a
+child, hover on a disabled control, anything about layout. Where the browser is
+the only honest witness, say so in the commit rather than letting a green test
+imply cover it doesn't give.
+
 ## Commits
 
 Small and focused. Explain *why* in the body, not what — the diff already says
