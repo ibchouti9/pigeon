@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Draft, Thread } from '../../types';
 import { Composer } from '../compose/Composer';
+import { MailError } from '../../data/provider';
 import { useMail } from '../../store/mail';
 import { useUi } from '../../store/ui';
 import { useOnline } from '../../hooks/useOnline';
@@ -68,9 +69,15 @@ export function InlineReply({
         await loadThreads(thread.place);
         onRestore?.(snapshot);
       });
-    } catch {
+    } catch (error) {
+      // The provider already picks the right §7.6 line — a revoked token, an
+      // unreachable Gmail and a rejected message each have their own. Hardcoding
+      // one of them here told a user whose token had expired to check recipient
+      // addresses that were perfectly good.
       setSendError(
-        "Gmail didn't accept this message. Check the recipient addresses and send again.",
+        error instanceof MailError
+          ? error.message
+          : "Gmail didn't accept this message. Check the recipient addresses and send again.",
       );
     }
   }

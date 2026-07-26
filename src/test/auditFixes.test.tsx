@@ -6,6 +6,7 @@ import { useMail } from '../store/mail';
 import { useUi } from '../store/ui';
 import { useToasts } from '../store/toast';
 import { MockMailProvider } from '../data/mock/mockProvider';
+import { MailError } from '../data/provider';
 import { SearchRoute } from '../routes/SearchRoute';
 import { AppShell } from '../components/shell/AppShell';
 import { MailListColumn } from '../components/mail/MailListColumn';
@@ -608,5 +609,70 @@ describe('§2.2 URL state', () => {
 
     act(() => useCompose.getState().open());
     await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent('?compose=1'));
+  });
+});
+
+/**
+ * The provider distinguishes a revoked token, an unreachable Gmail and a
+ * genuinely rejected message — each has its own §7.6 line. Both send call sites
+ * threw that away and hardcoded the rejected-message copy, so a user whose
+ * token had expired was told to check recipient addresses that were fine.
+ */
+describe('a failed send says what actually failed (§7.6)', () => {
+  beforeEach(resetStores);
+  afterEach(() => {
+    cleanup();
+    useCompose.getState().close();
+  });
+
+  async function sendAndRead(error: unknown) {
+    const user = userEvent.setup();
+    vi.spyOn(useMail.getState().provider, 'send').mockRejectedValue(error);
+
+    useCompose.getState().open({ to: [{ name: 'Dana', email: 'dana@lumen.com' }] });
+    render(
+      <MemoryRouter>
+        <ComposeDock />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    return (await screen.findByRole('alert')).textContent ?? '';
+  }
+
+  it('reports a revoked token as a revoked token', async () => {
+    const text = await sendAndRead(
+      new MailError(
+        "Pigeon lost access to your mail. Google revoked Pigeon's permission. Connect your account again to keep using Pigeon.",
+        'revoked',
+      ),
+    );
+    expect(text).toContain('lost access to your mail');
+    expect(text).not.toContain('recipient addresses');
+  });
+
+  it('reports being unable to reach Gmail as that', async () => {
+    const text = await sendAndRead(
+      new MailError(
+        "Pigeon can't reach Gmail. Your mail is safe. This is a connection problem between Pigeon and Google.",
+        'unreachable',
+      ),
+    );
+    expect(text).toContain("can't reach Gmail");
+  });
+
+  it('still blames the recipients when Gmail really did reject the message', async () => {
+    const text = await sendAndRead(
+      new MailError(
+        "Gmail didn't accept this message. Check the recipient addresses and send again.",
+        'send-rejected',
+      ),
+    );
+    expect(text).toContain('recipient addresses');
+  });
+
+  it('falls back to the rejected copy for anything that is not a MailError', async () => {
+    const text = await sendAndRead(new Error('boom'));
+    expect(text).toContain('recipient addresses');
   });
 });

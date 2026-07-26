@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCompose } from '../../store/compose';
+import { MailError } from '../../data/provider';
 import { useMail } from '../../store/mail';
 import { useOnline } from '../../hooks/useOnline';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -89,9 +90,15 @@ export function ComposeDock() {
         await loadThreads('inbox');
         useCompose.getState().open(snapshot);
       });
-    } catch {
+    } catch (error) {
+      // The provider already picks the right §7.6 line — a revoked token, an
+      // unreachable Gmail and a rejected message each have their own. Hardcoding
+      // one of them here told a user whose token had expired to check recipient
+      // addresses that were perfectly good.
       setSendError(
-        "Gmail didn't accept this message. Check the recipient addresses and send again.",
+        error instanceof MailError
+          ? error.message
+          : "Gmail didn't accept this message. Check the recipient addresses and send again.",
       );
     } finally {
       setSending(false);
