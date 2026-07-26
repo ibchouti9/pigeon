@@ -237,7 +237,15 @@ export class MockMailProvider implements MailProvider {
         category: h.category,
       });
     }
-    held.sort((a, b) => b.messages[0].date.localeCompare(a.messages[0].date));
+    // By each sender's *newest* held message, matching the Gmail provider.
+    // `messages[0]` is their oldest, so the Screener led with whoever had been
+    // waiting longest at the top of their own pile rather than with what had
+    // just arrived — and because both providers had the same defect, fixing it
+    // on the Gmail side alone would have left the demo showing a different
+    // order from the product.
+    const newest = (h: HeldSender) =>
+      h.messages.reduce((latest, m) => (m.date > latest ? m.date : latest), '');
+    held.sort((a, b) => newest(b).localeCompare(newest(a)));
     return delay(held);
   }
 
