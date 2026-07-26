@@ -49,7 +49,12 @@ change. AI content is a tint *and* a label. Counts are never red.
 
 ## Before you open a pull request
 
-Work through the relevant rows of §8.5:
+Open `/dev/states` and look at the screen you touched under `empty`, `loading`
+and `error`. Most of the bugs found in this codebase so far were invisible to
+typecheck, lint and the test suite, and turned up by looking at a running
+screen in a state nobody had looked at.
+
+Then work through the relevant rows of §8.5:
 
 - Does every state you touched render — empty, loading and error?
 - Does the focus ring appear on `:focus-visible` and not on mouse click?

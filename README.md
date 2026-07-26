@@ -28,6 +28,15 @@ develop against it. Pick the **Demo** provider on the assistant step to see the
 summaries, Screener reads and drafts with canned output, or paste a real key to
 use a real model.
 
+### Seeing the awkward states
+
+Empty inboxes, hung requests, a revoked token, a half-failed bulk action — the
+states that are hardest to reach and easiest to get wrong. `/dev/states` lists
+every screen against six provider scenarios and opens the real route with that
+scenario applied, so each state is reached through the screen's own code rather
+than a fixture. `?scenario=empty|loading|error|revoked|flaky` works on any route
+directly. Dev builds only.
+
 ## Status
 
 MVP, under active development. Built against
