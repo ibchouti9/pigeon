@@ -5,7 +5,7 @@ import { useOnline } from '../../hooks/useOnline';
 import { useCompose } from '../../store/compose';
 import { useHeldCount, useMail, useUnreadCount } from '../../store/mail';
 import { isTypingTarget, shortcutsBlocked } from '../../store/ui';
-import type { Draft, Place } from '../../types';
+import type { Draft, Place, Thread } from '../../types';
 import { useAssistant } from '../../ai/useAssistant';
 import { useThreadSummary } from '../../ai/useThreadSummary';
 import { InlineReply } from './InlineReply';
@@ -56,7 +56,51 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const otherPlace: Place = place === 'inbox' ? 'archive' : 'inbox';
   const selfEmail = account?.email ?? '';
 
-  const openThread = threadId ? threads.find((t) => t.id === threadId) : undefined;
+  const listed = threadId ? threads.find((t) => t.id === threadId) : undefined;
+
+  /*
+   * A reader URL for a thread the loaded list doesn't hold — a bookmark, a
+   * link someone was sent, or on a real Gmail account anything past the walk's
+   * 2,000-thread ceiling. §5.6's error state offers "Try again", which reloads
+   * the same list and still won't contain it: a dead end that looks like a
+   * failure. `getThread` exists on both providers for exactly this.
+   */
+  const [fetched, setFetched] = useState<Thread | null>(null);
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const missing = Boolean(threadId) && !listed && status === 'ready';
+
+  useEffect(() => {
+    setFetched(null);
+    setFetchFailed(false);
+  }, [threadId]);
+
+  useEffect(() => {
+    if (!missing || !threadId) return;
+    const { provider } = useMail.getState();
+
+    /*
+     * The cleanup is the guard, and it covers both ways this can land on the
+     * wrong screen: navigating to another thread mid-fetch, and disconnecting
+     * — `setProvider` resets the place's status, so `missing` goes false and
+     * this tears down. A providerEpoch check on top of it never fires.
+     */
+    let live = true;
+
+    provider
+      .getThread(threadId)
+      .then((thread) => {
+        if (live) setFetched(thread);
+      })
+      .catch(() => {
+        if (live) setFetchFailed(true);
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [missing, threadId]);
+
+  const openThread = listed ?? fetched ?? undefined;
 
   // D5 — automatic above the threshold, a button below it.
   const summary = useThreadSummary(openThread ?? null);
@@ -69,7 +113,11 @@ export function MailPlaceScreen({ place }: { place: Place }) {
         ? 'loading'
         : status === 'error'
           ? 'none'
-          : 'error';
+          : // Still asking the provider for it: the reader keeps §5.6's skeleton
+            // rather than claiming a failure that hasn't happened yet.
+            fetchFailed
+            ? 'error'
+            : 'loading';
 
   // §3.4 step 1 — mark read after 1,200ms of continuous display.
   // The shell loads the inbox at mount because the rail's unread count needs
@@ -254,7 +302,12 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           breakpoint={bp}
           backLabel={title}
           onBack={() => closeThread(true)}
-          onRetryLoad={() => void loadThreads(place)}
+          onRetryLoad={() => {
+            // Clearing this re-runs the single-thread fetch. Reloading only the
+            // list would retry the thing that already succeeded.
+            setFetchFailed(false);
+            void loadThreads(place);
+          }}
           onArchive={() => threadId && archiveOne(threadId)}
           onReply={reply}
           summary={summary.hidden || summary.bullets.length === 0 ? undefined : summary.bullets}
