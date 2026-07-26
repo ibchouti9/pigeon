@@ -63,7 +63,22 @@ Every screen in §5 is built and runs against the demo account.
 
 ## Bugs found and fixed while verifying
 
-Worth keeping: each was invisible to typecheck, lint and tests.
+Worth keeping: each was invisible to typecheck, lint and tests. Every one was
+found by driving the running app, not by reading the code.
+
+- **The Archive never loaded.** The shell fetches the inbox at mount; nothing
+  fetched the other places, so `/archive` sat on its loading state forever and
+  the whole screen was dead.
+- **Two AI surfaces broke C-28.** With no provider the reader rendered an empty
+  tinted summary block, and "Summarize thread" was hidden rather than disabled —
+  both the exact "a missing key looks like a broken app" outcome D44 forbids.
+- **The bulk bar and composer dock still travelled under reduced motion.** The
+  global rule in tokens.css constrains transitions; a keyframe animating
+  `transform` is not a transition.
+- **Tertiary ink on a filled row was 4.24:1** — under AA, and a pairing §8.3's
+  "every text pairing" table does not contain.
+- **Search's URL updater changed identity every render**, and the debounce
+  effect both depended on it and called it.
 
 - **Breakpoint measured from `window.innerWidth`**, which includes the overflow
   the layout itself causes. Self-reinforcing: every viewport from 720–1079 chose
@@ -99,6 +114,20 @@ Each is a considered call, not an oversight.
    per account in the browser. A Gmail label cannot express "this address may
    reach me" for mail that has not arrived yet, and D41 rules out a server.
    They do not follow the user across devices.
+
+## Where to look next
+
+In rough order of expected value:
+
+1. Drive more of the running app. Eight of the bugs above were found this way
+   and none of them by any static check. Untested paths: the offline banner and
+   the disabled controls behind it, Gmail's error states, O4 at 342 rows, the
+   partial-failure bulk retry.
+2. Build the dev harness §8.5 item 1 asks for — one route that mounts every
+   screen's empty, loading and error state. It is the last quality-floor item
+   still open, and it makes the states above reachable without faking data by
+   hand.
+3. First real Gmail run, once an OAuth client exists.
 
 ## Open items
 
