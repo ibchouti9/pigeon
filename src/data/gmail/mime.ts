@@ -138,7 +138,8 @@ function unescapeHtml(value: string): string {
 }
 
 /** Last-resort conversion when a message carries no text/plain alternative. */
-function htmlToText(html: string): string {
+/** HTML mail, flattened to the text Pigeon renders (§5.9: never remote HTML). */
+export function htmlToText(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   doc.querySelectorAll('script, style, head').forEach((el) => el.remove());
   return (doc.body?.textContent ?? '')

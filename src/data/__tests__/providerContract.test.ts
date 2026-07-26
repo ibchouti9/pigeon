@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockMailProvider } from '../mock/mockProvider';
 import { GmailMailProvider } from '../gmail/gmailProvider';
+import { ImapMailProvider } from '../imap/imapProvider';
 import { encodeBase64Url } from '../gmail/mime';
 import type { MailProvider } from '../provider';
 
@@ -8,6 +9,103 @@ vi.mock('../gmail/auth', () => ({
   accessToken: vi.fn(async () => 'test-token'),
   AuthError: class AuthError extends Error {},
 }));
+
+/**
+ * The IMAP provider reaches Rust through this seam; here, "Rust" is an
+ * in-memory Gmail holding the same two piles the REST stub holds.
+ */
+const bridge = vi.hoisted(() => {
+  const state = {
+    handler: null as ((command: string, args?: Record<string, unknown>) => unknown) | null,
+  };
+  return state;
+});
+
+vi.mock('../../lib/desktop', () => ({
+  // False, so the Gmail REST provider's httpFetch stays on window.fetch —
+  // which is where `stubGmail` lives. The IMAP provider never asks; it goes
+  // straight to invoke.
+  isDesktop: () => false,
+  invoke: async (command: string, args?: Record<string, unknown>) => {
+    if (!bridge.handler) throw new Error(`no bridge handler for ${command}`);
+    return bridge.handler(command, args);
+  },
+  openExternal: async () => undefined,
+  onFileDrop: () => () => undefined,
+}));
+
+/** The same mailbox `stubGmail` fakes over REST, spoken in bridge JSON. */
+function stubImapBridge() {
+  const archived = new Set<string>();
+  const threads = HELD.flatMap((h) => [
+    { id: `${h.id}-a`, from: `${h.id}@example.com`, date: h.oldest },
+    { id: `${h.id}-b`, from: `${h.id}@example.com`, date: h.newest },
+  ]);
+
+  bridge.handler = (command, args) => {
+    const visible = threads.filter((t) => !archived.has(t.id));
+    switch (command) {
+      case 'mail_status':
+        return { connected: true, email: 'marc@ferrum.dev' };
+      case 'mail_sent_recipients':
+        return [];
+      case 'mail_list_threads': {
+        const inInbox = args?.place === 'inbox';
+        const listed = inInbox ? visible : [];
+        return {
+          total: listed.length,
+          threads: listed.map((t, i) => ({
+            id: t.id,
+            lastMessageAt: t.date,
+            unread: false,
+            messageCount: 1,
+            lastUid: i + 1,
+          })),
+        };
+      }
+      case 'mail_get_thread': {
+        const thread = threads.find((t) => t.id === args?.threadId);
+        if (!thread) throw "This thread didn't load. It's still in Gmail.";
+        return {
+          id: thread.id,
+          subject: 'Hello',
+          inInbox: !archived.has(thread.id),
+          unread: false,
+          lastMessageAt: thread.date,
+          messages: [
+            {
+              id: `m-${thread.id}`,
+              uid: 1,
+              subject: 'Hello',
+              from: { name: '', email: thread.from },
+              to: [{ name: '', email: 'marc@ferrum.dev' }],
+              cc: [],
+              date: thread.date,
+              text: 'Body text.',
+              html: null,
+              attachments: [],
+              messageId: null,
+              unread: false,
+            },
+          ],
+        };
+      }
+      case 'mail_silence': {
+        const id = String(args?.threadId);
+        if (args?.silence) archived.add(id);
+        else archived.delete(id);
+        return undefined;
+      }
+      case 'mail_mark_read':
+      case 'mail_set_place':
+        return undefined;
+      case 'mail_attachment':
+        throw "This attachment didn't load.";
+      default:
+        throw new Error(`unexpected bridge command ${command}`);
+    }
+  };
+}
 
 /**
  * Two providers implement one interface, and the UI is written against the
@@ -109,6 +207,13 @@ const IMPLEMENTATIONS: { name: string; make: () => MailProvider }[] = [
     make: () => {
       stubGmail();
       return new GmailMailProvider();
+    },
+  },
+  {
+    name: 'ImapMailProvider',
+    make: () => {
+      stubImapBridge();
+      return new ImapMailProvider();
     },
   },
 ];
