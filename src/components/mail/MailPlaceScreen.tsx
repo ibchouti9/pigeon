@@ -247,6 +247,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
         <ThreadReader
           status={readerStatus}
           thread={openThread}
+          pendingSubject={threads.find((t) => t.id === threadId)?.subject}
           place={place}
           selfEmail={selfEmail}
           online={online}

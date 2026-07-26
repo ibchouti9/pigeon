@@ -33,6 +33,11 @@ export interface ThreadReaderProps {
    * "Reply to {name}" affordance at the foot of the thread (D14).
    */
   replySlot?: ReactNode;
+  /**
+   * The subject from the list row, for the states where the thread itself
+   * hasn't arrived. §5.6 asks the header to show it rather than a skeleton.
+   */
+  pendingSubject?: string;
   /** Undefined summary + summaryState renders nothing — another agent wires the AI. */
   summary?: string[];
   summaryState?: AiBlockState;
@@ -91,6 +96,7 @@ export function ThreadReader({
   onArchive,
   onReply,
   replySlot,
+  pendingSubject,
   summary,
   summaryState,
   onRetrySummary,
@@ -102,14 +108,34 @@ export function ThreadReader({
   const [hiddenSummaryFor, setHiddenSummaryFor] = useState<Record<string, boolean>>({});
 
   if (status === 'none' || !thread) {
+    /*
+     * §5.6 — the header "renders the subject from the list row immediately (no
+     * skeleton for text we already have)", and the error state keeps its header
+     * with the actions disabled. Both states used to drop the header entirely:
+     * loading rendered `&nbsp;` where the subject belongs, and the error state
+     * replaced the whole pane with a centred block.
+     */
+    const placeholderHeader = (
+      <header className={styles.header}>
+        <div className={styles.headerRow1}>
+          <h1 className={cn('t-display-sm', styles.subject)}>
+            {pendingSubject || '\u00a0'}
+          </h1>
+          <div className={styles.actions}>
+            {HEADER_ICONS.map(({ mode, icon, label }) => (
+              <Button key={mode} variant="icon" size="sm" aria-label={label} aria-disabled="true">
+                <Icon name={icon} size={16} />
+              </Button>
+            ))}
+          </div>
+        </div>
+      </header>
+    );
+
     if (status === 'loading') {
       return (
         <div className={styles.pane}>
-          <header className={styles.header}>
-            <div className={styles.headerRow1}>
-              <h1 className={cn('t-display-sm', styles.subject)}>&nbsp;</h1>
-            </div>
-          </header>
+          {placeholderHeader}
           <div className={styles.body}>
             <span className="visually-hidden">Loading thread</span>
             <div className={styles.skeletonMessages} aria-hidden="true">
@@ -131,14 +157,17 @@ export function ThreadReader({
 
     if (status === 'error') {
       return (
-        <div className={cn(styles.pane, styles.centered)}>
-          <div className={styles.errorBlock}>
-            <p className="t-md">This thread didn't load. It's still in Gmail.</p>
-            {onRetryLoad && (
-              <Button variant="secondary" onClick={onRetryLoad}>
-                Try again
-              </Button>
-            )}
+        <div className={styles.pane}>
+          {placeholderHeader}
+          <div className={cn(styles.body, styles.centered)}>
+            <div className={styles.errorBlock}>
+              <p className="t-md">This thread didn't load. It's still in Gmail.</p>
+              {onRetryLoad && (
+                <Button variant="secondary" onClick={onRetryLoad}>
+                  Try again
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       );

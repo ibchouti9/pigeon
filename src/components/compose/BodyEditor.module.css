@@ -62,11 +62,19 @@
   color: var(--color-text-ai);
 }
 
-/* D26 — an unresolved commitment reads as a chip and blocks send. */
+/*
+ * D26 — an unresolved commitment reads as a chip and blocks send.
+ *
+ * No font-family here, even though C-18 asks for `--font-mono`. This run lives
+ * in a transparent underlay that has to line up character for character with
+ * the textarea above it, and a textarea renders one font throughout. Setting
+ * mono on the underlay alone made the tint box a different width from the text
+ * it was meant to sit behind, so the box missed the placeholder and everything
+ * after it on the line drifted.
+ */
 .placeholder {
   background: var(--color-destructive-subtle);
   color: transparent;
   border-radius: var(--radius-xs);
-  font-family: var(--font-mono);
   box-shadow: 0 0 0 1px var(--color-destructive) inset;
 }

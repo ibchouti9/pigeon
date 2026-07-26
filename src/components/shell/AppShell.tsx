@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NavRail } from './NavRail';
+import { RevokedState } from '../mail/RevokedState';
 import { ToastStack } from './ToastStack';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { ComposeDock } from '../compose/ComposeDock';
@@ -21,6 +22,9 @@ import styles from './AppShell.module.css';
 export function AppShell() {
   const bp = useBreakpoint();
   const online = useOnline();
+  const revoked = useMail((s) => s.revoked);
+  const navigate = useNavigate();
+  const inSettings = useLocation().pathname.startsWith('/settings');
   const searchRef = useRef<HTMLInputElement>(null);
   const wasOffline = useRef(false);
 
@@ -62,9 +66,20 @@ export function AppShell() {
       )}
 
       <div className={styles.body}>
-        <NavRail compact={bp === 'tablet' || bp === 'narrow'} searchRef={searchRef} />
+        <NavRail compact={bp === 'tablet' || bp === 'narrow'} searchRef={searchRef} locked={revoked} />
         <div className={styles.region} id="main">
-          <Outlet />
+          {/*
+            §5.5 — a revoked token "locks the whole shell: the list and reader
+            both show it, and only Settings and this action remain interactive".
+            Only the list column was rendering it, so the reader sat beside the
+            error saying "Select a thread to read it." and every route stayed
+            live. Settings is the one place still worth reaching.
+          */}
+          {revoked && !inSettings ? (
+            <RevokedState onConnectGmail={() => navigate('/settings/account')} />
+          ) : (
+            <Outlet />
+          )}
         </div>
       </div>
 

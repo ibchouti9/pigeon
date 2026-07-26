@@ -24,6 +24,7 @@ import { Button } from '../primitives/Button';
 import { EmptyState, SkeletonRows } from '../primitives/Feedback';
 import { groupThreadsByDate } from './grouping';
 import { ThreadRow } from './ThreadRow';
+import { RevokedState } from './RevokedState';
 import styles from './MailListColumn.module.css';
 
 /** Matches --duration-base; reduced motion shortens the CSS, not this. */
@@ -393,20 +394,6 @@ function UnreachableState({ onRetry }: { onRetry: () => void }) {
       >
         Check Google Workspace status
       </a>
-    </div>
-  );
-}
-
-function RevokedState({ onConnectGmail }: { onConnectGmail: () => void }) {
-  return (
-    <div className={styles.stateBlock}>
-      <p className="t-lg">Pigeon lost access to your mail.</p>
-      <p className={cn('t-sm', styles.stateBody)}>
-        Google revoked Pigeon's permission. Connect your account again to keep using Pigeon.
-      </p>
-      <Button variant="primary" onClick={onConnectGmail}>
-        Connect Gmail
-      </Button>
     </div>
   );
 }

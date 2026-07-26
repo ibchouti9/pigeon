@@ -181,3 +181,68 @@ describe('hiding a summary hides the offer to make one (C-10)', () => {
     expect(screen.queryByRole('button', { name: 'Summarize thread' })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * §5.5 — a revoked token "locks the whole shell: the list and reader both show
+ * it, and only Settings and this action remain interactive". Only the list
+ * column rendered it, so the reader sat beside the error saying "Select a
+ * thread to read it." and every route stayed live.
+ */
+describe('a revoked token locks the shell (§5.5)', () => {
+  beforeEach(resetStores);
+  afterEach(cleanup);
+
+  function renderShell(entry: string) {
+    render(
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/inbox" element={<div>inbox contents</div>} />
+            <Route path="/settings/account" element={<div>account settings</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('replaces the whole region, not just the list', async () => {
+    useMail.setState({ revoked: true });
+    renderShell('/inbox');
+
+    expect(await screen.findByText('Pigeon lost access to your mail.')).toBeInTheDocument();
+    expect(screen.queryByText('inbox contents')).not.toBeInTheDocument();
+  });
+
+  it('locks the mail destinations and Compose', async () => {
+    useMail.setState({ revoked: true });
+    renderShell('/inbox');
+    await screen.findByText('Pigeon lost access to your mail.');
+
+    for (const label of ['Inbox', 'Screener', 'Archive']) {
+      expect(screen.getByRole('link', { name: new RegExp(`^${label}`) })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+    }
+    expect(screen.getByRole('button', { name: 'Compose' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
+  it('leaves Settings reachable and readable', async () => {
+    useMail.setState({ revoked: true });
+    renderShell('/settings/account');
+
+    expect(await screen.findByText('account settings')).toBeInTheDocument();
+    expect(screen.queryByText('Pigeon lost access to your mail.')).not.toBeInTheDocument();
+  });
+
+  it('gets out of the way once the token is good again', async () => {
+    useMail.setState({ revoked: false });
+    renderShell('/inbox');
+
+    expect(await screen.findByText('inbox contents')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^Inbox/ })).not.toHaveAttribute('aria-disabled');
+  });
+});

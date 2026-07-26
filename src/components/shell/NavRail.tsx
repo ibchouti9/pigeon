@@ -16,6 +16,12 @@ interface NavRailProps {
   compact: boolean;
   /** The search field lives in the list column header when compact. */
   searchRef?: React.RefObject<HTMLInputElement | null>;
+  /**
+   * §5.5's revoked state locks the shell — "only Settings and this action
+   * remain interactive". The mail destinations and Compose go quiet; the
+   * account link stays, because it leads into Settings.
+   */
+  locked?: boolean;
 }
 
 interface Item {
@@ -31,7 +37,7 @@ interface Item {
  * §5.0 — the rail never changes contents. The same four items and the search
  * field are present on every screen of the app shell.
  */
-export function NavRail({ compact, searchRef }: NavRailProps) {
+export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
   const navigate = useNavigate();
   const account = useMail((s) => s.account);
   const unread = useUnreadCount();
@@ -130,6 +136,10 @@ export function NavRail({ compact, searchRef }: NavRailProps) {
             key={item.to}
             to={item.to}
             title={compact ? item.label : undefined}
+            aria-disabled={locked || undefined}
+            onClick={(e) => {
+              if (locked) e.preventDefault();
+            }}
             aria-label={
               item.count
                 ? `${item.label}, ${formatCount(item.count)} ${item.countNoun}`
@@ -169,9 +179,9 @@ export function NavRail({ compact, searchRef }: NavRailProps) {
           className={styles.compose}
           aria-label="Compose"
           title="Compose"
-          aria-disabled={!online || undefined}
+          aria-disabled={!online || locked || undefined}
           onClick={() => {
-            if (online) openCompose();
+            if (online && !locked) openCompose();
           }}
         >
           <Icon name="compose" size={20} />
@@ -181,9 +191,9 @@ export function NavRail({ compact, searchRef }: NavRailProps) {
           variant="primary"
           fullWidth
           className={styles.compose}
-          aria-disabled={!online || undefined}
+          aria-disabled={!online || locked || undefined}
           onClick={() => {
-            if (online) openCompose();
+            if (online && !locked) openCompose();
           }}
         >
           Compose

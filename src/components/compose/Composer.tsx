@@ -297,12 +297,27 @@ export function Composer({
         drafted={isAiInk}
         disabled={sending || generating}
         ariaLabel="Message body"
-        ariaDescribedBy={showProvenance ? provenanceId : undefined}
+        ariaDescribedBy={showProvenance ? `${provenanceId}-spoken` : undefined}
         busy={generating}
         textareaRef={bodyRef}
         onKeyDown={onBodyKeyDown}
         minHeight={variant === 'inline' ? 160 : 200}
       />
+
+      {/*
+        §4.7 requires all three of tint, mono label and "a visually hidden
+        prefix for assistive technology". Only the visible row existed, and
+        describing the body with it read the tone buttons aloud too: "Drafted by
+        Pigeon Shorter Friendlier Firmer Discard draft". This says just the
+        prefix; the row beside it stays a set of ordinary buttons.
+      */}
+      {showProvenance && (
+        <span className="visually-hidden" id={`${provenanceId}-spoken`}>
+          {draft.aiState === 'edited'
+            ? 'Drafted by Pigeon, edited by you:'
+            : 'Drafted by Pigeon:'}
+        </span>
+      )}
 
       {showProvenance && (
         <div className={styles.provenance} id={provenanceId}>
