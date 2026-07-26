@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMail } from '../store/mail';
 import { useUi } from '../store/ui';
@@ -23,6 +23,13 @@ type View = 'stack' | 'list';
  * Bulk review; `/screener/s/:senderId` opens the held-message sheet without
  * unmounting whichever view is behind it.
  */
+/**
+ * How long the Screener waits before believing a zero count. Long enough to
+ * cover §3.3 step 3's stamp-and-collapse (420ms + 180ms) so the rows have
+ * finished leaving, and long enough for an optimistic decision to roll back.
+ */
+const EMPTY_SETTLE_MS = 400;
+
 export function ScreenerRoute() {
   const navigate = useNavigate();
   const { senderId } = useParams<{ senderId?: string }>();
@@ -33,6 +40,7 @@ export function ScreenerRoute() {
   const status = useMail((s) => s.status.held);
   const loadHeld = useMail((s) => s.loadHeld);
   const online = useOnline();
+  const deciding = useMail((s) => s.deciding);
 
   const heldSheetSenderId = useUi((s) => s.heldSheetSenderId);
   const openHeldSheet = useUi((s) => s.openHeldSheet);
@@ -69,6 +77,7 @@ export function ScreenerRoute() {
   // even when some fail and come back. Switching views on that transient
   // reading yanked the list out from under the user mid-action.
   useEffect(() => {
+    if (deciding > 0) return;
     if (!(status === 'ready' && held.length === 0 && view === 'list')) return;
     const timer = setTimeout(() => {
       setSearchParams(
@@ -79,10 +88,10 @@ export function ScreenerRoute() {
         },
         { replace: true },
       );
-    }, 400);
+    }, EMPTY_SETTLE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, held.length, view]);
+  }, [status, held.length, view, deciding]);
 
   const { digest, digestState, retryDigest, reads } = useScreenerAi();
   const { connected } = useAssistant();
@@ -107,7 +116,33 @@ export function ScreenerRoute() {
     setView('list');
   }
 
-  const isEmpty = status === 'ready' && held.length === 0;
+  // The empty state has to be just as patient as the view toggle above, and for
+  // the same reason: rendering it unmounts the list. §3.3-3b's failed rows come
+  // back with a retry affordance and the selection intact, and both live in
+  // BulkReview — an unmount on the transient zero threw them away, so a partial
+  // failure left a plain row with nothing to retry and a stale "3 selected".
+  const rawEmpty = status === 'ready' && held.length === 0;
+  const [isEmpty, setIsEmpty] = useState(rawEmpty);
+  const prevHeldCount = useRef(held.length);
+
+  useEffect(() => {
+    const hadHeld = prevHeldCount.current > 0;
+    prevHeldCount.current = held.length;
+
+    // A decision is still resolving; some of these rows may be coming back.
+    if (deciding > 0) return;
+    if (!rawEmpty) {
+      setIsEmpty(false);
+      return;
+    }
+    // Nothing was ever there, so there is no departure to wait out.
+    if (!hadHeld) {
+      setIsEmpty(true);
+      return;
+    }
+    const timer = setTimeout(() => setIsEmpty(true), EMPTY_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [rawEmpty, held.length, deciding]);
 
   return (
     <div className={styles.region}>

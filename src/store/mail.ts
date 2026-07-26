@@ -45,6 +45,15 @@ interface MailState {
     senderIds: string[],
     decision: 'approved' | 'declined',
   ) => Promise<{ ok: string[]; failed: string[] }>;
+
+  /**
+   * How many sender decisions are in flight. Both decide paths remove their
+   * rows optimistically, so `held` reads zero for the whole round-trip even
+   * when some of them are about to roll back. Anything that reacts to an empty
+   * Screener — the empty state, the jump back to Stack — has to wait for this
+   * to reach zero, or it tears the list down mid-action.
+   */
+  deciding: number;
   reverse: (senderId: string, to: 'approved' | 'declined') => Promise<boolean>;
 
   search: (query: string, includeHeld: boolean) => Promise<SearchResults>;
@@ -84,6 +93,7 @@ export const useMail = create<MailState>((set, get) => ({
   },
   revoked: false,
   providerEpoch: 0,
+  deciding: 0,
 
   setProvider: (provider) =>
     set((s) => ({
@@ -246,7 +256,10 @@ export const useMail = create<MailState>((set, get) => ({
     if (!entry) return false;
 
     // Optimistic: the card leaves immediately (§3.2 step 3).
-    set({ held: held.filter((h) => h.sender.id !== senderId) });
+    set((st) => ({
+      held: held.filter((h) => h.sender.id !== senderId),
+      deciding: st.deciding + 1,
+    }));
 
     try {
       await get().provider.decideSender(senderId, decision);
@@ -279,53 +292,66 @@ export const useMail = create<MailState>((set, get) => ({
         { label: 'Try again', run: () => void get().decide(senderId, decision) },
       );
       return false;
+    } finally {
+      set((st) => ({ deciding: Math.max(0, st.deciding - 1) }));
     }
   },
 
   decideMany: async (senderIds, decision) => {
     const held = get().held;
     const wanted = new Set(senderIds);
-    set({ held: held.filter((h) => !wanted.has(h.sender.id)) });
+    set((st) => ({
+      held: held.filter((h) => !wanted.has(h.sender.id)),
+      deciding: st.deciding + 1,
+    }));
 
-    const ok: string[] = [];
-    const failed: string[] = [];
-    for (const id of senderIds) {
-      try {
-        await get().provider.decideSender(id, decision);
-        ok.push(id);
-      } catch {
-        failed.push(id);
+    try {
+      return await decideAll();
+    } finally {
+      set((st) => ({ deciding: Math.max(0, st.deciding - 1) }));
+    }
+
+    async function decideAll() {
+      const ok: string[] = [];
+      const failed: string[] = [];
+      for (const id of senderIds) {
+        try {
+          await get().provider.decideSender(id, decision);
+          ok.push(id);
+        } catch {
+          failed.push(id);
+        }
       }
+
+      await Promise.all([get().loadHeld(), get().loadThreads('inbox'), get().loadSenders()]);
+
+      const verb = decision === 'approved' ? 'Approved' : 'Declined';
+      if (failed.length === 0) {
+        toast.undo(
+          decision === 'approved'
+            ? `${verb} ${plural(ok.length, 'sender')}. Their mail is in your inbox.`
+            : `${verb} ${plural(ok.length, 'sender')}. You won't see their mail.`,
+          'Undo all',
+          async () => {
+            for (const id of ok) await get().provider.undecideSender(id);
+            await Promise.all([
+              get().loadHeld(),
+              get().loadThreads('inbox'),
+              get().loadSenders(),
+            ]);
+            toast.confirm('Decision undone.');
+          },
+        );
+      } else {
+        // §3.3 3b — partial failure names the counts and retries only what failed.
+        toast.error(
+          `${verb} ${ok.length} of ${senderIds.length} senders. ${failed.length} didn't go through — try those again.`,
+          { label: 'Try again', run: () => void get().decideMany(failed, decision) },
+        );
+      }
+
+      return { ok, failed };
     }
-
-    await Promise.all([get().loadHeld(), get().loadThreads('inbox'), get().loadSenders()]);
-
-    const verb = decision === 'approved' ? 'Approved' : 'Declined';
-    if (failed.length === 0) {
-      toast.undo(
-        decision === 'approved'
-          ? `${verb} ${plural(ok.length, 'sender')}. Their mail is in your inbox.`
-          : `${verb} ${plural(ok.length, 'sender')}. You won't see their mail.`,
-        'Undo all',
-        async () => {
-          for (const id of ok) await get().provider.undecideSender(id);
-          await Promise.all([
-            get().loadHeld(),
-            get().loadThreads('inbox'),
-            get().loadSenders(),
-          ]);
-          toast.confirm('Decision undone.');
-        },
-      );
-    } else {
-      // §3.3 3b — partial failure names the counts and retries only what failed.
-      toast.error(
-        `${verb} ${ok.length} of ${senderIds.length} senders. ${failed.length} didn't go through — try those again.`,
-        { label: 'Try again', run: () => void get().decideMany(failed, decision) },
-      );
-    }
-
-    return { ok, failed };
   },
 
   reverse: async (senderId, to) => {
