@@ -591,6 +591,38 @@ for a product with none is speculative. And the mock and Gmail providers reach
 §2.3's four cases by different mechanisms; the contract test pins the outcomes
 but not a third decision or an undo.
 
+## Open, and known — read this first
+
+A fifth review pass (over the fix for the fourth) reported these. **I verified
+none of them**; they are leads, ranked by what they claim:
+
+1. **`keptExisting` has the same bug `reversedDecline` was just fixed for.** It
+   is set for any decline that follows an approval, including an approval that
+   was itself a reversal of a Screener decline. Claimed effect: three decisions
+   (decline → approve → decline) leave a Screener-declined sender's later mail
+   visible in the Inbox, Archive and search, with no in-app way back. If true
+   this is the same severity as the one fixed this cycle, and the fix is the
+   symmetric guard.
+2. **`silence()` runs once, over the in-memory cache.** So D7's Gmail-side
+   promise is never kept for mail arriving later, and `silenced` misses threads
+   already in the Archive or beyond the walk's ceiling. Pigeon's hiding is a
+   localStorage predicate rather than anything done in Gmail.
+3. **`approveKnownSenders` overwrites the whole decision record**, dropping
+   `silenced`. Re-running onboarding on an account with a declined contact would
+   surface everything D7 had archived.
+4. **`undecideSender` restores the accumulated list**, and does nothing at all
+   if another decision intervened inside the 8-second window.
+5. **The mock has none of this state machine** — decline deletes threads, and
+   its `search()` never consults sender status, so the D7 search hole closed on
+   the Gmail side is still open there.
+
+The shape of the problem is worth naming: this is the fifth revision of the same
+rules, and three of the five introduced a defect the previous one didn't have.
+The flags encode *what the previous status was* rather than what the previous
+decision *meant*, and every new case has needed another flag. If lead 1 is real,
+the next change should probably replace the flags with something that records
+declined *intervals* directly, rather than adding a sixth.
+
 ## Deliberate deviations from the spec
 
 Each is a considered call, not an oversight.
