@@ -198,3 +198,44 @@
 .row:hover .archiveHover {
   display: inline-flex;
 }
+
+/*
+ * §4.6 ROW DEPART — opacity 1 → 0 over the first 90ms, then height and margin
+ * to 0 over the remaining 90ms. Bulk review had this; archiving from the Inbox
+ * removed the row between frames.
+ */
+.departing {
+  animation: row-depart var(--duration-base) var(--ease-exit) both;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@keyframes row-depart {
+  0% {
+    opacity: 1;
+    max-height: var(--layout-row-height);
+  }
+  50% {
+    opacity: 0;
+    max-height: var(--layout-row-height);
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .departing {
+    animation-name: row-fade;
+  }
+}
+
+@keyframes row-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

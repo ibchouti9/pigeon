@@ -1,13 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToasts, type Toast } from '../../store/toast';
 import { Icon } from '../primitives/Icon';
 import { cn } from '../../lib/cn';
 import styles from './ToastStack.module.css';
 
+/** Matches --duration-toast-out. */
+const EXIT_MS = 120;
+
 /** C-11 Toast. Never receives focus; the timer pauses on hover and focus. */
 function ToastItem({ toast }: { toast: Toast }) {
-  const dismiss = useToasts((s) => s.dismiss);
+  const remove = useToasts((s) => s.dismiss);
   const [paused, setPaused] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  /**
+   * §4.6 — a toast fades out before it goes. Removing it from the array
+   * immediately unmounted it between frames, so the exit the spec describes
+   * never played and --duration-toast-out was never read by anything.
+   */
+  const dismiss = useCallback(
+    (id: string) => {
+      setLeaving(true);
+      setTimeout(() => remove(id), EXIT_MS);
+    },
+    [remove],
+  );
   const remaining = useRef(toast.duration);
   const startedAt = useRef(Date.now());
 
@@ -29,7 +46,11 @@ function ToastItem({ toast }: { toast: Toast }) {
 
   return (
     <div
-      className={cn(styles.toast, toast.tone === 'error' ? styles.error : styles.confirm)}
+      className={cn(
+        styles.toast,
+        toast.tone === 'error' ? styles.error : styles.confirm,
+        leaving && styles.leaving,
+      )}
       onMouseEnter={pause}
       onMouseLeave={resume}
       onFocus={pause}

@@ -26,6 +26,8 @@ export interface ThreadRowProps {
   open: boolean;
   place: Place;
   online: boolean;
+  /** Playing the §4.6 row-depart animation before it leaves the list. */
+  departing?: boolean;
   /** Roving tabindex — exactly one row button in the whole list is 0 (§8.4). */
   tabIndex: 0 | -1;
   onOpen: () => void;
@@ -56,6 +58,7 @@ export function ThreadRow({
   open,
   place,
   online,
+  departing,
   tabIndex,
   onOpen,
   onToggleCheck,
@@ -75,6 +78,7 @@ export function ThreadRow({
         checked ? styles.fillChecked : open && styles.fillOpen,
         open && styles.hasBar,
         cursor && styles.cursor,
+        departing && styles.departing,
       )}
     >
       <Checkbox

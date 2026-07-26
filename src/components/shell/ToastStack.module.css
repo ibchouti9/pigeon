@@ -73,6 +73,22 @@
   border-radius: var(--radius-xs);
 }
 
+/* §4.6 — out: opacity 1 → 0, no travel. The token existed and was never wired
+   up, so toasts vanished between frames. */
+.leaving {
+  animation: toast-out var(--duration-toast-out) var(--ease-exit) both;
+  pointer-events: none;
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

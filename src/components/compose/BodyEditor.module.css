@@ -39,8 +39,10 @@
   color: var(--color-text-primary);
   resize: none;
   overflow-y: auto;
-  transition: color var(--duration-base) var(--ease-standard),
-    background-color var(--duration-base) var(--ease-standard);
+  /* §4.6 AI INK → HUMAN INK is 200ms specifically, not --duration-base's
+     180ms, and the token block has no step at 200. */
+  transition: color 200ms var(--ease-standard),
+    background-color 200ms var(--ease-standard);
 }
 
 .input:focus-visible {

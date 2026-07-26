@@ -26,6 +26,9 @@ import { groupThreadsByDate } from './grouping';
 import { ThreadRow } from './ThreadRow';
 import styles from './MailListColumn.module.css';
 
+/** Matches --duration-base; reduced motion shortens the CSS, not this. */
+const DEPART_MS = 180;
+
 export interface MailListColumnHandle {
   focusThread: (id: string) => void;
 }
@@ -86,6 +89,33 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
     ref,
   ) {
     const [cursorIndex, setCursorIndex] = useState(0);
+
+    // §4.6 ROW DEPART — hold the row on screen for one animation, then hand the
+    // archive up. Without this the row vanishes between frames.
+    const [departing, setDeparting] = useState<Set<string>>(() => new Set());
+    const departTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+    useEffect(
+      () => () => {
+        departTimers.current.forEach(clearTimeout);
+      },
+      [],
+    );
+
+    function archiveWithDeparture(id: string) {
+      if (departing.has(id)) return;
+      setDeparting((prev) => new Set(prev).add(id));
+      departTimers.current.push(
+        setTimeout(() => {
+          onArchiveThread(id);
+          setDeparting((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        }, DEPART_MS),
+      );
+    }
     const [checked, setChecked] = useState<Set<string>>(new Set());
     const buttonRefs = useRef(new Map<string, HTMLButtonElement>());
 
@@ -326,7 +356,8 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
                             onOpenThread(t.id);
                           }}
                           onToggleCheck={() => toggleCheck(t.id)}
-                          onArchive={() => onArchiveThread(t.id)}
+                          departing={departing.has(t.id)}
+                          onArchive={() => archiveWithDeparture(t.id)}
                           buttonRef={(el) => {
                             if (el) buttonRefs.current.set(t.id, el);
                             else buttonRefs.current.delete(t.id);

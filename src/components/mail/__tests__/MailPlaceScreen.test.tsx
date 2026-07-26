@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type {
   Account,
@@ -114,7 +114,7 @@ describe('archiving a thread', () => {
     expect(useMail.getState().archive.map((t) => t.id)).toEqual(['t1']);
   });
 
-  it('clicking a row\'s hover archive button archives that row via the store', () => {
+  it("clicking a row's hover archive button archives that row via the store", async () => {
     const threads = [makeThread('t1', 'First'), makeThread('t2', 'Second')];
     const { container } = renderInbox(threads);
 
@@ -122,7 +122,11 @@ describe('archiving a thread', () => {
     // The first icon-labelled "Archive" button belongs to the first row.
     fireEvent.click(archiveButtons[0]);
 
-    expect(useMail.getState().inbox.map((t) => t.id)).toEqual(['t2']);
+    // §4.6 — the row plays its departure before the archive is handed up, so
+    // this lands one animation later rather than synchronously.
+    await waitFor(() => {
+      expect(useMail.getState().inbox.map((t) => t.id)).toEqual(['t2']);
+    });
     expect(useMail.getState().archive.map((t) => t.id)).toEqual(['t1']);
   });
 });

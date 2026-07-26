@@ -56,6 +56,8 @@ export function BulkReview({
   const [failed, setFailed] = useState<Map<string, 'approved' | 'declined'>>(new Map());
   const snapshot = useRef<Map<string, HeldSender>>(new Map());
   const actingRef = useRef<Acting | null>(null);
+  const mounted = useRef(true);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   actingRef.current = acting;
 
   useEffect(() => {
@@ -92,6 +94,15 @@ export function BulkReview({
     else onCheckedChange(new Set(displayIds));
   }
 
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+    };
+  }, []);
+
   function runDecision(ids: string[], decision: 'approved' | 'declined') {
     if (!online || ids.length === 0 || actingRef.current) return;
     for (const id of ids) {
@@ -109,13 +120,18 @@ export function BulkReview({
     const baseMs = MOTION.base();
     const staggerMs = ids.length * 30;
 
-    setTimeout(() => {
-      setActing((a) => (a ? { ...a, phase: 'collapse' } : a));
-    }, stampMs);
+    // Switching back to Stack mid-animation unmounts this; the timers below
+    // outlive it otherwise and set state on a component that is gone.
+    timers.current.push(
+      setTimeout(() => {
+        setActing((a) => (a ? { ...a, phase: 'collapse' } : a));
+      }, stampMs),
+    );
 
     void decideMany(ids, decision).then(({ failed: failedIds }) => {
-      setTimeout(
+      timers.current.push(setTimeout(
         () => {
+          if (!mounted.current) return;
           setActing(null);
           onCheckedChange(new Set());
           if (failedIds.length) {
@@ -127,7 +143,7 @@ export function BulkReview({
           }
         },
         stampMs + baseMs + staggerMs,
-      );
+      ));
     });
   }
 
