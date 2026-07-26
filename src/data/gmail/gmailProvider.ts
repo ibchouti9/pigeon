@@ -10,6 +10,7 @@ import type {
 } from '../../types';
 import { MailError, type MailProvider, type SearchResults } from '../provider';
 import { accessToken, AuthError } from './auth';
+import { SenderDecisions } from '../decisions';
 import { httpFetch } from '../../lib/http';
 import {
   buildRawMessage,
@@ -81,62 +82,12 @@ async function isRateLimit(response: Response): Promise<boolean> {
   }
 }
 
-interface Decisions {
-  /** Lowercased email → decision + ISO date. */
-  [email: string]: {
-    status: 'approved' | 'declined';
-    at: string;
-    name?: string;
-    /**
-     * Set when a decline reversed an approval. §2.3 keeps that sender's
-     * existing threads and silences only what arrives afterwards; a decline
-     * from the Screener silences everything (D7), which is the default.
-     */
-    keptExisting?: boolean;
-    /**
-     * Set when an approval reversed a decline. §2.3 surfaces only mail received
-     * after the reversal, so their older conversations stay hidden.
-     */
-    reversedDecline?: boolean;
-    /**
-     * Threads `silence()` archived for this decision. §3.2 3c's undo has to put
-     * them back, and nothing else knows which they were — the walk has already
-     * forgotten them, because archiving is what removes them from it.
-     */
-    silenced?: string[];
-  };
-}
-
-/**
- * Sender decisions live in this browser, keyed by account. Pigeon has no server
- * to sync them through (D41), and a Gmail label cannot express "this address may
- * reach me" for mail that has not arrived yet.
- */
-function decisionsKey(email: string): string {
-  return `pigeon.senders.${email.toLowerCase()}`;
-}
-
-function readDecisions(email: string): Decisions {
-  try {
-    return JSON.parse(localStorage.getItem(decisionsKey(email)) ?? '{}') as Decisions;
-  } catch {
-    return {};
-  }
-}
-
-function writeDecisions(email: string, decisions: Decisions): void {
-  try {
-    localStorage.setItem(decisionsKey(email), JSON.stringify(decisions));
-  } catch {
-    // Decisions still apply for this page load.
-  }
-}
-
 export class GmailMailProvider implements MailProvider {
   readonly kind = 'gmail' as const;
 
   private account: Account | null = null;
-  private decisions: Decisions = {};
+  /** §2.3's state machine, shared with every real provider. */
+  private decisions = SenderDecisions.load('');
   /** Lowercased addresses the user has written to, or has in Contacts (D10). */
   private known = new Set<string>();
   private contacts: Address[] = [];
@@ -248,80 +199,22 @@ export class GmailMailProvider implements MailProvider {
   }
 
   private isKnown(email: string): boolean {
-    const key = email.toLowerCase();
-    return this.known.has(key) || this.decisions[key]?.status === 'approved';
+    return this.known.has(email.toLowerCase()) || this.decisions.status(email) === 'approved';
   }
 
   private isDeclined(email: string): boolean {
-    return this.decisions[email.toLowerCase()]?.status === 'declined';
+    return this.decisions.status(email) === 'declined';
   }
 
   /**
    * The Screener holds mail from senders the user has not ruled on yet. A
    * decided sender is never held — including a declined one, whose *existing*
-   * mail §2.3 leaves in place; it is `silencedByDecline` that hides what
-   * arrives afterwards.
+   * mail §2.3 leaves in place; hiding what a decline silences is
+   * `SenderDecisions.hidden`'s job.
    */
   private heldInScreener(email: string): boolean {
-    const key = email.toLowerCase();
-    return !this.decisions[key] && !this.known.has(key);
+    return !this.decisions.has(email) && !this.known.has(email.toLowerCase());
   }
-
-  /**
-   * §2.3 — declining "silences future mail" and, when the sender was already
-   * approved, "leaves their existing inbox threads in place". So a decline
-   * hides what arrives after it, not what was already being read. Mail that was
-   * only ever waiting in the Screener is silenced by `silence()` at the moment
-   * of the decision (D7), which archives it out of the inbox entirely — so
-   * anything still here that predates the decline is mail the user had approved.
-   */
-  /**
-   * When a thread started. A Gmail thread is one unit, so every rule below is
-   * about the conversation rather than its latest message — asking about
-   * `lastMessageAt` let a single reply drag an entire history across a cutoff.
-   */
-  private static startedAt(thread: Thread): string {
-    return thread.messages.reduce(
-      (earliest, m) => (m.date < earliest ? m.date : earliest),
-      thread.lastMessageAt,
-    );
-  }
-
-  /**
-   * §2.3's decision rules, in one place, because all four cases turn on the
-   * same two facts: what the sender's decision is, and whether it reversed an
-   * earlier one.
-   *
-   * - Declined from the Screener — nothing of theirs appears, in either place
-   *   (D7: "never appears in Pigeon").
-   * - Declined after being approved — their existing conversations stay, and
-   *   anything starting later is silenced ("their mail stays in your inbox;
-   *   new mail stops").
-   * - Approved after being declined — only mail from the reversal onwards
-   *   ("reversing a decline only affects mail received after the reversal").
-   * - Approved from the Screener — everything of theirs is theirs to see.
-   */
-  private hiddenByDecision(thread: Thread, email: string): boolean {
-    const decision = this.decisions[email.toLowerCase()];
-    if (!decision) return false;
-
-    // Mail a Screener decline archived out of the inbox. §2.3 never resurfaces
-    // it, whatever happens to the decision afterwards.
-    if (decision.silenced?.includes(thread.id)) return true;
-
-    if (decision.status === 'declined') {
-      if (!decision.keptExisting) return true;
-      return GmailMailProvider.startedAt(thread) >= decision.at;
-    }
-
-    // Approved. Only a reversal of a *hiding* decline holds anything back —
-    // and only what arrived before it, since §2.3 surfaces nothing older.
-    return (
-      decision.reversedDecline === true &&
-      GmailMailProvider.startedAt(thread) < decision.at
-    );
-  }
-
 
   async getAccount(): Promise<Account> {
     if (this.account) return this.account;
@@ -342,7 +235,7 @@ export class GmailMailProvider implements MailProvider {
       name,
       connectedAt: new Date().toISOString(),
     };
-    this.decisions = readDecisions(this.account.email);
+    this.decisions = SenderDecisions.load(this.account.email);
     return this.account;
   }
 
@@ -533,11 +426,7 @@ export class GmailMailProvider implements MailProvider {
   }
 
   async approveKnownSenders(senderIds: string[]): Promise<void> {
-    const at = new Date().toISOString();
-    for (const id of senderIds) {
-      this.decisions[id.toLowerCase()] = { status: 'approved', at };
-    }
-    writeDecisions(this.userEmail(), this.decisions);
+    this.decisions.bulkApprove(senderIds);
   }
 
   /**
@@ -704,7 +593,7 @@ export class GmailMailProvider implements MailProvider {
     return threads.filter((thread) => {
       const sender = this.threadSender(thread);
       if (!sender) return true; // A thread the user started stays visible.
-      if (this.hiddenByDecision(thread, sender.email)) return false;
+      if (this.decisions.hidden(thread, sender.email)) return false;
       return place === 'archive' || !this.heldInScreener(sender.email);
     });
   }
@@ -820,50 +709,11 @@ export class GmailMailProvider implements MailProvider {
 
   async decideSender(senderId: string, decision: 'approved' | 'declined'): Promise<void> {
     const email = senderId.toLowerCase();
-    const previous = this.decisions[email]?.status;
-    const before = this.decisions[email];
-    this.decisions[email] = {
-      status: decision,
-      at: new Date().toISOString(),
-      /*
-       * Only a decline that reverses a *real* approval keeps mail on screen.
-       * An approval that was itself the reversal of a Screener decline never
-       * put anything back — treating it as one meant declining again marked
-       * the sender "keep their existing threads", and mail D7 had silenced
-       * returned to the Inbox. The mirror of the `reversedDecline` bug below,
-       * and reachable in three decisions with no undo.
-       */
-      keptExisting:
-        decision === 'declined' && previous === 'approved' && before?.reversedDecline !== true,
-      /*
-       * Only a decline that *hid* mail. A decline that reversed an approval
-       * kept the sender's conversations on screen, so approving them again has
-       * nothing to hold back — treating the two alike meant approving a sender
-       * made their mail disappear, with no way back short of clearing storage.
-       */
-      reversedDecline:
-        decision === 'approved' && previous === 'declined' && before?.keptExisting !== true,
-      // Carried across every later decision: what one decline archived stays
-      // archived, so a decline → approve → decline cycle cannot surface it.
-      silenced: before?.silenced,
-    };
-    writeDecisions(this.userEmail(), this.decisions);
-
-    if (decision === 'approved') {
-      // Their mail is already in the inbox; nothing to change in Gmail. And
-      // §2.3 — reversing a decline "only affects mail received after the
-      // reversal", so what `silence` archived stays archived.
-      return;
-    }
-
-    /*
-     * §2.3 — "reversing an approval (declining a previously approved sender)
-     * leaves their existing inbox threads in place and silences future mail."
-     * D7's silencing is for mail that was still waiting in the Screener; a
-     * sender the user had already approved has mail they have been reading, and
-     * archiving it out from under them is not what declining them means.
-     */
-    if (previous === 'approved') return;
+    // The state machine is `SenderDecisions`' — what remains here is the
+    // transport half. §2.3 — a decline that reverses an approval "leaves their
+    // existing inbox threads in place", so only the Screener kind archives.
+    const { screenerDecline } = this.decisions.decide(email, decision);
+    if (!screenerDecline) return;
 
     /*
      * D7 — "declined senders' future mail is archived in Gmail under the label
@@ -905,11 +755,7 @@ export class GmailMailProvider implements MailProvider {
 
     // §3.2 3c's undo needs these back, and once they are out of the inbox the
     // walk cannot find them again.
-    const decision = this.decisions[email];
-    if (decision) {
-      decision.silenced = [...(decision.silenced ?? []), ...silenced];
-      writeDecisions(this.userEmail(), this.decisions);
-    }
+    this.decisions.addSilenced(email, silenced);
   }
 
   /** Puts back what `silence()` archived, for §3.2 3c's undo. */
@@ -928,11 +774,6 @@ export class GmailMailProvider implements MailProvider {
   }
 
   async undecideSender(senderId: string): Promise<void> {
-    const email = senderId.toLowerCase();
-    const previous = this.decisions[email];
-    delete this.decisions[email];
-    writeDecisions(this.userEmail(), this.decisions);
-
     /*
      * §3.2 3c — "the card returns to the top of the stack", and its mail with
      * it. Forgetting the decision is not the whole of it on this path: a
@@ -940,23 +781,23 @@ export class GmailMailProvider implements MailProvider {
      * inbox, and the walk that builds the Screener never sees them again. The
      * undo the toast offers silently restored nothing.
      *
-     * Only what this decision silenced. A reversal in Settings is a different
-     * thing and §2.3 keeps it that way — it surfaces no old mail.
+     * `undecide` returns only what the reversed decision itself silenced. A
+     * reversal in Settings is a different thing and §2.3 keeps it that way —
+     * it surfaces no old mail.
      */
-    if (previous?.status === 'declined' && previous.silenced?.length) {
-      await this.unsilence(previous.silenced);
-    }
+    const restore = this.decisions.undecide(senderId);
+    if (restore.length) await this.unsilence(restore);
   }
 
   async listSenders(status: 'approved' | 'declined'): Promise<Sender[]> {
-    return Object.entries(this.decisions)
-      .filter(([, d]) => d.status === status)
-      .map(([email, d]) => ({
+    return this.decisions
+      .list(status)
+      .map(({ email, name, at }) => ({
         id: email,
-        name: d.name ?? email,
+        name: name ?? email,
         email,
         status,
-        decidedAt: d.at,
+        decidedAt: at,
       }))
       .sort((a, b) => (b.decidedAt ?? '').localeCompare(a.decidedAt ?? ''));
   }
@@ -1133,7 +974,7 @@ export class GmailMailProvider implements MailProvider {
        * straight past the filter the Inbox and Archive share, so anything from
        * a declined sender was listed and openable by typing a word from it.
        */
-      if (sender && this.hiddenByDecision(thread, sender.email)) continue;
+      if (sender && this.decisions.hidden(thread, sender.email)) continue;
 
       const unknown = sender ? !this.isKnown(sender.email) && !this.isDeclined(sender.email) : false;
 
