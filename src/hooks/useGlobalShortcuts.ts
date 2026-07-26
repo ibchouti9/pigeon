@@ -70,11 +70,24 @@ export function useGlobalShortcuts(searchRef: React.RefObject<HTMLInputElement |
           }, 1200);
           e.preventDefault();
           break;
-        case '/':
-          searchRef.current?.focus();
-          if (!searchRef.current) navigate('/search');
+        case '/': {
+          /*
+           * §5.11 gives two interactions that have to compose: "`/` focuses the
+           * field from anywhere" and "`↓` from the field moves the cursor into
+           * results". Search renders its own query bar as a real input, and
+           * only that one can move a cursor into results it owns — so on that
+           * screen `/` belongs there. Sending it to the rail instead made the
+           * pair dead: the field took focus and `↓` did nothing.
+           */
+          const onScreen = document.querySelector<HTMLInputElement>(
+            '[data-search-field="results"]',
+          );
+          const field = onScreen ?? searchRef.current;
+          field?.focus();
+          if (!field) navigate('/search');
           e.preventDefault();
           break;
+        }
         case 'c':
           compose.open();
           e.preventDefault();

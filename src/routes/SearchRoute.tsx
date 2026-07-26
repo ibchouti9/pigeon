@@ -289,7 +289,7 @@ export function SearchRoute() {
           value={draftQuery}
           placeholder="Search mail"
           aria-label="Search mail"
-          data-search-field="true"
+          data-search-field="results"
           onChange={(e) => setDraftQuery(e.currentTarget.value)}
           onKeyDown={onKeyDown}
         />
