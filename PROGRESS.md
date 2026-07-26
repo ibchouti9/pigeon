@@ -603,6 +603,20 @@ user-visible. Worth doing deliberately rather than at the end of a long session.
     nothing for those keys to toggle.
   - `j`/`k` in Search walk the thread results only, not the HELD group, whose
     rows are sender rows reachable by Tab.
+- **§8.2 drives clean, and its one apparent violation is §5.9 overriding it.**
+  Checked in the running app: route change puts focus on the region's `h1`
+  (`tabindex="-1"`), a dialog opens to Cancel and closes back to its trigger,
+  the held sheet opens to its close button, the composer opens on the first
+  empty field, and neither a confirmation nor an error toast moves focus at
+  all. The two `outline: none` rules are each paired with a `:focus-visible`
+  ring, which is what §8.2 asks for.
+
+  The exception: closing the held sheet returns focus to the **card**, not to
+  the "Read messages" button that opened it — §8.2 says "back to the trigger",
+  and §5.9 says "`Esc` or the close button dismisses and returns focus to the
+  card". The specific rule wins and the code already does it deliberately.
+  Recorded here because it reads as an §8.2 violation until you find §5.9's
+  sentence, and it cost a detour to work that out twice.
 - Four places where the spec contradicts itself, resolved and recorded rather
   than silently picked: the minimized dock's height (§3.5 says 40px, §5.12 says
   44px — 44 wins, it is the later and more detailed passage); list section and
