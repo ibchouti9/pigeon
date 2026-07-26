@@ -29,12 +29,17 @@ const ROUTES: { path: string; label: string; note: string }[] = [
   { path: '/screener/s/s-held-0', label: '/screener/s/:id', note: '§5.9 held sheet' },
 ];
 
+/*
+ * Each carries `reset=1`: §3.1 step 6 gates these behind the onboarded flag,
+ * and without it every link here lands on /inbox. The gate honours the marker
+ * in dev builds, and `useScenario` clears the flag when it sees it.
+ */
 const ONBOARDING: { path: string; label: string; note: string }[] = [
-  { path: '/welcome', label: 'O1 Welcome', note: '§5.1' },
-  { path: '/setup/provider', label: 'O2 Provider', note: '§5.2' },
-  { path: '/setup/sync', label: 'O3 Sync', note: '§5.2b' },
-  { path: '/setup/senders', label: 'O4 Known senders', note: '§5.3' },
-  { path: '/setup/screener', label: 'O5 Screener intro', note: '§5.4' },
+  { path: '/welcome?reset=1', label: 'O1 Welcome', note: '§5.1' },
+  { path: '/setup/provider?reset=1', label: 'O2 Provider', note: '§5.2' },
+  { path: '/setup/sync?reset=1', label: 'O3 Sync', note: '§5.2b' },
+  { path: '/setup/senders?reset=1', label: 'O4 Known senders', note: '§5.3' },
+  { path: '/setup/screener?reset=1', label: 'O5 Screener intro', note: '§5.4' },
 ];
 
 /** §5.12's states come from the draft, not from the provider. */
@@ -119,14 +124,10 @@ export function StatesRoute() {
         <section className={styles.section}>
           <h2 className={cn('t-mono-sm', styles.sectionTitle)}>Onboarding</h2>
           <p className={cn('t-sm', styles.sectionNote)}>
-            O1–O5 run outside the shell. Reaching them needs the onboarded flag cleared,
-            which the first link does.
+            O1–O5 run outside the shell and are gated once onboarding is done, so each
+            link below clears the onboarded flag on its way in.
           </p>
           <div className={styles.grid}>
-            <Link to="/welcome?reset=1" className={styles.link}>
-              <span className={cn('t-sm', styles.linkRoute)}>Restart onboarding</span>
-              <span className={cn('t-xs', styles.linkNote)}>clears the onboarded flag</span>
-            </Link>
             {ONBOARDING.map((route) => (
               <Link key={route.path} to={route.path} className={styles.link}>
                 <span className={cn('t-sm', styles.linkRoute)}>{route.label}</span>

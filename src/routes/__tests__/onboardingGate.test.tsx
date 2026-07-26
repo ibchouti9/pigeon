@@ -52,6 +52,23 @@ describe('onboarding is shown once (§3.1 step 6)', () => {
     });
   }
 
+  /**
+   * §8.5 item 1's harness links straight at O2–O5. Gating them sent every link
+   * to /inbox, and the only way back in was to clear the flag from /welcome —
+   * which navigates away from the harness. `reset=1` is the marker that page
+   * already used; the gate honours it in dev builds.
+   */
+  it('lets the dev harness through with reset=1', async () => {
+    useSettings.setState({ onboarded: true });
+    renderAt('/setup/senders?reset=1');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Who already knows you?' }),
+      ).toBeInTheDocument(),
+    );
+  });
+
   it('lets an account still onboarding reach the flow', async () => {
     useSettings.setState({ onboarded: false });
     renderAt('/setup/senders');

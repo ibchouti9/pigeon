@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { useTheme } from './hooks/useTheme';
 import { useScenario } from './hooks/useScenario';
@@ -34,6 +34,16 @@ import { StatesRoute } from './routes/dev/StatesRoute';
  */
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const onboarded = useSettings((s) => s.onboarded);
+  const [params] = useSearchParams();
+
+  /*
+   * §8.5 item 1's harness links straight at O2–O5, and gating them sent every
+   * one to /inbox: the only way back in was to clear the flag from /welcome,
+   * which navigates away from the harness. `reset=1` is the same marker that
+   * page already uses, and `useScenario` clears the flag when it sees it.
+   */
+  if (import.meta.env.DEV && params.get('reset') === '1') return <>{children}</>;
+
   if (onboarded) return <Navigate to="/inbox" replace />;
   return <>{children}</>;
 }
