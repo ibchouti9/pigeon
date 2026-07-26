@@ -56,15 +56,6 @@ export const useCompose = create<ComposeState>((set, get) => ({
   close: () => set({ draft: null, minimized: false, expanded: false }),
 }));
 
-/** A draft is send-ready when it has at least one recipient and no placeholder. */
-export function sendBlockedReason(draft: Draft, online: boolean): string | null {
-  if (!online) return "You're offline. Pigeon will send this when you're back.";
-  if (draft.to.length === 0) return null;
-  const placeholder = draft.body.match(/\[confirm:[^\]]*\]/i);
-  if (placeholder) return `Replace ${placeholder[0]} before sending.`;
-  return null;
-}
-
 /** D26 — every unresolved `[confirm: …]` blocks send. */
 export function hasUnresolvedPlaceholder(body: string): boolean {
   return /\[confirm:[^\]]*\]/i.test(body);
