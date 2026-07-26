@@ -109,6 +109,38 @@ found by driving the running app, not by reading the code.
 - **The demo dated today's mail in the future**, so every row read "just now".
 - **Sana Sethi was double-booked** — pre-approved in the inbox and held in the
   Screener, so approving her produced a duplicate row.
+- **Attachments went nowhere.** The composer collected files and the provider
+  signature accepted them, but neither `send()` call site passed them along.
+  The chip appeared; the file never left.
+- **Offline controls looked live.** They are marked with `aria-disabled` so they
+  keep their tab stop (§5.4, §5.6), and every stylesheet matched only
+  `:disabled` — so reply, forward, archive and the rest rendered at full opacity
+  with a pointer cursor, and a click did nothing with no explanation.
+- **A partial bulk failure tore down the list.** Every row leaves optimistically,
+  so `held` reads zero for the whole round-trip; the route rendered the empty
+  state, which unmounted the list and threw away §3.3-3b's failed rows, their
+  retries and the selection. At twelve senders it jumped to Stack as well.
+- **⌘A approved the top Screener sender** and ⌘D declined it — the handlers
+  switched on `e.key` with no modifier check.
+- **⌘Z re-ran whatever had just failed**, because it took the newest toast
+  carrying any action and error toasts always carry [Try again].
+- **Single-key shortcuts fired through open modals** — `c` opened a composer
+  behind a dialog, `e` archived a row hidden by the shortcuts sheet.
+- **Search results were keyboard-unreachable past row one.** The cursor was a
+  frozen `useState(0)` feeding a roving tabindex, with no key handler at all.
+- **The Gmail provider was unreachable from the UI.** "Connect Gmail" called
+  `loadAccount()` on whatever provider the store held; `signIn()` and
+  `GmailMailProvider` were referenced from nothing outside their own modules.
+- **The bulk keyboard cursor was invisible** — it shared hover's fill, so it
+  vanished the moment the pointer entered the list.
+- **Bulk review showed the AI read on four rows at most** — a lookahead sized
+  for the stack, on a screen that shows every row at once.
+- **Undo left the card where the date sort put it** rather than returning it to
+  the top of the stack (§3.2 3c).
+- **A quiet account approved nobody.** §3.1 3c skips O4 and seeds known senders
+  from Contacts; skipping the screen skipped the seeding too.
+- **Background sync finished invisibly** — §3.1 3a's rail progress line had
+  nothing subscribed to it.
 
 ## Deliberate deviations from the spec
 
@@ -146,21 +178,31 @@ Each is a considered call, not an oversight.
 
 In rough order of expected value:
 
-1. Drive more of the running app. Eight of the bugs above were found this way
-   and none of them by any static check. Untested paths: the offline banner and
-   the disabled controls behind it, Gmail's error states, O4 at 342 rows, the
-   partial-failure bulk retry.
-2. First real Gmail run, once an OAuth client exists. This is the only part of
-   the product that has never executed.
-3. Work through whatever the spec-conformance and bug-hunt audits turn up.
+1. First real Gmail run. O1 now opens Google consent and swaps in
+   `GmailMailProvider` when `VITE_GOOGLE_CLIENT_ID` is set, but no run against a
+   real mailbox has happened. This is the only part of the product that has
+   never executed.
+2. Drive more of the running app. Most of the bugs above were found this way and
+   none of them by any static check. Still undriven: Gmail's own error states,
+   O4 at 342 rows, the reader at a very long thread.
+3. The audit findings still open, listed below.
 
 ## Open items
 
 - The Gmail path has never run against a real account. It needs a Google OAuth
-  client ID in `.env.local` (see the README) and a careful first run.
+  client ID in `.env.local` (see the README) and a careful first run. Everything
+  above it is wired: consent, provider swap, token restore on reload, and
+  sign-out clearing the token.
+- **Sender lists in Settings have no list keyboard support.** §8.1 puts them in
+  the thread-list scope. Lower severity than the others: every row's controls
+  are individually tabbable, so nothing is unreachable.
+- **"Start sync again" restarts from zero** despite §3.1 3b's copy promising to
+  "pick up where it stopped". Gmail's list endpoint is walked without a stored
+  page token, so resumption needs a cursor the sync layer does not keep.
+- Bulk rows omit the sender's address. §3.3 lists it; §5.8's column spec for the
+  same rows does not. The implementation follows §5.8.
 - Toast copy for two of the three Assistant toggles is extrapolated; §7.5 spells
   out only the summaries one.
-- No dev harness for reaching every empty/loading/error state (§8.5 item 1).
 - Received attachments render as chips but have no download action — there is
   no file backend behind the demo account. Attaching on compose works end to
   end (D20): the composer holds files in memory and the Gmail client sends them
