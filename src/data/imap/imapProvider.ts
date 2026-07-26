@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { MailError, type MailProvider, type SearchResults } from '../provider';
 import { SenderDecisions } from '../decisions';
-import { buildRawMessage } from '../gmail/mime';
+import { buildRawMessage } from '../mime';
 import { invoke } from '../../lib/desktop';
 import { mapThread } from './map';
 import type {

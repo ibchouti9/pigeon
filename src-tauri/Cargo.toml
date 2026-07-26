@@ -22,22 +22,18 @@ tauri = { version = "2.11.3", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-http = "2"
-tauri-plugin-dialog = "2"
 
-# Desktop OAuth: a PKCE challenge, a loopback listener, and the token exchange.
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-sha2 = "0.10"
-base64 = "0.22"
-rand = "0.8"
-urlencoding = "2.1"
-
-# The refresh token belongs in the macOS Keychain, not in web storage.
-keyring = { version = "3", features = ["apple-native"] }
+# The mail engine: IMAP for reading and acting, SMTP for sending, mail-parser
+# for RFC 2822 → structure. Everything speaks to Gmail's own servers directly.
 imap = "2"
 native-tls = "0.2.13"
 mail-parser = "0.11.5"
 lettre = "0.11.19"
 chrono = "0.4.45"
+base64 = "0.22"
+
+# The app password belongs in the macOS Keychain, not in web storage.
+keyring = { version = "3", features = ["apple-native"] }
 
 [features]
 # Used for production builds, where the frontend is served from the bundle

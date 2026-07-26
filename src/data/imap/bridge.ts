@@ -32,6 +32,8 @@ export interface BridgeMessage {
   attachments: BridgeAttachment[];
   messageId: string | null;
   unread: boolean;
+  /** Gmail says this is the user's own send (`in:sent` membership). */
+  fromUser: boolean;
 }
 
 export interface BridgeThread {

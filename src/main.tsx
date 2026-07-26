@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import { primeAuth } from './data/gmail/auth';
+import { primeMail } from './data/imap/connect';
 import './styles/tokens.css';
 import './styles/base.css';
 
@@ -12,7 +12,7 @@ import './styles/base.css';
  * already have shown a signed-in user the demo mailbox. On the web this
  * resolves immediately; on the desktop it is one Keychain read.
  */
-await primeAuth();
+await primeMail();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

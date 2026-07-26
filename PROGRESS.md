@@ -10,21 +10,24 @@ Vite · React 19 · TypeScript · react-router-dom · zustand · CSS Modules ove
 token block from §4.3. Vitest + Testing Library. No CSS framework — the spec is a
 token system, not a utility system.
 
-Tauri 2 wraps the same frontend as a macOS app. The Rust side exists for the
-three things a browser cannot do: hold a refresh token in the Keychain, listen
-on a loopback port for an OAuth redirect, and make requests no CORS policy gets
-a say in. `cargo test` covers it; `npm run app:test` is the same thing.
+Tauri 2 wraps the same frontend as a macOS app. The Rust side is the mail
+engine — Gmail over IMAP/SMTP with an app password in the Keychain — plus the
+CORS-free HTTP the AI adapters ride. `cargo test` covers it; `npm run app:test`
+is the same thing.
 
 ## Architecture
 
 - `src/types` — domain model shared by every provider.
 - `src/data/provider.ts` — the `MailProvider` interface.
   - `src/data/mock/` — the seeded demo account (works with no credentials).
-  - `src/data/gmail/` — the real Gmail REST client.
-- `src/lib/desktop.ts` — the only place that asks which build this is. It
-  changes three things and nothing else: how Google sign-in works, whether
-  requests go through Rust, and whether the in-app Google setup exists.
-- `src-tauri/src/google.rs` — the installed-app OAuth flow.
+  - `src/data/imap/` — the real provider: connect, bridge types, domain mapping.
+  - `src/data/decisions.ts` — §2.3's sender-decision machine (declined
+    intervals), shared by every real provider.
+  - `src/data/mime.ts` — body reading rules + the RFC 2822 builder.
+- `src/lib/desktop.ts` — the only place that asks which build this is: real
+  mail exists only in the app, and AI requests go through Rust there.
+- `src-tauri/src/mail/` — the engine: IMAP session, fetch, act, SMTP send,
+  MIME parse. Twelve commands.
 - `src/ai/` — `AiClient` interface, one adapter per provider (D41), the §7.9
   prompts, and the hooks that wire it into the reader and the Screener.
 - `src/store/` — zustand stores: `mail`, `settings`, `compose`, `toast`, `ui`.
@@ -40,10 +43,9 @@ Every screen in §5 is built and runs against the demo account.
 | Design tokens (§4.3), base styles, focus (§8.2) | done |
 | Domain types + `MailProvider` | done |
 | Mock provider + demo seed | done, tested |
-| Gmail provider (auth, MIME, REST) | done and unit-tested against a stubbed transport; **never run against a real account** |
+| Real-mail provider (IMAP/SMTP, app password) | done, 14 Rust + contract tests; **never run against a real account** |
 | macOS app shell (Tauri 2) | builds; `.app` + `.dmg`, unsigned |
-| Desktop OAuth: PKCE, loopback, Keychain | done, 13 Rust tests; **never run against a real Google client** |
-| In-app Google client setup (5 deep-linked steps, JSON drop) | done |
+| Onboarding: email + app password, one Google page | done |
 | Stores | done, tested |
 | Primitives C-1…C-28 | done |
 | App shell, nav rail, global shortcuts | done |
@@ -116,13 +118,14 @@ was broken by applying it one file at a time:
   an unused export beside a live inline copy of the same rule is where the two
   stop agreeing. It has caught three.
 
-## Keeping the two providers honest
+## Keeping the providers honest
 
 `src/data/__tests__/providerContract.test.ts` runs the same assertions against
-`MockMailProvider` and `GmailMailProvider`. The UI is written against the
-interface, so where they disagree, testing on the demo account stops predicting
-what the product does — which had already happened once. Anything one provider
-does that the other doesn't belongs in that file or in neither.
+`MockMailProvider` and `ImapMailProvider` (the latter over a stubbed bridge).
+The UI is written against the interface, so where they disagree, testing on the
+demo account stops predicting what the product does — which had already
+happened once. Anything one provider does that the other doesn't belongs in
+that file or in neither.
 
 ## Bugs found and fixed while verifying
 
@@ -605,33 +608,41 @@ but not a third decision or an undo.
 
 ## Open, and known — read this first
 
-A fifth review pass (over the fix for the fourth) reported these. **I verified
-none of them**; they are leads, ranked by what they claim:
+A fifth review pass reported five leads against the old flags-based §2.3
+machine. The July 26 refactor (`src/data/decisions.ts`, declined intervals)
+resolved the family:
 
-1. ~~**`keptExisting` has the same bug `reversedDecline` was just fixed for.**~~
-   **Confirmed and fixed.** Measured: hidden while declined, hidden after the
-   reversal, then visible again after a second decline. The symmetric guard is
-   in; the two flags only make sense as a pair, and adding one without the other
-   is how it survived.
-2. **`silence()` runs once, over the in-memory cache.** So D7's Gmail-side
-   promise is never kept for mail arriving later, and `silenced` misses threads
-   already in the Archive or beyond the walk's ceiling. Pigeon's hiding is a
-   localStorage predicate rather than anything done in Gmail.
-3. **`approveKnownSenders` overwrites the whole decision record**, dropping
-   `silenced`. Re-running onboarding on an account with a declined contact would
-   surface everything D7 had archived.
-4. **`undecideSender` restores the accumulated list**, and does nothing at all
-   if another decision intervened inside the 8-second window.
-5. **The mock has none of this state machine** — decline deletes threads, and
-   its `search()` never consults sender status, so the D7 search hole closed on
-   the Gmail side is still open there.
+1. ~~`keptExisting` mirror bug~~ — confirmed, fixed, then made structurally
+   impossible: the intervals model has no flags to disagree.
+2. **`silence()` still runs once, over the in-memory cache** — carried over to
+   the IMAP provider unchanged. D7's Gmail-side archiving covers what was held
+   at decision time; mail from a declined sender arriving *later* is hidden by
+   the decisions predicate but not archived in Gmail itself. The fix belongs in
+   the walk (archive-on-sight); not done yet.
+3. ~~`approveKnownSenders` drops `silenced`~~ — fixed; `bulkApprove` is the
+   ordinary transition applied per sender, tested.
+4. ~~`undecideSender` restores the accumulated list~~ — fixed; undo restores
+   the record the decision replaced and unsilences only that decision's own
+   ids. A decision landing inside the 8s window now undoes *that* decision
+   rather than nothing — documented in the module.
+5. **The mock has none of this state machine** — still true. The contract test
+   pins the four §2.3 outcomes across mock and IMAP, but the mock reaches them
+   by different mechanisms, and its `search()` still has the D7 hole the real
+   provider closed. Adopting `SenderDecisions` in the mock is the natural next
+   cleanup.
 
-The shape of the problem is worth naming: this is the sixth revision of the same
-rules, and four of the six introduced a defect the previous one didn't have.
-The flags encode *what the previous status was* rather than what the previous
-decision *meant*, and every new case has needed another flag. If lead 1 is real,
-the next change should probably replace the flags with something that records
-declined *intervals* directly, rather than adding a sixth.
+New, from the IMAP refactor — all **unverified against a real account**:
+
+6. **The whole IMAP engine has never met a real Gmail server.** Its parsers
+   are unit-tested on fixtures and the provider passes the contract suite, but
+   LOGIN, SPECIAL-USE discovery, X-GM-RAW searches, STOREs and SMTP send are
+   exercised only in stubs. The first paste of a real app password is the
+   test.
+7. **`sent_recipients` fetches ENVELOPEs one FETCH per 500 UIDs** with no
+   ceiling on mailbox size beyond the 500 cap — fine — but the *thread* walk
+   has no ceiling at all: a 50k-message All Mail means 50k meta lines per
+   listing. Cheap in bytes, unmeasured in wall-clock.
+8. **`unsend` is still a no-op** — SMTP cannot recall a message, same as REST.
 
 ## Deliberate deviations from the spec
 

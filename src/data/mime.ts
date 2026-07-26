@@ -1,140 +1,17 @@
-/** Gmail message payloads in, Pigeon domain objects out. */
+/**
+ * MIME, both directions: reading rules for message bodies, and the RFC 2822
+ * builder every outgoing message goes through. Transport-neutral — the Rust
+ * engine parses the wire format and hands bodies over; this file owns what
+ * Pigeon shows and what it sends.
+ */
 
-import type { Address, Attachment, Message, OutgoingAttachment } from '../../types';
+import type { Address, OutgoingAttachment } from '../types';
 
-export interface GmailHeader {
-  name: string;
-  value: string;
-}
-
-export interface GmailPart {
-  partId?: string;
-  mimeType?: string;
-  filename?: string;
-  headers?: GmailHeader[];
-  body?: { size?: number; data?: string; attachmentId?: string };
-  parts?: GmailPart[];
-}
-
-export interface GmailMessage {
-  id: string;
-  threadId: string;
-  labelIds?: string[];
-  snippet?: string;
-  internalDate?: string;
-  payload?: GmailPart;
-}
-
-export function decodeBase64Url(data: string, charset = 'utf-8'): string {
-  const normalised = data.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalised.padEnd(Math.ceil(normalised.length / 4) * 4, '=');
-  try {
-    // atob yields a byte string; run it back through a decoder for the part's
-    // own charset. Gmail decodes the transfer encoding and leaves the character
-    // set alone, so assuming UTF-8 rendered every windows-1252 or Shift_JIS
-    // message as a field of replacement characters — which is most mail from
-    // mailing lists and older senders.
-    const binary = atob(padded);
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-    try {
-      return new TextDecoder(charset).decode(bytes);
-    } catch {
-      // An unknown label is not a reason to lose the message.
-      return new TextDecoder('utf-8').decode(bytes);
-    }
-  } catch {
-    return '';
-  }
-}
-
-/** The `charset` parameter off a part's own Content-Type, if it declared one. */
-function charsetOf(part: GmailPart): string | undefined {
-  const contentType = header(part.headers, 'Content-Type');
-  return contentType.match(/charset=\s*"?([^";\s]+)"?/i)?.[1];
-}
-
-export function encodeBase64Url(text: string): string {
+function encodeBase64Url(text: string): string {
   const bytes = new TextEncoder().encode(text);
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function header(headers: GmailHeader[] | undefined, name: string): string {
-  return headers?.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? '';
-}
-
-/**
- * Splits on commas that separate addresses, ignoring commas inside a quoted
- * display name or inside angle brackets. A regex can't see quoting state, and
- * `"Whitlock, Dana" <dana@lumen.com>` is common enough to matter.
- */
-function splitAddressList(value: string): string[] {
-  const entries: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  let inAngle = false;
-
-  for (let i = 0; i < value.length; i++) {
-    const char = value[i];
-    if (char === '"' && value[i - 1] !== '\\') {
-      inQuotes = !inQuotes;
-    } else if (!inQuotes && char === '<') {
-      inAngle = true;
-    } else if (!inQuotes && char === '>') {
-      inAngle = false;
-    } else if (char === ',' && !inQuotes && !inAngle) {
-      entries.push(current);
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-  entries.push(current);
-
-  return entries.map((e) => e.trim()).filter(Boolean);
-}
-
-/** `Dana Whitlock <dana@lumen.com>, sana@northbound.io` → two addresses. */
-export function parseAddressList(value: string): Address[] {
-  if (!value.trim()) return [];
-  return splitAddressList(value).map((entry) => {
-    const match = entry.match(/^(.*?)\s*<([^>]+)>$/);
-    if (match) {
-      return { name: match[1].replace(/^"|"$/g, '').trim(), email: match[2].trim() };
-    }
-    return { name: '', email: entry.replace(/^"|"$/g, '') };
-  });
-}
-
-/**
- * Walks the MIME tree for the best plain-text body. Pigeon renders text, never
- * remote HTML — that is what makes blocking images in the Screener meaningful.
- */
-function findBody(part: GmailPart | undefined): { text: string; html: string } {
-  if (!part) return { text: '', html: '' };
-
-  if (part.mimeType === 'text/plain' && part.body?.data) {
-    return { text: decodeBase64Url(part.body.data, charsetOf(part)), html: '' };
-  }
-  if (part.mimeType === 'text/html' && part.body?.data) {
-    return { text: '', html: decodeBase64Url(part.body.data, charsetOf(part)) };
-  }
-
-  let text = '';
-  let html = '';
-  for (const child of part.parts ?? []) {
-    const found = findBody(child);
-    if (!text && found.text) text = found.text;
-    if (!html && found.html) html = found.html;
-  }
-  return { text, html };
-}
-
-function unescapeHtml(value: string): string {
-  if (!value.includes('&')) return value;
-  const doc = new DOMParser().parseFromString(value, 'text/html');
-  return doc.body?.textContent ?? value;
 }
 
 /** Last-resort conversion when a message carries no text/plain alternative. */
@@ -145,20 +22,6 @@ export function htmlToText(html: string): string {
   return (doc.body?.textContent ?? '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-}
-
-function collectAttachments(part: GmailPart | undefined, out: Attachment[] = []): Attachment[] {
-  if (!part) return out;
-  if (part.filename && part.body?.attachmentId) {
-    out.push({
-      id: part.body.attachmentId,
-      filename: part.filename,
-      size: part.body.size ?? 0,
-      mimeType: part.mimeType ?? 'application/octet-stream',
-    });
-  }
-  for (const child of part.parts ?? []) collectAttachments(child, out);
-  return out;
 }
 
 /** Splits a reply's quoted history off the top-level body (§5.6). */
@@ -221,42 +84,6 @@ function isAttribution(block: string[]): boolean {
   return /@|\d{4}|\d{1,2}:\d{2}/.test(joined);
 }
 
-export function toMessage(raw: GmailMessage, userEmail: string): Message {
-  const headers = raw.payload?.headers;
-  const from = parseAddressList(header(headers, 'From'))[0] ?? { name: '', email: '' };
-  const found = findBody(raw.payload);
-  // Gmail's snippet is HTML-escaped, so as plain text it reads "Don&#39;t
-  // forget". It is only reached when a message carries neither a text nor an
-  // HTML part, but that is exactly when it is all the user has.
-  const text =
-    found.text || (found.html ? htmlToText(found.html) : unescapeHtml(raw.snippet ?? ''));
-  const split = splitQuoted(text);
-
-  return {
-    id: raw.id,
-    threadId: raw.threadId,
-    from,
-    to: parseAddressList(header(headers, 'To')),
-    cc: parseAddressList(header(headers, 'Cc')),
-    subject: header(headers, 'Subject'),
-    body: split.body,
-    quoted: split.quoted,
-    date: new Date(Number(raw.internalDate ?? Date.now())).toISOString(),
-    messageId: header(headers, 'Message-ID') || undefined,
-    attachments: collectAttachments(raw.payload),
-    /*
-     * Gmail's own SENT label first, the address only as a fallback. Real
-     * accounts send from aliases, `+` addressing and Workspace "send mail as"
-     * identities, and `users/me/profile` only ever reports the primary — so
-     * matching on the address alone read the user's own alias-sent mail as
-     * incoming. That put *the user* in their own Screener as an unknown sender,
-     * and hid the threads they had started from their inbox.
-     */
-    isFromUser:
-      raw.labelIds?.includes('SENT') === true ||
-      from.email.toLowerCase() === userEmail.toLowerCase(),
-  };
-}
 
 function encodeHeaderValue(value: string): string {
   // RFC 2047 for anything outside ASCII, so names with accents survive.

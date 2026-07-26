@@ -1,18 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockMailProvider } from '../mock/mockProvider';
-import { GmailMailProvider } from '../gmail/gmailProvider';
 import { ImapMailProvider } from '../imap/imapProvider';
-import { encodeBase64Url } from '../gmail/mime';
 import type { MailProvider } from '../provider';
-
-vi.mock('../gmail/auth', () => ({
-  accessToken: vi.fn(async () => 'test-token'),
-  AuthError: class AuthError extends Error {},
-}));
 
 /**
  * The IMAP provider reaches Rust through this seam; here, "Rust" is an
- * in-memory Gmail holding the same two piles the REST stub holds.
+ * in-memory Gmail.
  */
 const bridge = vi.hoisted(() => {
   const state = {
@@ -22,9 +15,6 @@ const bridge = vi.hoisted(() => {
 });
 
 vi.mock('../../lib/desktop', () => ({
-  // False, so the Gmail REST provider's httpFetch stays on window.fetch —
-  // which is where `stubGmail` lives. The IMAP provider never asks; it goes
-  // straight to invoke.
   isDesktop: () => false,
   invoke: async (command: string, args?: Record<string, unknown>) => {
     if (!bridge.handler) throw new Error(`no bridge handler for ${command}`);
@@ -34,7 +24,7 @@ vi.mock('../../lib/desktop', () => ({
   onFileDrop: () => () => undefined,
 }));
 
-/** The same mailbox `stubGmail` fakes over REST, spoken in bridge JSON. */
+/** An in-memory Gmail holding the two piles below, spoken in bridge JSON. */
 function stubImapBridge() {
   const archived = new Set<string>();
   const threads = HELD.flatMap((h) => [
@@ -86,6 +76,7 @@ function stubImapBridge() {
               attachments: [],
               messageId: null,
               unread: false,
+              fromUser: false,
             },
           ],
         };
@@ -124,71 +115,6 @@ const HELD = [
   { id: 'new-pile', newest: '2026-07-25T09:00:00.000Z', oldest: '2026-07-10T09:00:00.000Z' },
 ];
 
-function gmailMessage(id: string, from: string, date: string, subject = 'Hello') {
-  return {
-    id: `m-${id}-${date}`,
-    threadId: id,
-    labelIds: ['INBOX'],
-    internalDate: String(Date.parse(date)),
-    payload: {
-      headers: [
-        { name: 'From', value: from },
-        { name: 'To', value: 'marc@ferrum.dev' },
-        { name: 'Subject', value: subject },
-      ],
-      mimeType: 'text/plain',
-      body: { data: encodeBase64Url('Body text.') },
-    },
-  };
-}
-
-/** A Gmail backend holding the two piles above, and nothing else. */
-function stubGmail() {
-  /** Threads Gmail has archived out of the inbox, as `silence` asks it to. */
-  const archived = new Set<string>();
-  const threads = HELD.flatMap((h) => [
-    { id: `${h.id}-a`, from: `${h.id}@example.com`, date: h.oldest },
-    { id: `${h.id}-b`, from: `${h.id}@example.com`, date: h.newest },
-  ]);
-
-  vi.stubGlobal('fetch', async (url: string) => {
-    const href = String(url);
-    const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
-    const visible = threads.filter((t) => !archived.has(t.id));
-
-    if (/users\/me\/profile/.test(href)) {
-      return json({ emailAddress: 'marc@ferrum.dev', threadsTotal: threads.length });
-    }
-    if (/people\/me\/connections/.test(href)) return json({ connections: [] });
-    if (/people\/me\?/.test(href)) return json({ names: [{ displayName: 'Marc Ferrum' }] });
-    if (/messages\?/.test(href)) return json({ messages: [] });
-
-    if (/threads\?/.test(href)) {
-      return json({ threads: visible.map((t) => ({ id: t.id, historyId: '1' })) });
-    }
-
-    /*
-     * Enough of the label API for `silence` to actually do something. Without
-     * it, declining is a no-op here and the two §2.3 reversal rules below
-     * cannot tell a provider that honours them from one that doesn't — the
-     * fixture would pass either way.
-     */
-    if (/\/labels$/.test(href)) return json({ labels: [{ id: 'lbl-1', name: 'Pigeon/Declined' }] });
-    if (/\/modify$/.test(href)) {
-      const id = href.match(/threads\/([^/]+)\/modify/)?.[1];
-      if (id) archived.add(id);
-      return json({ id });
-    }
-
-    const id = href.match(/threads\/([^?/]+)/)?.[1];
-    const thread = threads.find((t) => t.id === id);
-    if (thread) {
-      return json({ id: thread.id, messages: [gmailMessage(thread.id, thread.from, thread.date)] });
-    }
-    return json({});
-  });
-}
-
 /**
  * The demo's own seed is fixed, so its held senders are asserted on relatively:
  * whatever they are, the newest pile leads.
@@ -200,13 +126,6 @@ const IMPLEMENTATIONS: { name: string; make: () => MailProvider }[] = [
       localStorage.clear();
       MockMailProvider.reset();
       return new MockMailProvider();
-    },
-  },
-  {
-    name: 'GmailMailProvider',
-    make: () => {
-      stubGmail();
-      return new GmailMailProvider();
     },
   },
   {

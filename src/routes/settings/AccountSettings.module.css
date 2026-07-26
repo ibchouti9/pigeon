@@ -43,8 +43,3 @@
   flex-direction: row;
   gap: var(--space-3);
 }
-
-.clientNote {
-  margin: 0;
-  color: var(--color-text-tertiary);
-}

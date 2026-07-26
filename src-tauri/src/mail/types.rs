@@ -49,6 +49,11 @@ pub struct MessageJson {
     /// RFC 5322 Message-ID, for reply threading.
     pub message_id: Option<String>,
     pub unread: bool,
+    /// Gmail says this is the user's own send (`in:sent` membership). Real
+    /// accounts send from aliases and "send mail as" identities, so matching
+    /// the From address alone reads the user's own mail as incoming — which
+    /// once put a user in their own Screener.
+    pub from_user: bool,
 }
 
 /// A whole conversation, grouped by X-GM-THRID out of All Mail.

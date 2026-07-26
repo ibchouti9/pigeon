@@ -200,9 +200,12 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
             .map(|m| (m.uid, m))
             .collect();
 
-        // Membership, not labels: asking Gmail "which of this thread is in the
-        // inbox" avoids parsing X-GM-LABELS' quoting rules at all.
+        // Membership, not labels: asking Gmail "which of this thread is in
+        // the inbox" (and "which is the user's own send") avoids parsing
+        // X-GM-LABELS' quoting rules at all. in:sent covers alias and "send
+        // mail as" sends, which comparing From addresses never can.
         let inbox_uids = session.uid_search(format!("X-GM-THRID {thrid} X-GM-RAW \"in:inbox\""))?;
+        let sent_uids = session.uid_search(format!("X-GM-THRID {thrid} X-GM-RAW \"in:sent\""))?;
 
         let mut messages: Vec<MessageJson> = Vec::with_capacity(uids.len());
         for chunk in uids.chunks(20) {
@@ -222,6 +225,7 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
                     meta.and_then(|m| m.msgid),
                     meta.map(|m| m.date.clone()).filter(|d| !d.is_empty()),
                     meta.map(|m| m.unread).unwrap_or(false),
+                    sent_uids.contains(&uid),
                 ));
             }
         }

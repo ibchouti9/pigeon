@@ -46,6 +46,7 @@ pub fn parse_message(
     gm_msgid: Option<u64>,
     internal_date: Option<String>,
     unread: bool,
+    from_user: bool,
 ) -> MessageJson {
     let parsed = MessageParser::default().parse(raw);
 
@@ -65,6 +66,7 @@ pub fn parse_message(
             attachments: Vec::new(),
             message_id: None,
             unread,
+            from_user,
         };
     };
 
@@ -128,6 +130,7 @@ pub fn parse_message(
         attachments,
         message_id: message.message_id().map(|id| id.to_string()),
         unread,
+        from_user,
     }
 }
 
@@ -154,7 +157,7 @@ Tomorrow at nine?\r\n";
 
     #[test]
     fn reads_the_headers_pigeon_shows() {
-        let m = parse_message(PLAIN, 7, Some(99), Some("2024-07-01T10:00:05Z".into()), true);
+        let m = parse_message(PLAIN, 7, Some(99), Some("2024-07-01T10:00:05Z".into()), true, false);
         assert_eq!(m.subject, "Coffee?");
         assert_eq!(m.from.name, "Dana Lumen");
         assert_eq!(m.from.email, "dana@lumen.com");
@@ -167,14 +170,14 @@ Tomorrow at nine?\r\n";
 
     #[test]
     fn the_fetch_identity_wins_over_the_message() {
-        let m = parse_message(PLAIN, 7, Some(99), Some("2024-07-01T10:00:05Z".into()), false);
+        let m = parse_message(PLAIN, 7, Some(99), Some("2024-07-01T10:00:05Z".into()), false, false);
         // X-GM-MSGID is the id; INTERNALDATE is the date. The header date and
         // UID are fallbacks, not the truth.
         assert_eq!(m.id, "99");
         assert_eq!(m.uid, 7);
         assert_eq!(m.date, "2024-07-01T10:00:05Z");
 
-        let without = parse_message(PLAIN, 7, None, None, false);
+        let without = parse_message(PLAIN, 7, None, None, false, false);
         assert_eq!(without.id, "7");
         // Falls back to the Date header, kept as ISO.
         assert!(without.date.starts_with("2024-07-01T10:00:00"));
@@ -185,7 +188,7 @@ Tomorrow at nine?\r\n";
         let raw = b"From: a@b.c\r\nSubject: Hi\r\n\
 Content-Type: text/html; charset=utf-8\r\n\r\n\
 <p>Hello <b>there</b></p>\r\n";
-        let m = parse_message(raw, 1, None, None, false);
+        let m = parse_message(raw, 1, None, None, false, false);
         assert!(m.text.is_none());
         assert!(m.html.as_deref().unwrap_or("").contains("<b>there</b>"));
     }
@@ -197,7 +200,7 @@ Content-Type: multipart/alternative; boundary=X\r\n\r\n\
 --X\r\nContent-Type: text/plain\r\n\r\nplain words\r\n\
 --X\r\nContent-Type: text/html\r\n\r\n<p>rich words</p>\r\n\
 --X--\r\n";
-        let m = parse_message(raw, 1, None, None, false);
+        let m = parse_message(raw, 1, None, None, false, false);
         assert!(m.text.as_deref().unwrap_or("").contains("plain words"));
         assert!(m.html.as_deref().unwrap_or("").contains("rich words"));
     }
@@ -207,7 +210,7 @@ Content-Type: multipart/alternative; boundary=X\r\n\r\n\
         let raw = b"From: =?UTF-8?B?SsO8cmdlbg==?= <j@example.de>\r\n\
 Subject: =?UTF-8?Q?Gr=C3=BC=C3=9Fe?=\r\n\
 Content-Type: text/plain\r\n\r\nhallo\r\n";
-        let m = parse_message(raw, 1, None, None, false);
+        let m = parse_message(raw, 1, None, None, false, false);
         assert_eq!(m.from.name, "Jürgen");
         assert_eq!(m.subject, "Grüße");
     }
@@ -222,7 +225,7 @@ Content-Disposition: attachment; filename=\"notes.pdf\"\r\n\
 Content-Transfer-Encoding: base64\r\n\r\n\
 JVBERi0xLjQ=\r\n\
 --X--\r\n";
-        let m = parse_message(raw, 1, None, None, false);
+        let m = parse_message(raw, 1, None, None, false, false);
         assert_eq!(m.attachments.len(), 1);
         assert_eq!(m.attachments[0].filename, "notes.pdf");
         assert_eq!(m.attachments[0].mime_type, "application/pdf");
@@ -239,7 +242,7 @@ JVBERi0xLjQ=\r\n\
      */
     #[test]
     fn unreadable_bytes_still_show_as_a_message() {
-        let m = parse_message(b"\xff\xfe\x00garbage", 3, None, Some("2024-01-01T00:00:00Z".into()), false);
+        let m = parse_message(b"\xff\xfe\x00garbage", 3, None, Some("2024-01-01T00:00:00Z".into()), false, false);
         assert_eq!(m.uid, 3);
         assert_eq!(m.id, "3");
         assert_eq!(m.date, "2024-01-01T00:00:00Z");

@@ -12,9 +12,8 @@ Anthropic, OpenAI or Google, or a local endpoint (Ollama, LM Studio). The key is
 stored on your machine and sent to no origin except the provider you pick.
 
 **There is no Pigeon server.** Nothing to bill through, no shared credential to
-leak, and nothing between you and Google. That is a deliberate constraint rather
-than a stage — it is also why connecting Gmail takes a five-minute detour
-through Google's console the first time.
+leak, and nothing between you and Google — Pigeon talks to Gmail's own IMAP and
+SMTP servers directly, and your app password never leaves your Mac's Keychain.
 
 ---
 
@@ -74,8 +73,10 @@ is a bug.
 src/
   types/        domain model shared by every provider
   data/         MailProvider interface
-    mock/       the seeded demo account (works with no credentials)
-    gmail/      the real Gmail REST client
+    decisions.ts  §2.3's sender-decision machine, shared by every real provider
+    mime.ts       body reading rules + the RFC 2822 builder for outgoing mail
+    mock/         the seeded demo account (works with no credentials)
+    imap/         the real provider: maps the Rust engine into the domain
   ai/           AiClient interface + one adapter per provider
   store/        zustand stores: mail, settings, compose, toast, ui
   components/
@@ -87,75 +88,58 @@ src/
   routes/       one file per screen
   styles/       the design token block, verbatim from the spec
 src-tauri/
-  src/google.rs the installed-app OAuth flow: PKCE, loopback, Keychain
-  src/lib.rs    the commands the webview may call
+  src/mail/     the engine: IMAP session, fetch, act, SMTP send, MIME parse
+  src/lib.rs    the twelve commands the webview may call
 ```
 
 Nothing above `MailProvider` knows whether it is talking to Gmail or to the demo
 account, and nothing above `AiClient` knows which model provider is connected.
+The split across the language boundary follows the same idea: Rust owns
+connections, MIME and Gmail's IMAP extensions; TypeScript owns every product
+rule — what is visible where, who is held, what a decision does.
 
 The same source builds twice. `src/lib/desktop.ts` is the only place that asks
-which build it is in, and the answer changes three things: how Google sign-in
-works (`data/gmail/auth.ts`), whether outbound requests go through Rust
-(`lib/http.ts`), and whether the in-app Google setup exists at all. Every Tauri
-import is dynamic, so none of it reaches the web bundle.
+which build it is in, and the answer changes two things: whether real mail is
+reachable at all (`data/imap/`), and whether AI requests go through Rust
+(`lib/http.ts`) instead of a CORS-bound `fetch`. Every Tauri import is dynamic,
+so none of it reaches the web bundle.
 
 ## Connecting Gmail
 
-Open the macOS app, press **Connect Gmail**, and it walks you through it. The
-five console steps, their deep links, and the file you end up with are all in
-the app — this section is the same walk written down, not a prerequisite for it.
+An email address and an **app password**. The whole setup is one visit to one
+Google page:
 
-### Why there's a setup at all
+1. Open [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+   (two-step verification has to be on — most accounts already have it).
+2. Create one, name it anything, copy the 16 characters.
+3. Paste them into Pigeon's welcome screen.
 
-Reading someone's mail needs the `gmail.modify` scope, which Google classes as
-**restricted**. An app that ships its own OAuth client and lets strangers sign
-in has to pass a paid third-party security assessment (CASA) first. Pigeon
-hasn't, so instead each person registers their own client. It is about five
-minutes, once per machine, and it means Pigeon has no shared credential to leak
-and no per-user quota to run out of.
+Pigeon verifies the pair with a real sign-in before storing anything, and every
+refusal comes back in words: a wrong password, an ordinary Google password
+where the app password should be, IMAP switched off — each says what to do.
 
-### The five minutes
+The password goes into the macOS Keychain and is sent only to
+`imap.gmail.com` and `smtp.gmail.com`. It never expires, there is nothing to
+re-consent to, and revoking it (from the same Google page) shuts Pigeon out
+instantly.
 
-1. **Make a project** — [console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate)
-2. **Enable the Gmail API** — [one button](https://console.cloud.google.com/apis/library/gmail.googleapis.com)
-3. **Enable the People API** — [also one button](https://console.cloud.google.com/apis/library/people.googleapis.com).
-   Optional: it is how Pigeon reads your contacts, and skipping it just means
-   Pigeon works out who you know from mail you have sent instead.
-4. **Consent screen** — [External, any app name, your own email](https://console.cloud.google.com/auth/overview).
-   Then add your own Google address under **Audience → Test users**. Miss this
-   and Google refuses at the last step with `access_denied`.
-5. **Create the client** — [Credentials → Create client → **Desktop app**](https://console.cloud.google.com/auth/clients),
-   then use the download button on the row it makes.
-
-Drop that JSON file anywhere on the Pigeon window. It goes into the macOS
-Keychain and never enters the webview.
-
-**Desktop app, not Web application.** Installed-app clients need no registered
-redirect URI, so the commonest bring-your-own failure — an authorised origin
-that doesn't match the port you happen to be on — cannot happen. The client
-secret Google issues alongside it is not confidential for this client type; PKCE
-is what secures the exchange.
-
-### What to expect while the client is unverified
-
-Your project stays in **Testing**, which means the account you sign in with must
-be on the test-user list, and **a test user's grant expires after seven days**.
-After that the next request fails and Pigeon shows the reconnect screen — that
-is the app behaving correctly. Connect again.
-
-If your Google account is on a Workspace domain you can set the consent screen
-to **Internal** instead: no test-user list, no seven-day expiry, no unverified
-warning.
+**Why this and not OAuth?** Reading mail needs a Google OAuth scope classed as
+*restricted*, and an app that ships its own OAuth client has to pass a paid
+security assessment first — or every user must register a Google Cloud project
+of their own, which is a five-step console walk nobody should have to make.
+An app password needs neither. The trade, stated plainly: it grants full
+account access rather than four scopes (it stays on your machine), and Google
+offers app passwords for personal accounts only — Workspace admins disabled
+them fleet-wide in 2024. An earlier revision of Pigeon carried the full
+OAuth/PKCE flow; it lives in git history should Workspace support ever justify
+resurrecting it.
 
 ### The web build
 
-`npm run dev` serves the same app in a browser, where none of the above is
-available: a browser can neither hold a refresh token safely nor listen on a
-loopback port. It reads `VITE_GOOGLE_CLIENT_ID` from `.env.local` if you have
-set one — a **Web application** client, with your origin registered — and
-otherwise offers only the demo account. The desktop app is the supported way to
-reach real mail.
+`npm run dev` serves the same app in a browser, which can neither hold mail
+credentials nor open a TCP socket — so it offers the demo account only. It is
+the fastest way to iterate on the UI and is what the tests run against; the
+macOS app is how real mail is read.
 
 ## Scripts
 

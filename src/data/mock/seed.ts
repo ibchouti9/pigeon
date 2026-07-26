@@ -51,7 +51,7 @@ interface Person extends Address {
   replyCount?: number;
 }
 
-export const PEOPLE: Person[] = [
+const PEOPLE: Person[] = [
   { name: 'Dana Whitlock', email: 'dana@lumenpartners.com', reason: 'replies', replyCount: 24 },
   { name: 'Sana Sethi', email: 'sana@northbound.io', reason: 'replies', replyCount: 11 },
   { name: 'Jae Doss', email: 'jae@doss-studio.com', reason: 'replies', replyCount: 31 },

@@ -1,52 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildRawMessage,
-  decodeBase64Url,
-  encodeBase64Url,
-  parseAddressList,
-  splitQuoted,
-  toMessage,
-  type GmailMessage,
-} from '../mime';
+import { buildRawMessage, splitQuoted } from '../mime';
 
-describe('base64url', () => {
-  it('round-trips UTF-8', () => {
-    const text = 'Résumé — naïve café 😀';
-    expect(decodeBase64Url(encodeBase64Url(text))).toBe(text);
-  });
-
-  it('tolerates missing padding, as Gmail sends it', () => {
-    expect(decodeBase64Url('SGVsbG8')).toBe('Hello');
-  });
-
-  it('returns an empty string rather than throwing on junk', () => {
-    expect(decodeBase64Url('!!!not base64!!!')).toBe('');
-  });
-});
-
-describe('parseAddressList', () => {
-  it('parses a display name and address', () => {
-    expect(parseAddressList('Dana Whitlock <dana@lumenpartners.com>')).toEqual([
-      { name: 'Dana Whitlock', email: 'dana@lumenpartners.com' },
-    ]);
-  });
-
-  it('parses a bare address', () => {
-    expect(parseAddressList('sana@northbound.io')).toEqual([
-      { name: '', email: 'sana@northbound.io' },
-    ]);
-  });
-
-  it('does not split on a comma inside a quoted display name', () => {
-    const parsed = parseAddressList('"Whitlock, Dana" <dana@lumen.com>, sana@north.io');
-    expect(parsed).toHaveLength(2);
-    expect(parsed[0]).toEqual({ name: 'Whitlock, Dana', email: 'dana@lumen.com' });
-  });
-
-  it('returns nothing for an empty header', () => {
-    expect(parseAddressList('')).toEqual([]);
-  });
-});
+/**
+ * Decodes what `buildRawMessage` emits (base64url, UTF-8), so the assertions
+ * below can read the message they are about. Test-side only: the product
+ * stopped *reading* base64url when the Gmail REST transport went away, but it
+ * still writes it, because mime.ts predates the move and the mailer converts.
+ */
+function decodeBase64Url(data: string): string {
+  const normalised = data.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalised.padEnd(Math.ceil(normalised.length / 4) * 4, '=');
+  const binary = atob(padded);
+  return new TextDecoder('utf-8').decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+}
 
 describe('splitQuoted', () => {
   it('splits on an "On … wrote:" attribution line', () => {
@@ -63,68 +29,6 @@ describe('splitQuoted', () => {
 
   it('leaves an unquoted body whole', () => {
     expect(splitQuoted('Just one line.').quoted).toBeUndefined();
-  });
-});
-
-describe('toMessage', () => {
-  const raw: GmailMessage = {
-    id: 'm1',
-    threadId: 't1',
-    internalDate: '1750000000000',
-    labelIds: ['INBOX', 'UNREAD'],
-    payload: {
-      mimeType: 'multipart/alternative',
-      headers: [
-        { name: 'From', value: 'Dana Whitlock <dana@lumenpartners.com>' },
-        { name: 'To', value: 'marc@ferrum.dev' },
-        { name: 'Subject', value: 'Contract redlines' },
-      ],
-      parts: [
-        { mimeType: 'text/plain', body: { data: encodeBase64Url('Legal came back.') } },
-        { mimeType: 'text/html', body: { data: encodeBase64Url('<p>Legal came back.</p>') } },
-      ],
-    },
-  };
-
-  it('prefers the plain-text part', () => {
-    expect(toMessage(raw, 'marc@ferrum.dev').body).toBe('Legal came back.');
-  });
-
-  it('marks the user\'s own mail', () => {
-    expect(toMessage(raw, 'marc@ferrum.dev').isFromUser).toBe(false);
-    expect(toMessage(raw, 'dana@lumenpartners.com').isFromUser).toBe(true);
-  });
-
-  it('collects attachments from nested parts', () => {
-    const withAttachment: GmailMessage = {
-      ...raw,
-      payload: {
-        ...raw.payload,
-        parts: [
-          ...(raw.payload?.parts ?? []),
-          {
-            mimeType: 'application/pdf',
-            filename: 'MSA-v4-redline.pdf',
-            body: { attachmentId: 'a1', size: 245760 },
-          },
-        ],
-      },
-    };
-    const message = toMessage(withAttachment, 'marc@ferrum.dev');
-    expect(message.attachments).toHaveLength(1);
-    expect(message.attachments[0].filename).toBe('MSA-v4-redline.pdf');
-  });
-
-  it('falls back to HTML when there is no plain-text alternative', () => {
-    const htmlOnly: GmailMessage = {
-      ...raw,
-      payload: {
-        mimeType: 'text/html',
-        headers: raw.payload?.headers,
-        body: { data: encodeBase64Url('<p>Hello <b>there</b></p>') },
-      },
-    };
-    expect(toMessage(htmlOnly, 'marc@ferrum.dev').body).toBe('Hello there');
   });
 });
 
@@ -255,8 +159,6 @@ describe('buildRawMessage header encoding', () => {
     });
     const to = decodeBase64Url(raw).split('\r\n').find((l) => l.startsWith('To: '));
     expect(to).toBe('To: "Whitlock, Dana" <dana@lumen.com>');
-    // And it reads back as one address, not two.
-    expect(parseAddressList(to!.slice(4))).toHaveLength(1);
   });
 
   it('leaves an ordinary name unquoted', () => {
@@ -357,39 +259,6 @@ describe('threading headers', () => {
  * *them* in their own Screener as an unknown sender, and hid the threads they
  * had started from their inbox.
  */
-describe('recognising the user\'s own messages', () => {
-  function raw(from: string, labelIds?: string[]) {
-    return {
-      id: 'm1',
-      threadId: 't1',
-      labelIds,
-      internalDate: '1750000000000',
-      payload: {
-        headers: [
-          { name: 'From', value: from },
-          { name: 'To', value: 'dana@lumen.com' },
-          { name: 'Subject', value: 'Hello' },
-        ],
-        mimeType: 'text/plain',
-        body: { data: encodeBase64Url('Body.') },
-      },
-    };
-  }
-
-  it('trusts Gmail\'s SENT label over the address', () => {
-    const message = toMessage(raw('marc+work@ferrum.dev', ['SENT']), 'marc@ferrum.dev');
-    expect(message.isFromUser).toBe(true);
-  });
-
-  it('still matches on the primary address when there is no label', () => {
-    expect(toMessage(raw('marc@ferrum.dev'), 'marc@ferrum.dev').isFromUser).toBe(true);
-  });
-
-  it('does not claim someone else\'s mail', () => {
-    const message = toMessage(raw('dana@lumen.com', ['INBOX']), 'marc@ferrum.dev');
-    expect(message.isFromUser).toBe(false);
-  });
-});
 
 /**
  * Gmail decodes the transfer encoding and leaves the character set alone, so
@@ -397,51 +266,6 @@ describe('recognising the user\'s own messages', () => {
  * replacement characters — which is a lot of mail from mailing lists and older
  * senders.
  */
-describe('character sets', () => {
-  /** base64 of the given bytes, the way Gmail hands a body back. */
-  function b64(bytes: number[]) {
-    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_');
-  }
-
-  function message(charset: string, bytes: number[]) {
-    return {
-      id: 'm1',
-      threadId: 't1',
-      internalDate: '1750000000000',
-      payload: {
-        headers: [
-          { name: 'From', value: 'Dana <dana@lumen.com>' },
-          { name: 'Subject', value: 'Hello' },
-        ],
-        mimeType: 'multipart/alternative',
-        parts: [
-          {
-            mimeType: 'text/plain',
-            headers: [{ name: 'Content-Type', value: `text/plain; charset="${charset}"` }],
-            body: { data: b64(bytes) },
-          },
-        ],
-      },
-    };
-  }
-
-  it('decodes a windows-1252 body in its own charset', () => {
-    // 0xE9 is é in windows-1252 and invalid on its own in UTF-8.
-    const parsed = toMessage(message('windows-1252', [0x52, 0xe9, 0x75, 0x6e, 0x69, 0x6f, 0x6e]), 'marc@ferrum.dev');
-    expect(parsed.body).toBe('Réunion');
-    expect(parsed.body).not.toContain('\uFFFD');
-  });
-
-  it('still decodes UTF-8 when that is what the part declares', () => {
-    const parsed = toMessage(message('utf-8', [0x52, 0xc3, 0xa9, 0x75, 0x6e, 0x69, 0x6f, 0x6e]), 'marc@ferrum.dev');
-    expect(parsed.body).toBe('Réunion');
-  });
-
-  it('falls back to UTF-8 rather than losing a body to an unknown label', () => {
-    const parsed = toMessage(message('x-nonsense', [0x48, 0x69]), 'marc@ferrum.dev');
-    expect(parsed.body).toBe('Hi');
-  });
-});
 
 /**
  * Gmail wraps its attribution line for any reasonably long name or date, so the
@@ -511,23 +335,4 @@ describe('smaller real-mail details', () => {
     expect(decoded).not.toMatch(/[^\r]\nSecond/);
   });
 
-  it('unescapes the snippet it falls back to', () => {
-    const parsed = toMessage(
-      {
-        id: 'm1',
-        threadId: 't1',
-        internalDate: '1750000000000',
-        snippet: 'Don&#39;t forget the &amp; sign',
-        payload: {
-          headers: [
-            { name: 'From', value: 'Dana <dana@lumen.com>' },
-            { name: 'Subject', value: 'Reminder' },
-          ],
-        },
-      },
-      'marc@ferrum.dev',
-    );
-
-    expect(parsed.body).toBe("Don't forget the & sign");
-  });
 });

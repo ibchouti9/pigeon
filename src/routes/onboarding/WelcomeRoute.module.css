@@ -46,18 +46,28 @@
   max-width: 40ch;
 }
 
-/* Shown while consent is open in the user's browser (§3.1 step 2). */
-.waiting {
+/* The connect form: two fields, one link, one button. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  text-align: left;
+}
+
+.getOne {
   margin: 0;
-  text-align: center;
   color: var(--color-text-tertiary);
 }
 
-.cancel {
+.link {
   padding: 0;
   background: none;
   border: none;
   color: var(--color-text-accent);
   cursor: pointer;
   text-decoration: underline;
+}
+
+.actions > * + * {
+  margin-top: var(--space-3);
 }

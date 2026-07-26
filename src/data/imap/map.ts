@@ -1,5 +1,5 @@
 import type { Message, Thread } from '../../types';
-import { htmlToText, splitQuoted } from '../gmail/mime';
+import { htmlToText, splitQuoted } from '../mime';
 import type { BridgeMessage, BridgeThread } from './bridge';
 
 /**
@@ -31,7 +31,14 @@ function mapMessage(raw: BridgeMessage, userEmail: string): Message {
       size: a.size,
       mimeType: a.mimeType,
     })),
-    isFromUser: raw.from.email.toLowerCase() === userEmail.toLowerCase(),
+    /*
+     * Gmail's own verdict first, the address only as a fallback. Real accounts
+     * send from aliases, `+` addressing and "send mail as" identities, and the
+     * connected address is only the primary — matching on it alone once read
+     * the user's own alias-sent mail as incoming, which put *the user* in
+     * their own Screener as an unknown sender.
+     */
+    isFromUser: raw.fromUser || raw.from.email.toLowerCase() === userEmail.toLowerCase(),
     messageId: raw.messageId ?? undefined,
   };
 }

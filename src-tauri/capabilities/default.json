@@ -8,7 +8,6 @@
     {
       "identifier": "opener:allow-open-url",
       "allow": [
-        { "url": "https://console.cloud.google.com/*" },
         { "url": "https://myaccount.google.com/*" },
         { "url": "https://console.anthropic.com/*" },
         { "url": "https://platform.openai.com/*" },
@@ -18,9 +17,6 @@
     {
       "identifier": "http:default",
       "allow": [
-        { "url": "https://gmail.googleapis.com/*" },
-        { "url": "https://www.googleapis.com/*" },
-        { "url": "https://people.googleapis.com/*" },
         { "url": "https://api.anthropic.com/*" },
         { "url": "https://api.openai.com/*" },
         { "url": "https://generativelanguage.googleapis.com/*" },

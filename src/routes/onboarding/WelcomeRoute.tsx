@@ -1,92 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingColumn } from '../../components/onboarding/OnboardingColumn';
-import { GoogleSetup } from '../../components/onboarding/GoogleSetup';
 import { Button } from '../../components/primitives/Button';
+import { Input } from '../../components/primitives/Field';
 import { PostmarkRing } from '../../components/primitives/Postmark';
 import { useMail } from '../../store/mail';
+import { openExternal } from '../../lib/desktop';
 import {
-  AuthError,
-  SignInCancelled,
-  cancelSignIn,
-  gmailStatus,
-  signIn,
-} from '../../data/gmail/auth';
-import { GmailMailProvider } from '../../data/gmail/gmailProvider';
+  APP_PASSWORD_URL,
+  canConnectMail,
+  connectGmail,
+  mailConnected,
+} from '../../data/imap/connect';
+import { ImapMailProvider } from '../../data/imap/imapProvider';
+import { MockMailProvider } from '../../data/mock/mockProvider';
 import styles from './WelcomeRoute.module.css';
 
 /**
- * §3.1 branches 2a/2b. Both come straight off Google's consent screen, so the
- * copy lives with the AuthError that carries it.
+ * §5.1 O1 — Welcome / Connect Gmail.
  *
- * The screen has three shapes, and which one a user sees depends on what this
- * build can reach:
+ * Connecting is an email address and an app password. The password takes one
+ * visit to one Google page — the "Get one" link opens it in the user's real
+ * browser, where they are already signed in — and Rust verifies the pair with
+ * a real IMAP LOGIN before storing anything, so every failure surfaces here,
+ * in words, before onboarding moves an inch (§3.1's branches).
  *
- *  - **macOS app, client already set up** — "Connect Gmail" opens consent.
- *  - **macOS app, first run** — "Connect Gmail" opens the five-minute setup,
- *    then consent, without the user having to know those are two things.
- *  - **Web build** — real mail needs a client baked in at build time, so
- *    without one the only honest offer is the demo account.
- *
- * The demo is a first-class choice in all three, not a consolation. It is the
- * one path that works in the first ten seconds after a download, and a mail
- * client nobody can look inside is a mail client nobody adopts.
+ * The demo is a first-class choice, not a consolation. It is the one path
+ * that works in the first ten seconds after a download, and on the web build
+ * — which has no Keychain and no sockets — it is the only offer made.
  */
 export function WelcomeRoute() {
   const navigate = useNavigate();
+  const desktop = canConnectMail();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [settingUp, setSettingUp] = useState(false);
-  /** Consent is open in the user's browser and Pigeon is listening for it. */
-  const [waiting, setWaiting] = useState(false);
-  const status = gmailStatus();
 
   async function enterWith(provider: 'gmail' | 'demo') {
-    if (provider === 'gmail') useMail.getState().setProvider(new GmailMailProvider());
+    useMail
+      .getState()
+      .setProvider(provider === 'gmail' ? new ImapMailProvider() : new MockMailProvider());
     await useMail.getState().loadAccount();
     navigate('/setup/provider');
   }
 
-  /** Consent, then in. Shared by the direct path and the post-setup one. */
-  async function connect() {
+  async function handleConnect(event?: React.FormEvent) {
+    event?.preventDefault();
+    if (loading) return;
     setError(null);
     setLoading(true);
     try {
-      // A grant already in the Keychain needs no consent screen — asking again
-      // would be a second trip through Google for nothing.
-      if (!gmailStatus().hasSession) {
-        setWaiting(true);
-        await signIn();
-      }
+      // A stored password that still works needs no second form-filling.
+      if (!mailConnected()) await connectGmail(email.trim(), password);
       await enterWith('gmail');
     } catch (e) {
-      // Pressing Cancel is not a failure and gets no error block.
-      if (e instanceof SignInCancelled) return;
-      // AuthError already carries §3.1's branch copy; anything else is a
-      // network or GIS-loading failure, which reads the same to the user.
-      setError(
-        e instanceof AuthError
-          ? e.message
-          : "Pigeon couldn't reach Google. Check your connection and try again.",
-      );
-    } finally {
-      setWaiting(false);
-      setLoading(false);
-    }
-  }
-
-  async function handleConnect() {
-    if (loading) return;
-    if (status.canConnect || status.hasSession) return connect();
-    if (status.canSetUp) {
-      setSettingUp(true);
-      return;
-    }
-    // Web build with no client of its own: the demo is all there is.
-    setError(null);
-    setLoading(true);
-    try {
-      await enterWith('demo');
+      // Rust's refusals are §3.1's branch copy: wrong-password, ordinary-
+      // Google-password, IMAP-disabled each arrive distinctly worded.
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -102,23 +73,10 @@ export function WelcomeRoute() {
     }
   }
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Enter') return;
-      const target = e.target as HTMLElement | null;
-      // A focused button already handles its own Enter via the click event,
-      // and the setup panel has fields of its own that Enter belongs to.
-      if (settingUp) return;
-      if (target && (target.tagName === 'BUTTON' || target.tagName === 'A')) return;
-      void handleConnect();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, settingUp]);
+  const connected = mailConnected();
 
   return (
-    <OnboardingColumn width={settingUp ? 620 : 480}>
+    <OnboardingColumn width={480}>
       <div className={styles.wrap}>
         <PostmarkRing size={48} strokeWidth={1.5} className={styles.mark} />
         <h1 className="t-display-lg">Pigeon</h1>
@@ -126,67 +84,84 @@ export function WelcomeRoute() {
           Mail from people you&apos;ve chosen. Everyone else waits at the door.
         </p>
 
-        {settingUp ? (
-          <GoogleSetup
-            onReady={() => {
-              setSettingUp(false);
-              void connect();
-            }}
-            onSkip={handleDemo}
-          />
-        ) : (
-          <>
-            <div className={styles.actions}>
-              {error && (
-                <div className={`t-sm ${styles.errorBlock}`} role="alert">
-                  {error}
-                </div>
-              )}
+        <div className={styles.actions}>
+          {error && (
+            <div className={`t-sm ${styles.errorBlock}`} role="alert">
+              {error}
+            </div>
+          )}
+
+          {desktop && !connected && (
+            <form className={styles.form} onSubmit={handleConnect}>
+              <Input
+                label="Gmail address"
+                type="email"
+                autoComplete="username"
+                spellCheck={false}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@gmail.com"
+              />
+              <Input
+                label="App password"
+                type="password"
+                mono
+                autoComplete="off"
+                spellCheck={false}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="16 characters"
+                helperText="From your Google account — two-step verification has to be on."
+              />
+              <p className={`t-sm ${styles.getOne}`}>
+                Don&apos;t have one?{' '}
+                <button
+                  type="button"
+                  className={`t-sm ${styles.link}`}
+                  onClick={() => void openExternal(APP_PASSWORD_URL)}
+                >
+                  Get an app password
+                </button>{' '}
+                — it takes about a minute.
+              </p>
               <Button
+                type="submit"
                 variant="primary"
                 fullWidth
                 loading={loading}
-                onClick={handleConnect}
                 style={{ height: 44 }}
               >
                 Connect Gmail
               </Button>
-              {waiting ? (
-                /*
-                 * Google does not always come back: reject the request and it
-                 * renders its own error page rather than redirecting, which
-                 * Pigeon cannot see. Saying where the user should be looking,
-                 * and giving them a way out, is the difference between a
-                 * five-minute spinner and a five-second mistake.
-                 */
-                <p className={`t-sm ${styles.waiting}`} role="status">
-                  Waiting for Google in your browser.{' '}
-                  <button
-                    type="button"
-                    className={`t-sm ${styles.cancel}`}
-                    onClick={() => void cancelSignIn()}
-                  >
-                    Cancel
-                  </button>
-                </p>
-              ) : (
-                <Button variant="tertiary" fullWidth onClick={handleDemo} disabled={loading}>
-                  Try the demo instead
-                </Button>
-              )}
-            </div>
+            </form>
+          )}
 
-            <p className={`t-xs ink-tertiary ${styles.legal}`}>
-              Pigeon reads and sends mail on your behalf. It never sends anything you
-              haven&apos;t seen.
-            </p>
-            {!status.canConnect && !status.canSetUp && (
-              <p className={`t-xs ink-tertiary ${styles.demoNote}`}>
-                This is the web build, which has no Google client of its own, so Connect Gmail
-                shows the demo account. The macOS app can connect real mail.
-              </p>
-            )}
-          </>
+          {desktop && connected && (
+            <Button
+              variant="primary"
+              fullWidth
+              loading={loading}
+              onClick={() => void handleConnect()}
+              style={{ height: 44 }}
+            >
+              Connect Gmail
+            </Button>
+          )}
+
+          <Button variant="tertiary" fullWidth onClick={handleDemo} disabled={loading}>
+            Try the demo instead
+          </Button>
+        </div>
+
+        <p className={`t-xs ink-tertiary ${styles.legal}`}>
+          Pigeon reads and sends mail on your behalf. It never sends anything you haven&apos;t
+          seen. The password stays in your Mac&apos;s Keychain and goes only to Gmail.
+        </p>
+        {!desktop && (
+          <p className={`t-xs ink-tertiary ${styles.demoNote}`}>
+            This is the web build, which can&apos;t hold mail credentials, so it shows the
+            demo account. The macOS app connects real Gmail.
+          </p>
         )}
       </div>
     </OnboardingColumn>
