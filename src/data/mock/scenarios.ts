@@ -33,12 +33,12 @@ export const SCENARIOS: { name: ScenarioName; label: string; description: string
     name: 'crowded',
     label: 'Crowded account',
     description:
-      'A decade of mail: 800 threads, 342 known senders in O4, 120 held senders, and a 40-message thread to open.',
+      'A decade of mail: 800 threads, 120 held senders, and every thread 40 messages long. O4 already shows 342 known senders on the seeded account.',
   },
 ];
 
 /** The scale a crowded account reaches. Sized to the states never yet driven. */
-const CROWD = { threads: 800, known: 342, held: 120, messages: 40 };
+const CROWD = { threads: 800, held: 120, messages: 40 };
 
 /**
  * Amplifies the demo seed rather than writing a second one: each copy keeps the
@@ -125,20 +125,13 @@ class ScenarioProvider implements MailProvider {
     return this.inner.sync(onProgress);
   }
 
-  async getKnownSenders(): Promise<Sender[]> {
+  getKnownSenders(): Promise<Sender[]> {
     if (this.scenario === 'loading') return never();
-    if (this.scenario === 'empty') return [];
+    if (this.scenario === 'empty') return Promise.resolve([]);
     const failure = this.failRead();
-    if (failure) throw failure;
-
-    const known = await this.inner.getKnownSenders();
-    if (this.scenario !== 'crowded') return known;
-    return amplify(known, CROWD.known, (sender, n) => ({
-      ...sender,
-      id: `crowd-known-${n}`,
-      email: `${n}.${sender.email}`,
-      name: sender.name ? `${sender.name} ${n}` : sender.name,
-    }));
+    // Not amplified: the demo seed already holds 342 known senders, which is
+    // the scale O4 has to survive.
+    return failure ? Promise.reject(failure) : this.inner.getKnownSenders();
   }
 
   approveKnownSenders(ids: string[]): Promise<void> {
