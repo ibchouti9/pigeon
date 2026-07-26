@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Account, Address, HeldSender, Sender, Thread } from '../types';
 import type { MailProvider, SearchResults } from '../data/provider';
+import { MailError } from '../data/provider';
 import { MockMailProvider } from '../data/mock/mockProvider';
 import { toast } from './toast';
 import { displayName, plural } from '../lib/format';
@@ -53,6 +54,16 @@ function threadsFor(state: MailState, place: 'inbox' | 'archive'): Thread[] {
   return place === 'inbox' ? state.inbox : state.archive;
 }
 
+/**
+ * §5.5 — a revoked token is its own state, not a connection error. It locks the
+ * shell and offers "Connect Gmail" rather than "Try again", because retrying
+ * cannot possibly work. Every load has to recognise it; a caught error that
+ * loses its code degrades this into the generic unreachable message.
+ */
+function isRevoked(error: unknown): boolean {
+  return error instanceof MailError && error.code === 'revoked';
+}
+
 export const useMail = create<MailState>((set, get) => ({
   provider: new MockMailProvider(),
   account: null,
@@ -102,9 +113,12 @@ export const useMail = create<MailState>((set, get) => ({
       const account = await get().provider.getAccount();
       if (get().providerEpoch !== epoch) return;
       set((s) => ({ account, status: { ...s.status, account: 'ready' } }));
-    } catch {
+    } catch (error) {
       if (get().providerEpoch !== epoch) return;
-      set((s) => ({ status: { ...s.status, account: 'error' } }));
+      set((s) => ({
+        status: { ...s.status, account: 'error' },
+        revoked: s.revoked || isRevoked(error),
+      }));
     }
   },
 
@@ -118,9 +132,12 @@ export const useMail = create<MailState>((set, get) => ({
         [place]: threads,
         status: { ...s.status, [place]: 'ready' },
       }) as Partial<MailState>);
-    } catch {
+    } catch (error) {
       if (get().providerEpoch !== epoch) return;
-      set((s) => ({ status: { ...s.status, [place]: 'error' } }));
+      set((s) => ({
+        status: { ...s.status, [place]: 'error' },
+        revoked: s.revoked || isRevoked(error),
+      }));
     }
   },
 
@@ -131,9 +148,12 @@ export const useMail = create<MailState>((set, get) => ({
       const held = await get().provider.listHeld();
       if (get().providerEpoch !== epoch) return;
       set((s) => ({ held, status: { ...s.status, held: 'ready' } }));
-    } catch {
+    } catch (error) {
       if (get().providerEpoch !== epoch) return;
-      set((s) => ({ status: { ...s.status, held: 'error' } }));
+      set((s) => ({
+        status: { ...s.status, held: 'error' },
+        revoked: s.revoked || isRevoked(error),
+      }));
     }
   },
 
@@ -147,9 +167,12 @@ export const useMail = create<MailState>((set, get) => ({
       ]);
       if (get().providerEpoch !== epoch) return;
       set((s) => ({ approved, declined, status: { ...s.status, senders: 'ready' } }));
-    } catch {
+    } catch (error) {
       if (get().providerEpoch !== epoch) return;
-      set((s) => ({ status: { ...s.status, senders: 'error' } }));
+      set((s) => ({
+        status: { ...s.status, senders: 'error' },
+        revoked: s.revoked || isRevoked(error),
+      }));
     }
   },
 
