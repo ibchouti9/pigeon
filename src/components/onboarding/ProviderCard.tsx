@@ -66,6 +66,9 @@ export function ProviderRadioGroup({
             type="button"
             role="radio"
             aria-checked={selected}
+            // Without this the name is computed from contents and runs the two
+            // lines together — "AnthropicClaude".
+            aria-label={`${PROVIDER_LABELS[opt.id]}, ${opt.sub}`}
             tabIndex={isTabbable ? 0 : -1}
             className={cn(styles.card, selected && styles.cardSelected)}
             onClick={() => onChange(opt.id)}
