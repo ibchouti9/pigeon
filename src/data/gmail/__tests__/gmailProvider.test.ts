@@ -1154,7 +1154,14 @@ describe('a declined sender appears in neither place', () => {
       if (/\/labels$/.test(href)) return json({ labels: [{ id: 'lbl', name: 'Pigeon/Declined' }] });
       if (/\/modify$/.test(href)) {
         const id = href.match(/threads\/([^/]+)\/modify/)?.[1];
-        if (id && String(init?.body ?? '').includes('INBOX')) archivedIds.add(id);
+        // Which list INBOX appears in is the whole difference between
+        // archiving a thread and putting it back.
+        const body = JSON.parse(String(init?.body ?? '{}')) as {
+          addLabelIds?: string[];
+          removeLabelIds?: string[];
+        };
+        if (id && body.removeLabelIds?.includes('INBOX')) archivedIds.add(id);
+        if (id && body.addLabelIds?.includes('INBOX')) archivedIds.delete(id);
         return json({ id });
       }
 
@@ -1191,6 +1198,28 @@ describe('a declined sender appears in neither place', () => {
     });
   }
 
+  /**
+   * §3.2 3c — "the card returns to the top of the stack", and its mail with it.
+   * Forgetting the decision is not the whole of it here: a decline runs
+   * `silence()`, which takes those threads out of the Gmail inbox, and the walk
+   * that builds the Screener never sees them again. The undo the toast offers
+   * silently restored nothing.
+   */
+  it('puts the sender back when the decline is undone', async () => {
+    stubMailbox('Recruiter <recruiter@example.com>');
+    const provider = new GmailMailProvider();
+    expect(await provider.listHeld()).toHaveLength(1);
+
+    await provider.decideSender('recruiter@example.com', 'declined');
+    expect(await provider.listHeld()).toHaveLength(0);
+
+    await provider.undecideSender('recruiter@example.com');
+
+    const back = await provider.listHeld();
+    expect(back).toHaveLength(1);
+    expect(back[0].messages.length).toBeGreaterThan(0);
+  });
+
   it('hides them from the archive too, not just the inbox', async () => {
     stubMailbox('Recruiter <recruiter@example.com>');
     const provider = new GmailMailProvider();
@@ -1219,7 +1248,14 @@ describe('a declined sender appears in neither place', () => {
  * dragged the whole thing, history included, over the line and out of sight.
  */
 describe('a conversation that was already there survives a reply', () => {
-  function stubConversation(messages: { id: string; date: string; from: string }[]) {
+  /**
+   * `later` is a second conversation that only exists once `arriving` has
+   * something in it, standing in for mail that turns up after a decision.
+   */
+  function stubConversation(
+    messages: { id: string; date: string; from: string }[],
+    arriving: { id: string; date: string; from: string }[] = [],
+  ) {
     vi.stubGlobal('fetch', async (url: string) => {
       const href = String(url);
       const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
@@ -1233,12 +1269,14 @@ describe('a conversation that was already there survives a reply', () => {
 
       if (/threads\?/.test(href)) {
         const wantsArchive = /-in%3Ainbox|-in:inbox/.test(href);
-        return json({ threads: wantsArchive ? [] : [{ id: 'conv', historyId: '1' }] });
+        const ids = arriving.length ? ['conv', 'later'] : ['conv'];
+        return json({ threads: wantsArchive ? [] : ids.map((id) => ({ id, historyId: id })) });
       }
 
+      const which = /threads\/later/.test(href) ? arriving : messages;
       return json({
-        id: 'conv',
-        messages: messages.map((m) => ({
+        id: /threads\/later/.test(href) ? 'later' : 'conv',
+        messages: which.map((m) => ({
           id: m.id,
           threadId: 'conv',
           labelIds: ['INBOX'],
@@ -1301,17 +1339,64 @@ describe('a conversation that was already there survives a reply', () => {
     expect(await provider.listThreads('inbox')).toEqual([]);
   });
 
+  /**
+   * Approving a sender is the one action that must never hide mail. The flag
+   * marking "this approval reversed a decline" was set for *any* previous
+   * decline, including one that had deliberately kept the sender's
+   * conversations on screen — so approve → decline → approve made everything of
+   * theirs vanish, with no way back in the app: the Declined tab only offers
+   * Approve, which lands in the same place again.
+   */
+  it('never hides mail by approving', async () => {
+    stubConversation([{ id: 'm1', date: BEFORE, from: THEM }]);
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+
+    await provider.decideSender('sam@example.com', 'approved');
+    expect(await provider.listThreads('inbox')).toHaveLength(1);
+
+    // §2.3 keeps their existing conversations when an approval is reversed.
+    await provider.decideSender('sam@example.com', 'declined');
+    expect(await provider.listThreads('inbox')).toHaveLength(1);
+
+    await provider.decideSender('sam@example.com', 'approved');
+    expect(await provider.listThreads('inbox')).toHaveLength(1);
+  });
+
+  /**
+   * The mirror: what a Screener decline archived stays archived through any
+   * later cycle, or the mail D7 silenced comes back readable in the Archive.
+   */
+  it('keeps silenced mail silenced through a decline-approve-decline cycle', async () => {
+    stubConversation([{ id: 'm1', date: BEFORE, from: THEM }]);
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+
+    await provider.decideSender('sam@example.com', 'declined');
+    await provider.decideSender('sam@example.com', 'approved');
+    await provider.decideSender('sam@example.com', 'declined');
+
+    expect(await provider.listThreads('inbox')).toEqual([]);
+    expect(await provider.listThreads('archive')).toEqual([]);
+  });
+
   it('does surface a conversation that starts after the reversal', async () => {
-    // The other half of the same rule: a reversal is not a permanent silence,
-    // it moves the line. Mail from here on is theirs to see again.
-    stubConversation([{ id: 'm1', date: AFTER, from: THEM }]);
+    /*
+     * The other half of the rule: a reversal is not a permanent silence, it
+     * moves the line. The new conversation has to genuinely arrive *after* the
+     * decline — a thread that was already sitting there when the decline ran is
+     * one `silence()` archived, and §2.3 never resurfaces those.
+     */
+    const arriving: { id: string; date: string; from: string }[] = [];
+    stubConversation([{ id: 'm1', date: BEFORE, from: THEM }], arriving);
     const provider = new GmailMailProvider();
     await provider.listThreads('inbox');
 
     await provider.decideSender('sam@example.com', 'declined');
     await provider.decideSender('sam@example.com', 'approved');
 
-    expect((await provider.listThreads('inbox')).map((t) => t.id)).toEqual(['conv']);
+    arriving.push({ id: 'm2', date: AFTER, from: THEM });
+    expect((await provider.listThreads('inbox')).map((t) => t.id)).toEqual(['later']);
   });
 
   it('silences a conversation that only starts after the decline', async () => {
