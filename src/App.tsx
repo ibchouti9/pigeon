@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { useTheme } from './hooks/useTheme';
 import { useScenario } from './hooks/useScenario';
+import { useRestoreProvider } from './hooks/useRestoreProvider';
 import { useSettings } from './store/settings';
 
 import { WelcomeRoute } from './routes/onboarding/WelcomeRoute';
@@ -35,6 +36,9 @@ function ShellGate() {
 }
 
 export default function App() {
+  // Before anything mounts a route: the shell loads the inbox on mount, and it
+  // has to ask the right account for it.
+  useRestoreProvider();
   useTheme();
   useScenario();
 

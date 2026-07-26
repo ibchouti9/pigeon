@@ -3,6 +3,8 @@ import { SettingsPage } from '../../components/settings/SettingsPage';
 import { Button } from '../../components/primitives/Button';
 import { Monogram } from '../../components/primitives/Monogram';
 import { Segmented } from '../../components/primitives/Controls';
+import { signOut } from '../../data/gmail/auth';
+import { MockMailProvider } from '../../data/mock/mockProvider';
 import { useMail } from '../../store/mail';
 import { useSettings, type Appearance } from '../../store/settings';
 import { useUi } from '../../store/ui';
@@ -27,6 +29,10 @@ export function AccountSettings() {
 
   // §3.6 / §7.7 — both destructive account actions reset to onboarding.
   function returnToOnboarding() {
+    // Drop the Google token first: leaving it behind means the next boot
+    // silently reconnects the account the user just signed out of.
+    void signOut();
+    useMail.getState().setProvider(new MockMailProvider());
     setOnboarded(false);
     navigate('/welcome');
   }

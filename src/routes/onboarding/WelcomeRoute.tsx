@@ -4,39 +4,41 @@ import { OnboardingColumn } from '../../components/onboarding/OnboardingColumn';
 import { Button } from '../../components/primitives/Button';
 import { PostmarkRing } from '../../components/primitives/Postmark';
 import { useMail } from '../../store/mail';
+import { AuthError, googleClientId, signIn } from '../../data/gmail/auth';
+import { GmailMailProvider } from '../../data/gmail/gmailProvider';
 import styles from './WelcomeRoute.module.css';
 
 /**
- * §3.1 branches 2a/2b. There is no real Google OAuth client configured yet
- * (see the module note in the task brief), so these can't be triggered from
- * a real consent screen today — but the render path is wired end to end so
- * the UI is complete and ready the moment OAuth lands.
+ * §3.1 branches 2a/2b. Both come straight off Google's consent screen, so the
+ * copy lives with the AuthError that carries it.
  */
-type ConnectError = 'denied' | 'partial' | null;
-
-const ERROR_COPY: Record<Exclude<ConnectError, null>, string> = {
-  denied:
-    "Pigeon didn't get access to your mail. Google needs permission to read and send on your behalf for Pigeon to work. Try connecting again.",
-  partial:
-    'Pigeon needs all four permissions to sort your mail. Connect again and leave the checkboxes ticked.',
-};
-
 export function WelcomeRoute() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<ConnectError>(null);
+  const [error, setError] = useState<string | null>(null);
+  const hasOAuth = googleClientId() !== null;
 
   async function handleConnect() {
     if (loading) return;
     setError(null);
     setLoading(true);
     try {
-      // No OAuth client is configured yet — connect the built-in demo
-      // account so onboarding is fully walkable today.
+      if (hasOAuth) {
+        // §3.1 step 2 — this is the navigation to Google consent. Nothing
+        // reaches the Gmail API until it resolves.
+        await signIn();
+        useMail.getState().setProvider(new GmailMailProvider());
+      }
       await useMail.getState().loadAccount();
       navigate('/setup/provider');
-    } catch {
-      setError('denied');
+    } catch (e) {
+      // AuthError already carries §3.1's branch copy; anything else is a
+      // network or GIS-loading failure, which reads the same to the user.
+      setError(
+        e instanceof AuthError
+          ? e.message
+          : "Pigeon couldn't reach Google. Check your connection and try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ export function WelcomeRoute() {
         <div className={styles.actions}>
           {error && (
             <div className={`t-sm ${styles.errorBlock}`} role="alert">
-              {ERROR_COPY[error]}
+              {error}
             </div>
           )}
           <Button
@@ -85,10 +87,12 @@ export function WelcomeRoute() {
           Pigeon reads and sends mail on your behalf. It never sends anything you haven&apos;t
           seen.
         </p>
-        <p className={`t-xs ink-tertiary ${styles.demoNote}`}>
-          Running on Pigeon&apos;s demo mail account. Connect Google in Settings once you&apos;ve
-          added an OAuth client.
-        </p>
+        {!hasOAuth && (
+          <p className={`t-xs ink-tertiary ${styles.demoNote}`}>
+            No Google client is configured, so this connects Pigeon&apos;s demo mail account.
+            Add VITE_GOOGLE_CLIENT_ID to .env.local for real mail — the README explains how.
+          </p>
+        )}
       </div>
     </OnboardingColumn>
   );
