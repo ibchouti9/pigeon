@@ -642,6 +642,16 @@ it confirmed:
   keys were going nowhere — §5.11 moves the cursor only from the field, and
   focus was elsewhere — so it measured an idle page. The figures above are from
   a run where the cursor demonstrably moved.
+- **The §2.3 decision state machine, driven in both directions.** Starting from
+  16 inbox threads: approve from the Screener → 17 (their held mail joins);
+  decline them in Settings → 17 (their thread stays, §2.3 rule 6); approve again
+  → 17 (nothing duplicated). And the other way: decline from the Screener → no
+  change (D7 silences what was waiting); reverse it in Settings → no change
+  (§2.3 rule 5, no old mail resurfaces); decline again → no change. §3.2 3c's
+  undo also holds — approving takes the counter 8 → 7 and ⌘Z returns it to 8
+  with the same sender back on *top* of the stack, and §8.4's live region says
+  "Approved Devon Ricci. 7 senders waiting. Now showing QuickPitch." in one
+  utterance.
 - **All nine routes walked at this scale** with no uncaught error, no blank
   screen and no horizontal overflow at 1280px.
 
