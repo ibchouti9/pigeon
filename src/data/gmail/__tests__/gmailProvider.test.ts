@@ -1208,3 +1208,83 @@ describe('a declined sender appears in neither place', () => {
     expect(await provider.listThreads('archive')).toEqual([]);
   });
 });
+
+/**
+ * §2.3 — "declining a previously approved sender leaves their existing inbox
+ * threads in place and silences future mail." The toast says it outright:
+ * "Their mail stays in your inbox; new mail stops."
+ *
+ * The cutoff compared the thread's *newest* message against the decline, and a
+ * Gmail thread is one unit — so a reply landing in an existing conversation
+ * dragged the whole thing, history included, over the line and out of sight.
+ */
+describe('a conversation that was already there survives a reply', () => {
+  function stubConversation(messages: { id: string; date: string; from: string }[]) {
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
+
+      if (/users\/me\/profile/.test(href)) return json(PROFILE.body);
+      if (/people\/me\?/.test(href)) return json(PEOPLE_ME.body);
+      if (/people\/me\/connections/.test(href)) return json({ connections: [] });
+      if (/messages\?/.test(href)) return json({ messages: [] });
+      if (/\/labels$/.test(href)) return json({ labels: [{ id: 'lbl', name: 'Pigeon/Declined' }] });
+      if (/\/modify$/.test(href)) return json({});
+
+      if (/threads\?/.test(href)) {
+        const wantsArchive = /-in%3Ainbox|-in:inbox/.test(href);
+        return json({ threads: wantsArchive ? [] : [{ id: 'conv', historyId: '1' }] });
+      }
+
+      return json({
+        id: 'conv',
+        messages: messages.map((m) => ({
+          id: m.id,
+          threadId: 'conv',
+          labelIds: ['INBOX'],
+          internalDate: String(Date.parse(m.date)),
+          payload: {
+            headers: [
+              { name: 'From', value: m.from },
+              { name: 'Subject', value: 'Ongoing' },
+            ],
+            mimeType: 'text/plain',
+            body: { data: encodeBase64Url('Body.') },
+          },
+        })),
+      });
+    });
+  }
+
+  const THEM = 'Sam <sam@example.com>';
+  const BEFORE = '2020-01-01T09:00:00.000Z';
+  const AFTER = '2099-01-01T09:00:00.000Z';
+
+  async function declineAfterApproving() {
+    const provider = new GmailMailProvider();
+    // Hydrate first, as every screen does: decisions are keyed by account, and
+    // the account isn't known until something has asked Gmail for it.
+    await provider.listThreads('inbox');
+    await provider.decideSender('sam@example.com', 'approved');
+    await provider.decideSender('sam@example.com', 'declined');
+    return provider;
+  }
+
+  it('keeps the conversation when the declined sender replies to it', async () => {
+    stubConversation([
+      { id: 'm1', date: BEFORE, from: THEM },
+      { id: 'm2', date: AFTER, from: THEM },
+    ]);
+    const provider = await declineAfterApproving();
+
+    const inbox = await provider.listThreads('inbox');
+    expect(inbox.map((t) => t.id)).toEqual(['conv']);
+  });
+
+  it('silences a conversation that only starts after the decline', async () => {
+    stubConversation([{ id: 'm1', date: AFTER, from: THEM }]);
+    const provider = await declineAfterApproving();
+
+    expect(await provider.listThreads('inbox')).toEqual([]);
+  });
+});

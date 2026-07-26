@@ -276,9 +276,22 @@ export class GmailMailProvider implements MailProvider {
      */
     if (!decision.keptExisting) return true;
 
-    // §2.3's carve-out: a decline that reversed an approval keeps what was
-    // already there and silences only what arrives afterwards.
-    return thread.lastMessageAt >= decision.at;
+    /*
+     * §2.3's carve-out: a decline that reversed an approval keeps what was
+     * already there and silences only what arrives afterwards.
+     *
+     * Measured from when the conversation *started*, not when it was last
+     * touched. A Gmail thread is one unit, so asking about `lastMessageAt` let
+     * a single reply drag an entire history out of both lists — and the user's
+     * own reply did it too, since the thread is still attributed to the sender.
+     * "Their mail stays in your inbox; new mail stops" has to mean the
+     * conversation stays.
+     */
+    const startedAt = thread.messages.reduce(
+      (earliest, m) => (m.date < earliest ? m.date : earliest),
+      thread.lastMessageAt,
+    );
+    return startedAt >= decision.at;
   }
 
   async getAccount(): Promise<Account> {
