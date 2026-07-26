@@ -1,0 +1,107 @@
+/* §5.7 stack layout. Acceptance check: at any card height both behind-card
+   top edges must be visible above the live card — verified in
+   __tests__/CardStack.test.tsx, not by eye. */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  margin-top: var(--space-10);
+  padding-bottom: var(--space-6);
+}
+
+/* Live card at 520px, centred in a 560px wrapper (§5.7). The wrapper takes
+   its height from the live card: behind cards are `position: absolute` and
+   don't participate in flow, so they never stretch it. */
+.wrapper {
+  position: relative;
+  width: 560px;
+  max-width: 100%;
+}
+
+@media (max-width: 879px) {
+  .wrapper {
+    width: 100%;
+  }
+}
+
+/* Behind cards: symmetric insets (set inline per-card), never a fixed
+   height, never `transform: scale()` — both go stale as content changes. */
+.behind {
+  position: absolute;
+  height: auto;
+  border: var(--border-hairline);
+  border-radius: var(--radius-xl);
+  background: var(--color-card-behind-1);
+}
+
+.behind2 {
+  background: var(--color-card-behind-2);
+}
+
+.overlaySlot {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.cycleExitNext {
+  animation: cycle-exit-left var(--duration-base) var(--ease-standard) forwards;
+}
+
+.cycleExitPrev {
+  animation: cycle-exit-right var(--duration-base) var(--ease-standard) forwards;
+}
+
+@keyframes cycle-exit-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0.4;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes cycle-exit-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0.4;
+    transform: translateX(24px);
+  }
+}
+
+.counter {
+  margin-top: var(--space-2);
+}
+
+/* Loading: one skeleton card at full size with 5 bars (§5.7). */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cycleExitNext,
+  .cycleExitPrev {
+    animation-duration: var(--duration-base);
+    animation-name: cycle-exit-fade;
+  }
+}
+
+@keyframes cycle-exit-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.4;
+  }
+}

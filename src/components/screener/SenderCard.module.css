@@ -1,0 +1,262 @@
+/* C-6 Sender card (§5.7). */
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: var(--layout-card-width);
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface-held);
+  border: var(--border-width-hairline) solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-overlay);
+}
+
+.card:focus-within {
+  border-color: var(--color-border-control);
+}
+
+.card:focus {
+  outline: none;
+}
+
+.card:focus-visible {
+  outline: var(--border-width-emphasis) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.error {
+  border-color: var(--color-destructive);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.nameBlock {
+  min-width: 0;
+}
+
+.name {
+  color: var(--color-text-primary);
+}
+
+.address {
+  color: var(--color-text-tertiary);
+}
+
+.hr {
+  border: none;
+  border-top: var(--border-hairline);
+  margin: var(--space-5) 0 0;
+}
+
+.message {
+  margin-top: var(--space-5);
+}
+
+.subject {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.snippet {
+  margin-top: var(--space-1);
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+}
+
+.read {
+  margin-top: var(--space-5);
+}
+
+.readLabel {
+  color: var(--color-text-ai);
+  text-transform: uppercase;
+}
+
+.readSentence {
+  margin-top: var(--space-2);
+  color: var(--color-text-primary);
+  background: var(--color-surface-ai);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.footer {
+  margin-top: var(--space-6);
+}
+
+.heldCount {
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.actions > * {
+  flex: 1;
+}
+
+.readMessage {
+  margin-top: var(--space-3);
+}
+
+.postmarkOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* The stamp animation itself lives on the Postmark primitive (`animate` prop);
+   this overlay only needs to center it over the card. */
+
+/* §4.6 CARD DEPART — approve: translateX 0 -> +64px, opacity .88 -> 0. */
+.departApproved {
+  animation: depart-approve var(--duration-base) var(--ease-exit) forwards;
+  animation-delay: 260ms;
+}
+
+@keyframes depart-approve {
+  from {
+    transform: translateX(0);
+    opacity: 0.88;
+  }
+  to {
+    transform: translateX(64px);
+    opacity: 0;
+  }
+}
+
+/* §4.6 CARD DEPART — decline: translateY 0 -> +48px, opacity .88 -> 0. */
+.departDeclined {
+  animation: depart-decline var(--duration-base) var(--ease-exit) forwards;
+  animation-delay: 260ms;
+}
+
+@keyframes depart-decline {
+  from {
+    transform: translateY(0);
+    opacity: 0.88;
+  }
+  to {
+    transform: translateY(48px);
+    opacity: 0;
+  }
+}
+
+/* §4.6 CARD RISE — the next card, starting with the depart. */
+.rising {
+  animation: rise var(--duration-base) var(--ease-standard);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(12px) scale(0.97);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* §5.7 — j/k cycling: the new top "returns from the right" (or left for k). */
+.enterFromRight {
+  animation: enter-from-right var(--duration-base) var(--ease-standard);
+}
+
+.enterFromLeft {
+  animation: enter-from-left var(--duration-base) var(--ease-standard);
+}
+
+@keyframes enter-from-right {
+  from {
+    transform: translateX(24px);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes enter-from-left {
+  from {
+    transform: translateX(-24px);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 879px) {
+  .card {
+    width: 100%;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions :global(button) {
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .departApproved,
+  .departDeclined,
+  .rising,
+  .enterFromRight,
+  .enterFromLeft {
+    animation-duration: var(--duration-base);
+  }
+
+  .departApproved,
+  .departDeclined {
+    animation-name: fade-out;
+    animation-delay: 0ms;
+  }
+
+  .rising,
+  .enterFromRight,
+  .enterFromLeft {
+    animation-name: fade-in;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 0.88;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}

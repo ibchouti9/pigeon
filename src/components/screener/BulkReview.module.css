@@ -1,0 +1,183 @@
+/* §5.8 bulk review. */
+
+.container {
+  max-width: 960px;
+  width: 100%;
+  margin: var(--space-6) auto 0;
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.header {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  border-bottom: var(--border-hairline);
+}
+
+.selectAllLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+
+.row {
+  position: relative;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  border-bottom: var(--border-hairline);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--color-surface-hover);
+}
+
+.cursor {
+  background: var(--color-surface-hover);
+}
+
+.checkboxCell {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.name {
+  flex: 0 0 180px;
+  color: var(--color-text-primary);
+}
+
+.subject {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.aiRead {
+  flex: 0 0 240px;
+  color: var(--color-text-ai);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 1079px) {
+  .aiRead {
+    flex-basis: 180px;
+  }
+}
+
+@media (max-width: 879px) {
+  .row {
+    height: 76px;
+    flex-wrap: wrap;
+  }
+
+  .rowBody {
+    flex-wrap: wrap;
+  }
+
+  .aiRead {
+    flex: 1 1 100%;
+    -webkit-line-clamp: 1;
+  }
+}
+
+/* §3.3 ROW DEPART — opacity first, then height + margin collapse. */
+.collapsing {
+  overflow: hidden;
+  opacity: 0;
+  height: 0 !important;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom-width: 0;
+  transition:
+    opacity 90ms var(--ease-exit),
+    height 90ms var(--ease-exit) 90ms,
+    padding 90ms var(--ease-exit) 90ms,
+    border-width 90ms var(--ease-exit) 90ms;
+}
+
+.failed {
+  outline: var(--border-width-hairline) solid var(--color-destructive);
+  outline-offset: -1px;
+}
+
+.stampOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: var(--color-surface);
+}
+
+.failedInline {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-destructive);
+}
+
+.bar {
+  position: sticky;
+  bottom: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+  margin-top: var(--space-6);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+  max-width: 960px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  animation: bar-in var(--duration-base) var(--ease-standard);
+}
+
+@keyframes bar-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.spacer {
+  flex: 1;
+}

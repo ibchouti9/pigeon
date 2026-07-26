@@ -1,0 +1,142 @@
+/* §5.9 held message sheet. */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-scrim);
+  animation: scrim-in var(--duration-base) var(--ease-standard);
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.sheet {
+  width: 720px;
+  max-width: calc(100% - 2 * var(--space-8));
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-modal);
+  animation: sheet-in var(--duration-slow) var(--ease-standard);
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .sheet {
+    animation-duration: var(--duration-base);
+  }
+
+  .sheet {
+    animation-name: scrim-in;
+  }
+}
+
+.header {
+  flex: none;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: var(--border-hairline);
+}
+
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.from {
+  color: var(--color-text-primary);
+}
+
+.subject {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.close {
+  flex: none;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.message + .message {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: var(--border-hairline);
+}
+
+.messageHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.messageBody {
+  max-width: var(--measure-read);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+}
+
+.imagesNote {
+  margin-top: var(--space-4);
+}
+
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
+  max-width: fit-content;
+}
+
+.footer {
+  flex: none;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: var(--border-hairline);
+}
+
+.footer > * {
+  flex: 1;
+}
+
+.errorBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
