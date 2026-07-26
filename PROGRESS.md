@@ -596,13 +596,11 @@ but not a third decision or an undo.
 A fifth review pass (over the fix for the fourth) reported these. **I verified
 none of them**; they are leads, ranked by what they claim:
 
-1. **`keptExisting` has the same bug `reversedDecline` was just fixed for.** It
-   is set for any decline that follows an approval, including an approval that
-   was itself a reversal of a Screener decline. Claimed effect: three decisions
-   (decline → approve → decline) leave a Screener-declined sender's later mail
-   visible in the Inbox, Archive and search, with no in-app way back. If true
-   this is the same severity as the one fixed this cycle, and the fix is the
-   symmetric guard.
+1. ~~**`keptExisting` has the same bug `reversedDecline` was just fixed for.**~~
+   **Confirmed and fixed.** Measured: hidden while declined, hidden after the
+   reversal, then visible again after a second decline. The symmetric guard is
+   in; the two flags only make sense as a pair, and adding one without the other
+   is how it survived.
 2. **`silence()` runs once, over the in-memory cache.** So D7's Gmail-side
    promise is never kept for mail arriving later, and `silenced` misses threads
    already in the Archive or beyond the walk's ceiling. Pigeon's hiding is a
@@ -616,8 +614,8 @@ none of them**; they are leads, ranked by what they claim:
    its `search()` never consults sender status, so the D7 search hole closed on
    the Gmail side is still open there.
 
-The shape of the problem is worth naming: this is the fifth revision of the same
-rules, and three of the five introduced a defect the previous one didn't have.
+The shape of the problem is worth naming: this is the sixth revision of the same
+rules, and four of the six introduced a defect the previous one didn't have.
 The flags encode *what the previous status was* rather than what the previous
 decision *meant*, and every new case has needed another flag. If lead 1 is real,
 the next change should probably replace the flags with something that records
