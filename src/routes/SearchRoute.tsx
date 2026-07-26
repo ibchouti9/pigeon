@@ -87,14 +87,22 @@ export function SearchRoute() {
     inputRef.current?.focus();
   }, []);
 
+  // The functional updater keeps this stable. Closing over `params` instead
+  // would give it a new identity every render, and since the debounce effect
+  // below depends on it and calls it, the two would drive each other in a loop.
   const setQuery = useCallback(
     (next: string) => {
-      const updated = new URLSearchParams(params);
-      if (next) updated.set('q', next);
-      else updated.delete('q');
-      setParams(updated, { replace: true });
+      setParams(
+        (prev) => {
+          const updated = new URLSearchParams(prev);
+          if (next) updated.set('q', next);
+          else updated.delete('q');
+          return updated;
+        },
+        { replace: true },
+      );
     },
-    [params, setParams],
+    [setParams],
   );
 
   // Runs 250ms after the last keystroke, minimum 2 characters (§5.11).
@@ -146,10 +154,15 @@ export function SearchRoute() {
   const summary = useThreadSummary(thread ?? null);
 
   function toggleHeld() {
-    const updated = new URLSearchParams(params);
-    if (includeHeld) updated.delete('held');
-    else updated.set('held', '1');
-    setParams(updated, { replace: true });
+    setParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        if (includeHeld) updated.delete('held');
+        else updated.set('held', '1');
+        return updated;
+      },
+      { replace: true },
+    );
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
