@@ -314,6 +314,15 @@ export function Composer({
             value={draft.subject}
             disabled={sending}
             onChange={(e) => onChange({ subject: e.currentTarget.value })}
+            onKeyDown={(e) => {
+              // §5.12 binds send to ⌘Enter, not Enter. A single text input in a
+              // form means the browser submits it on Enter — so leaving the
+              // subject line, which is close to a reflex, sent the message.
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                bodyRef.current?.focus();
+              }
+            }}
           />
         </div>
       </div>

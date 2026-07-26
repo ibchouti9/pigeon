@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMail, type LoadStatus } from '../../store/mail';
 import { shortcutsBlocked } from '../../store/ui';
+import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { cn } from '../../lib/cn';
 import { displayName, formatCount, plural } from '../../lib/format';
 import type { HeldSender } from '../../types';
@@ -37,6 +38,12 @@ interface Acting {
  * rendering from a local snapshot so the stamp + collapse animation (§3.3)
  * has something to animate before the store's optimistic removal takes over.
  */
+/**
+ * §4.2 renders postmark text at `S * 0.115`, and §8.5 item 10 puts the floor at
+ * 11px. 11 / 0.115 = 95.7, so 96 is the smallest mark whose verb is legible.
+ */
+const POSTMARK_SIZE = 96;
+
 export function BulkReview({
   held,
   status,
@@ -55,6 +62,8 @@ export function BulkReview({
   const [acting, setActing] = useState<Acting | null>(null);
   const [failed, setFailed] = useState<Map<string, 'approved' | 'declined'>>(new Map());
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  // C-21 — 200ms minimum, so a fast load doesn't flash skeleton rows.
+  const showSkeleton = useMinimumVisible(status !== 'ready');
   const snapshot = useRef<Map<string, HeldSender>>(new Map());
   const actingRef = useRef<Acting | null>(null);
   const mounted = useRef(true);
@@ -256,7 +265,7 @@ export function BulkReview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayIds, checked, cursorId, online]);
 
-  if (status !== 'ready') {
+  if (showSkeleton) {
     return <SkeletonRows count={6} height={64} circle={28} label="Loading" />;
   }
 
@@ -323,7 +332,21 @@ export function BulkReview({
                 <Monogram name={row.sender.name} email={row.sender.email} size={28} />
                 <span className={cn('t-base', 'truncate', styles.name)}>{displayName(row.sender)}</span>
                 <span className={cn('t-sm', 'truncate', styles.subject)}>{first.subject}</span>
-                {reads[id] && <span className={cn('t-xs', styles.aiRead)}>◆ {reads[id]}</span>}
+                {reads[id] && (
+                  <span className={cn('t-xs', styles.aiRead)}>
+                    {/*
+                      §4.7 requires all three of tint/label, ◆ glyph and a
+                      visually hidden prefix. §5.8 gives this row the glyph
+                      alone, which covers the first two — but the prefix is
+                      unqualified, and without it the row's accessible name ran
+                      the AI sentence straight on from the subject with nothing
+                      marking where the machine started talking.
+                    */}
+                    <span className="visually-hidden">Pigeon&apos;s read of this sender: </span>
+                    <span aria-hidden="true">◆ </span>
+                    {reads[id]}
+                  </span>
+                )}
               </button>
 
               {isActing && acting && (
@@ -331,7 +354,12 @@ export function BulkReview({
                   <Postmark
                     verb={acting.decision === 'approved' ? 'Approved' : 'Returned'}
                     date={new Date().toISOString()}
-                    size={40}
+                    // §4.2 sizes postmark text at S * 0.115, so a 40px mark
+                    // rendered "RETURNED" at 4.6px — an unreadable smudge, and
+                    // under §8.5's 11px floor. 96 is the smallest S that clears
+                    // it; the overlay covers the row, so the mark can be larger
+                    // than the row is tall.
+                    size={POSTMARK_SIZE}
                     ink={acting.decision === 'approved' ? 'accent' : 'destructive'}
                     decorative
                     animate

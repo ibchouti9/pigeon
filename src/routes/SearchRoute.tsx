@@ -5,6 +5,7 @@ import type { SearchResults } from '../data/provider';
 import { useMail } from '../store/mail';
 import { shortcutsBlocked, useUi } from '../store/ui';
 import { useOnline } from '../hooks/useOnline';
+import { useMinimumVisible } from '../hooks/useMinimumVisible';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useThreadSummary } from '../ai/useThreadSummary';
 import { useAssistant } from '../ai/useAssistant';
@@ -76,6 +77,8 @@ export function SearchRoute() {
   const [status, setStatus] = useState<Status>('empty');
   const [recent, setRecent] = useState<string[]>(readRecent);
   const [cursor, setCursor] = useState(0);
+  // C-21 — no sub-200ms flash of skeleton rows on a fast search.
+  const showSkeleton = useMinimumVisible(status === 'loading');
   const inputRef = useRef<HTMLInputElement>(null);
   const latestRequest = useRef(0);
 
@@ -339,7 +342,7 @@ export function SearchRoute() {
           />
         )}
 
-        {status === 'loading' && <SkeletonRows count={5} label="Searching" />}
+        {showSkeleton && <SkeletonRows count={5} label="Searching" />}
 
         {status === 'error' && (
           <EmptyState

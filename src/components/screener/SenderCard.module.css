@@ -163,9 +163,14 @@
   }
 }
 
-/* §4.6 CARD RISE — the next card, starting with the depart. */
+/*
+ * §4.6 CARD RISE — "starts with the depart", and §4.6 also says "nothing else
+ * on screen animates during the stamp". The depart waits out the stamp with a
+ * 260ms delay; the rise had none, so it ran its full 180ms at t=0 underneath
+ * the departing card and was never seen at all.
+ */
 .rising {
-  animation: rise var(--duration-base) var(--ease-standard);
+  animation: rise var(--duration-base) var(--ease-standard) var(--delay-depart, 260ms) both;
 }
 
 @keyframes rise {

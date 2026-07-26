@@ -133,7 +133,7 @@ export function ThreadRow({
             <span
               className={styles.arrivalRing}
               role="img"
-              aria-label="First message since approval"
+              aria-label="First message since you approved this sender"
             />
           )}
           <span className={cn('t-mono-sm', styles.timestampText)}>{timestamp}</span>

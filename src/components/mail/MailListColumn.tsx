@@ -23,6 +23,7 @@ import { shortcutsBlocked } from '../../store/ui';
 import { Button } from '../primitives/Button';
 import { EmptyState, SkeletonRows } from '../primitives/Feedback';
 import { groupThreadsByDate } from './grouping';
+import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { ThreadRow } from './ThreadRow';
 import { RevokedState } from './RevokedState';
 import styles from './MailListColumn.module.css';
@@ -64,6 +65,18 @@ export interface MailListColumnProps {
  * Owns keyboard cursor + checkbox selection; archive/open decisions are
  * delegated to the parent so it can coordinate with the open reader.
  */
+/**
+ * §4.2 — the arrival ring shows "for 24 hours". It was keyed on the presence of
+ * an approval date alone, so once a thread had one the ring never came off: the
+ * "this just arrived from someone you approved" moment became a permanent
+ * decoration on that row.
+ */
+function isNewlyApproved(approvedAt: string | undefined): boolean {
+  if (!approvedAt) return false;
+  const age = Date.now() - new Date(approvedAt).getTime();
+  return age >= 0 && age < 24 * 60 * 60 * 1000;
+}
+
 export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnProps>(
   function MailListColumn(
     {
@@ -90,6 +103,9 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
     ref,
   ) {
     const [cursorIndex, setCursorIndex] = useState(0);
+    // C-21 — a skeleton stays up for 200ms once shown, so a fast load
+    // doesn't flicker.
+    const showSkeleton = useMinimumVisible(status === 'loading' || status === 'idle');
 
     // §4.6 ROW DEPART — hold the row on screen for one animation, then hand the
     // archive up. Without this the row vanishes between frames.
@@ -308,7 +324,7 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
           <RevokedState onConnectGmail={onConnectGmail} />
         ) : status === 'error' ? (
           <UnreachableState onRetry={onRetry} />
-        ) : status === 'loading' || status === 'idle' ? (
+        ) : showSkeleton ? (
           <div className={styles.scroll}>
             <SkeletonRows count={8} label={`Loading ${title.toLowerCase()}`} />
           </div>
@@ -350,7 +366,7 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
                           unread={t.unread}
                           messageCount={t.messages.length}
                           hasAttachment={t.messages.some((m) => m.attachments.length > 0)}
-                          isNewlyApproved={Boolean(t.approvedAt)}
+                          isNewlyApproved={isNewlyApproved(t.approvedAt)}
                           checked={checked.has(t.id)}
                           cursor={idx === cursorIndex}
                           open={t.id === openThreadId}

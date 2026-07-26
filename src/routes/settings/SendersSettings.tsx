@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { shortcutsBlocked } from '../../store/ui';
+import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { useNavigate } from 'react-router-dom';
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import { useVirtualRows } from '../../components/settings/useVirtualRows';
@@ -67,6 +68,8 @@ export function SendersSettings() {
   // tabbable, so nothing was unreachable — but tabbing to row 300 of an
   // approved list is not a way anyone would choose to get there.
   const [cursor, setCursor] = useState(0);
+  // C-21 — 200ms minimum on the skeleton.
+  const showSkeleton = useMinimumVisible(status === 'loading');
 
   /**
    * §3.6 step 3 — "the row's postmark restamps to 'DECLINED · JUL 25' and the
@@ -179,7 +182,7 @@ export function SendersSettings() {
       </div>
 
       <div id={PANEL_ID} role="tabpanel" aria-labelledby={`tab-${tab}`} className={styles.panel}>
-        {status === 'loading' && (
+        {showSkeleton && (
           <SkeletonRows count={6} height={ROW_HEIGHT} circle={24} label="Loading senders" />
         )}
 

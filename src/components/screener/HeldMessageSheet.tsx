@@ -34,6 +34,9 @@ export function HeldMessageSheet() {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const entry = senderId ? held.find((h) => h.sender.id === senderId) : undefined;
+  // The sheet knows which sender it is even when the message didn't load, and
+  // §5.9 keeps the decision available in that state.
+  const sheetSender = entry?.sender ?? (senderId ? { id: senderId } : null);
   const open = Boolean(senderId);
 
   useEffect(() => {
@@ -111,11 +114,43 @@ export function HeldMessageSheet() {
             </div>
           </header>
           <div className={cn(styles.body, styles.errorBody)}>
-            <p className="t-md">This message didn't load.</p>
+            <p className="t-md">This message didn&apos;t load.</p>
             <Button variant="tertiary" onClick={() => void loadHeld()}>
               Try again
             </Button>
           </div>
+          {/*
+            §5.9 — "the decision buttons stay enabled" in the error state. They
+            were absent entirely, which is what makes this state a dead end: a
+            sender whose message won't load is exactly one you still want to be
+            able to decline.
+          */}
+          {sheetSender && (
+            <footer className={styles.footer}>
+              <Button
+                variant="secondary-destructive"
+                disabled={!online}
+                onClick={() =>
+                  void decide(sheetSender.id, 'declined').then((ok) => {
+                    if (ok) closeHeldSheet();
+                  })
+                }
+              >
+                Decline sender
+              </Button>
+              <Button
+                variant="primary"
+                disabled={!online}
+                onClick={() =>
+                  void decide(sheetSender.id, 'approved').then((ok) => {
+                    if (ok) closeHeldSheet();
+                  })
+                }
+              >
+                Approve sender
+              </Button>
+            </footer>
+          )}
         </div>
       </div>
     );

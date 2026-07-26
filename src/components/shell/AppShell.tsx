@@ -10,6 +10,7 @@ import { useMail } from '../../store/mail';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
+import { useRouteFocus } from '../../hooks/useRouteFocus';
 import { toast } from '../../store/toast';
 import { cn } from '../../lib/cn';
 import styles from './AppShell.module.css';
@@ -25,6 +26,8 @@ export function AppShell() {
   const revoked = useMail((s) => s.revoked);
   const navigate = useNavigate();
   const inSettings = useLocation().pathname.startsWith('/settings');
+  const regionRef = useRef<HTMLDivElement>(null);
+  useRouteFocus(regionRef);
   const searchRef = useRef<HTMLInputElement>(null);
   const wasOffline = useRef(false);
 
@@ -67,7 +70,7 @@ export function AppShell() {
 
       <div className={styles.body}>
         <NavRail compact={bp === 'tablet' || bp === 'narrow'} searchRef={searchRef} locked={revoked} />
-        <div className={styles.region} id="main">
+        <div className={styles.region} id="main" ref={regionRef}>
           {/*
             §5.5 — a revoked token "locks the whole shell: the list and reader
             both show it, and only Settings and this action remain interactive".

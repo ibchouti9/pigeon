@@ -3,14 +3,7 @@ import { SettingsPage } from '../../components/settings/SettingsPage';
 import { Button } from '../../components/primitives/Button';
 import { Switch } from '../../components/primitives/Field';
 import { ProviderPanel } from '../../components/onboarding/ProviderPanel';
-import {
-  useSettings,
-  hasProvider,
-  PROVIDER_LABELS,
-  DEFAULT_BASE_URL,
-  type BehaviourFlags,
-  type ProviderConfig,
-} from '../../store/settings';
+import { DEFAULT_BASE_URL, PROVIDER_LABELS, hasProvider, type BehaviourFlags, type ConnectionStatus, type ProviderConfig, useSettings } from '../../store/settings';
 import { testConnection } from '../../ai/client';
 import { toast } from '../../store/toast';
 import { formatSpend, plural, relativeTime } from '../../lib/format';
@@ -84,8 +77,16 @@ function testFailureCopy(status: string, providerName: string, baseUrl: string):
   }
 }
 
+/** §5.13c / §7.8 — the pill's three states, and the fill each one carries. */
+const PILLS: Record<ConnectionStatus, { label: string; className: string }> = {
+  connected: { label: 'Connected', className: 'pillConnected' },
+  unknown: { label: 'Not connected', className: 'pillUnknown' },
+  rejected: { label: 'Key rejected', className: 'pillRejected' },
+};
+
 export function AssistantSettings() {
   const provider = useSettings((s) => s.provider);
+  const connection = useSettings((s) => s.connection);
   const usage = useSettings((s) => s.usage);
   const behaviour = useSettings((s) => s.behaviour);
   const setBehaviour = useSettings((s) => s.setBehaviour);
@@ -176,9 +177,16 @@ export function AssistantSettings() {
                   {provider.model} · {maskedKey(provider)}
                 </div>
               </div>
-              <span className={cn('t-xs', styles.pill, styles.pillConnected)}>
+              {/*
+                §5.13c gives this pill three states. It only ever rendered
+                "Connected", gated on whether a key string was present rather
+                than on whether it worked — so a revoked or out-of-credit key
+                showed green while every AI surface silently failed. The test
+                result was already being written to the store; nothing read it.
+              */}
+              <span className={cn('t-xs', styles.pill, styles[PILLS[connection].className])}>
                 <span className={styles.pillDot} aria-hidden="true" />
-                Connected
+                {PILLS[connection].label}
               </span>
               <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
                 Change

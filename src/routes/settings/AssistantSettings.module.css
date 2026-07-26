@@ -140,3 +140,23 @@
   padding-top: var(--space-4);
   color: var(--color-text-secondary);
 }
+
+/* §5.13c — "Not connected" on --color-surface-sunken, "Key rejected" on
+   --color-destructive-subtle. Both were specified and neither was built. */
+.pillUnknown {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}
+
+.pillUnknown .pillDot {
+  background: var(--color-text-tertiary);
+}
+
+.pillRejected {
+  background: var(--color-destructive-subtle);
+  color: var(--color-text-destructive);
+}
+
+.pillRejected .pillDot {
+  background: var(--color-destructive);
+}

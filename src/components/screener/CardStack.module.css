@@ -28,7 +28,9 @@
 
 /* Behind cards: symmetric insets (set inline per-card), never a fixed
    height, never `transform: scale()` — both go stale as content changes. */
+/* §5.7 and §8.4 both say these are aria-hidden *and* pointer-events: none. */
 .behind {
+  pointer-events: none;
   position: absolute;
   height: auto;
   border: var(--border-hairline);

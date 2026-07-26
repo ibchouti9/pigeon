@@ -53,7 +53,15 @@
   color: var(--color-text-tertiary);
 }
 
-/* §4.7 — AI ink on the AI tint, until the user edits a character. */
+/*
+ * §4.7 — AI ink on the AI tint, until the user edits a character. §4.6 gives
+ * that crossfade 200ms; the ink transitioned and the tint snapped, because the
+ * tint lives on this wrapper and only `.input` carried a transition.
+ */
+.wrap {
+  transition: background-color 200ms var(--ease-standard);
+}
+
 .drafted {
   background: var(--color-surface-ai);
 }
