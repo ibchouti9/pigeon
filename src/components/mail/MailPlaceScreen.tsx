@@ -5,12 +5,12 @@ import { useOnline } from '../../hooks/useOnline';
 import { useCompose } from '../../store/compose';
 import { useHeldCount, useMail, useUnreadCount } from '../../store/mail';
 import { isTypingTarget, shortcutsBlocked } from '../../store/ui';
-import type { Draft, Place, Thread } from '../../types';
+import type { Place, Thread } from '../../types';
 import { useAssistant } from '../../ai/useAssistant';
 import { useThreadSummary } from '../../ai/useThreadSummary';
-import { InlineReply } from './InlineReply';
 import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
-import { ThreadReader, type ReplyMode, type ThreadReaderStatus } from './ThreadReader';
+import { ThreadReader, type ThreadReaderStatus } from './ThreadReader';
+import { useThreadReply } from './useThreadReply';
 import styles from './MailPlaceScreen.module.css';
 
 /**
@@ -40,12 +40,6 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const heldCount = useHeldCount();
   const unreadCount = useUnreadCount();
 
-  // D14 — the reply composer lives in the reading pane, not the dock.
-  const [replyMode, setReplyMode] = useState<ReplyMode | null>(null);
-  /** Set by an undo, so the reopened composer holds what the user wrote. */
-  const [restoredDraft, setRestoredDraft] = useState<Draft | null>(null);
-  // Set when ⌘J opened the reply, so the composer starts drafting on mount.
-  const [draftWithPigeon, setDraftWithPigeon] = useState(false);
 
   const { connected } = useAssistant();
 
@@ -101,6 +95,9 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   }, [missing, threadId]);
 
   const openThread = listed ?? fetched ?? undefined;
+
+  // D14 — the reply composer lives in the reading pane, not the dock.
+  const reply = useThreadReply(openThread, online);
 
   // D5 — automatic above the threshold, a button below it.
   const summary = useThreadSummary(openThread ?? null);
@@ -180,11 +177,6 @@ export function MailPlaceScreen({ place }: { place: Place }) {
     }
   }
 
-  function reply(mode: ReplyMode) {
-    if (!openThread || !online) return;
-    setDraftWithPigeon(false);
-    setReplyMode(mode);
-  }
 
   // §8.1 "In a thread list" / "In a thread" — e/r/a/f/u need to know whether
   // a thread is currently open, so they live here rather than in the list.
@@ -197,9 +189,8 @@ export function MailPlaceScreen({ place }: { place: Place }) {
       // reading a thread with no reply open, which is the case the wording is
       // actually about.
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
-        if (openThread && online && !replyMode) {
-          setReplyMode('reply');
-          setDraftWithPigeon(true);
+        if (openThread && online && !reply.mode) {
+          reply.openDrafting('reply');
           e.preventDefault();
         }
         return;
@@ -216,19 +207,19 @@ export function MailPlaceScreen({ place }: { place: Place }) {
         }
         case 'r':
           if (openThread) {
-            reply('reply');
+            reply.open('reply');
             e.preventDefault();
           }
           break;
         case 'a':
           if (openThread) {
-            reply('reply-all');
+            reply.open('reply-all');
             e.preventDefault();
           }
           break;
         case 'f':
           if (openThread) {
-            reply('forward');
+            reply.open('forward');
             e.preventDefault();
           }
           break;
@@ -253,7 +244,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId, threads, openThread, bp, online, replyMode]);
+  }, [threadId, threads, openThread, bp, online, reply.mode]);
 
   // §5.0 narrow tablet (720–879px) — list and reader are a single column.
   const showList = bp !== 'narrow' || !threadId;
@@ -309,33 +300,14 @@ export function MailPlaceScreen({ place }: { place: Place }) {
             void loadThreads(place);
           }}
           onArchive={() => threadId && archiveOne(threadId)}
-          onReply={reply}
+          onReply={reply.open}
           summary={summary.hidden || summary.bullets.length === 0 ? undefined : summary.bullets}
           summaryState={summary.state === 'idle' ? undefined : summary.state}
           summaryFailedText={summary.failedText ?? undefined}
           onRetrySummary={summary.summarize}
           onSummarize={summary.summarize}
           hasProvider={connected}
-          replySlot={
-            openThread && replyMode ? (
-              <InlineReply
-                key={`${openThread.id}-${replyMode}-${restoredDraft?.id ?? ''}`}
-                thread={openThread}
-                mode={replyMode}
-                draftOnOpen={draftWithPigeon}
-                initialDraft={restoredDraft ?? undefined}
-                onRestore={(draft) => {
-                  setRestoredDraft(draft);
-                  setReplyMode(draft.mode === 'forward' ? 'forward' : 'reply');
-                }}
-                onClose={() => {
-                  setReplyMode(null);
-                  setDraftWithPigeon(false);
-                  setRestoredDraft(null);
-                }}
-              />
-            ) : undefined
-          }
+          replySlot={reply.slot}
         />
       )}
     </div>

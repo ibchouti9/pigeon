@@ -153,6 +153,61 @@ describe('search result keyboard navigation (§8.1)', () => {
   });
 
   /**
+   * §5.6 — "read one conversation and act on it without leaving the pane". The
+   * Search reader rendered Reply, Reply all and Forward, plus the "Reply to
+   * {name}" affordance and `r`/`a`/`f`, with nothing behind any of them: every
+   * one silently did nothing.
+   */
+  describe('replying to a result', () => {
+    async function openFirstResult(user: ReturnType<typeof userEvent.setup>) {
+      await renderSearch('the');
+      const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
+      await user.click(rows[0]);
+      await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument());
+    }
+
+    it('opens a composer from the Reply button', async () => {
+      const user = userEvent.setup();
+      await openFirstResult(user);
+
+      await user.click(screen.getByRole('button', { name: 'Reply' }));
+
+      await waitFor(() => expect(screen.getByLabelText('Message body')).toBeInTheDocument());
+    });
+
+    it('opens one from r, as §8.1 says', async () => {
+      const user = userEvent.setup();
+      await openFirstResult(user);
+
+      await user.keyboard('r');
+
+      await waitFor(() => expect(screen.getByLabelText('Message body')).toBeInTheDocument());
+    });
+
+    it('forwards from f', async () => {
+      const user = userEvent.setup();
+      await openFirstResult(user);
+
+      await user.keyboard('f');
+
+      // Forward starts with no recipient, which is what distinguishes it here.
+      await waitFor(() => expect(screen.getByLabelText('Message body')).toBeInTheDocument());
+      expect(screen.getByRole('button', { name: /Send/ })).toBeDisabled();
+    });
+
+    it('closes the result on u', async () => {
+      const user = userEvent.setup();
+      await openFirstResult(user);
+
+      await user.keyboard('u');
+
+      await waitFor(() =>
+        expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument(),
+      );
+    });
+  });
+
+  /**
    * Clicking left the cursor where it was, so `e` acted on a thread that was
    * not the one on screen, and j/k jumped back somewhere else.
    */

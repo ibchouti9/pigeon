@@ -16,6 +16,7 @@ import { Monogram } from '../components/primitives/Monogram';
 import { EmptyState, SkeletonRows } from '../components/primitives/Feedback';
 import { ThreadRow } from '../components/mail/ThreadRow';
 import { ThreadReader } from '../components/mail/ThreadReader';
+import { useThreadReply } from '../components/mail/useThreadReply';
 import { cn } from '../lib/cn';
 import {
   displayName,
@@ -164,6 +165,10 @@ export function SearchRoute() {
     storedThread ?? flatThreads.find((t) => t.id === threadId);
   const summary = useThreadSummary(thread ?? null);
 
+  // §5.6 — a result opened from Search is still a thread to act on. The reader
+  // rendered Reply, Reply all and Forward here with nothing behind them.
+  const reply = useThreadReply(thread, online);
+
   function toggleHeld() {
     setParams(
       (prev) => {
@@ -239,6 +244,22 @@ export function SearchRoute() {
           e.preventDefault();
           break;
         }
+        // §8.1 "In a thread" — these need a thread open, and Search's reader
+        // is a reader like any other.
+        case 'r':
+        case 'a':
+        case 'f': {
+          if (!thread) break;
+          reply.open(e.key === 'r' ? 'reply' : e.key === 'a' ? 'reply-all' : 'forward');
+          e.preventDefault();
+          break;
+        }
+        case 'u': {
+          if (!threadId) break;
+          closeResult();
+          e.preventDefault();
+          break;
+        }
         case 'e': {
           const thread = flatThreads[cursor];
           // §8.1 — "archive the cursor row (Inbox) / move to inbox (Archive)".
@@ -258,7 +279,8 @@ export function SearchRoute() {
     window.addEventListener('keydown', onListKeyDown);
     return () => window.removeEventListener('keydown', onListKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flatThreads, cursor, online, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flatThreads, cursor, online, navigate, thread, threadId, reply.open]);
 
   // A new result set invalidates wherever the cursor was pointing.
   useEffect(() => {
@@ -491,7 +513,13 @@ export function SearchRoute() {
             breakpoint={bp}
             backLabel="Results"
             onBack={closeResult}
-            onArchive={thread ? () => void setPlace(thread.id, 'archive') : undefined}
+            onArchive={
+              thread
+                ? () => void setPlace(thread.id, thread.place === 'inbox' ? 'archive' : 'inbox')
+                : undefined
+            }
+            onReply={reply.open}
+            replySlot={reply.slot}
             summary={summary.hidden || summary.bullets.length === 0 ? undefined : summary.bullets}
             summaryState={summary.state === 'idle' ? undefined : summary.state}
             onRetrySummary={summary.summarize}
