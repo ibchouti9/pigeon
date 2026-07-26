@@ -390,3 +390,106 @@ describe('recognising the user\'s own messages', () => {
     expect(message.isFromUser).toBe(false);
   });
 });
+
+/**
+ * Gmail decodes the transfer encoding and leaves the character set alone, so
+ * assuming UTF-8 rendered every windows-1252 or Shift_JIS message as a field of
+ * replacement characters — which is a lot of mail from mailing lists and older
+ * senders.
+ */
+describe('character sets', () => {
+  /** base64 of the given bytes, the way Gmail hands a body back. */
+  function b64(bytes: number[]) {
+    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_');
+  }
+
+  function message(charset: string, bytes: number[]) {
+    return {
+      id: 'm1',
+      threadId: 't1',
+      internalDate: '1750000000000',
+      payload: {
+        headers: [
+          { name: 'From', value: 'Dana <dana@lumen.com>' },
+          { name: 'Subject', value: 'Hello' },
+        ],
+        mimeType: 'multipart/alternative',
+        parts: [
+          {
+            mimeType: 'text/plain',
+            headers: [{ name: 'Content-Type', value: `text/plain; charset="${charset}"` }],
+            body: { data: b64(bytes) },
+          },
+        ],
+      },
+    };
+  }
+
+  it('decodes a windows-1252 body in its own charset', () => {
+    // 0xE9 is é in windows-1252 and invalid on its own in UTF-8.
+    const parsed = toMessage(message('windows-1252', [0x52, 0xe9, 0x75, 0x6e, 0x69, 0x6f, 0x6e]), 'marc@ferrum.dev');
+    expect(parsed.body).toBe('Réunion');
+    expect(parsed.body).not.toContain('\uFFFD');
+  });
+
+  it('still decodes UTF-8 when that is what the part declares', () => {
+    const parsed = toMessage(message('utf-8', [0x52, 0xc3, 0xa9, 0x75, 0x6e, 0x69, 0x6f, 0x6e]), 'marc@ferrum.dev');
+    expect(parsed.body).toBe('Réunion');
+  });
+
+  it('falls back to UTF-8 rather than losing a body to an unknown label', () => {
+    const parsed = toMessage(message('x-nonsense', [0x48, 0x69]), 'marc@ferrum.dev');
+    expect(parsed.body).toBe('Hi');
+  });
+});
+
+/**
+ * Gmail wraps its attribution line for any reasonably long name or date, so the
+ * single-line marker never matched and the fallback cut one line late — leaving
+ * "On Mon, 20 Jul 2026 at 16:12 Dana Whitlock <dana@lumen.com> wrote:" in the
+ * visible body of essentially every threaded reply.
+ */
+describe('splitting a wrapped attribution', () => {
+  it('cuts above a two-line English attribution', () => {
+    const { body, quoted } = splitQuoted(
+      [
+        'Happy with 750 as a middle.',
+        '',
+        'On Mon, 20 Jul 2026 at 16:12 Dana Whitlock <dana@lumen.com>',
+        'wrote:',
+        '> Any movement on the cap?',
+      ].join('\n'),
+    );
+
+    expect(body).toBe('Happy with 750 as a middle.');
+    expect(quoted).toContain('On Mon, 20 Jul 2026');
+  });
+
+  it('cuts above a non-English attribution it has no rule for', () => {
+    const { body, quoted } = splitQuoted(
+      [
+        'Merci, c’est noté.',
+        '',
+        'Le 20 juillet 2026 à 16:12, Dana Whitlock <dana@lumen.com> a écrit :',
+        '> Une question sur le contrat.',
+      ].join('\n'),
+    );
+
+    expect(body).toBe('Merci, c’est noté.');
+    expect(quoted).toContain('a écrit');
+  });
+
+  it('leaves an ordinary line above a quote alone', () => {
+    const { body } = splitQuoted(['Two thoughts below.', '> the first', '> the second'].join('\n'));
+    expect(body).toBe('Two thoughts below.');
+  });
+
+  it('leaves a body of only an attribution and a quote empty, as before', () => {
+    // Nothing was written above the quote, so there is no body to keep.
+    const { body, quoted } = splitQuoted(
+      ['On 20 Jul 2026 at 16:12 Dana wrote:', '> Hello'].join('\n'),
+    );
+    expect(body).toBe('');
+    expect(quoted).toContain('> Hello');
+  });
+});

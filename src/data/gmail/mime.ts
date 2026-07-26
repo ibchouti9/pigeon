@@ -25,17 +25,32 @@ export interface GmailMessage {
   payload?: GmailPart;
 }
 
-export function decodeBase64Url(data: string): string {
+export function decodeBase64Url(data: string, charset = 'utf-8'): string {
   const normalised = data.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalised.padEnd(Math.ceil(normalised.length / 4) * 4, '=');
   try {
-    // atob yields a byte string; run it back through TextDecoder for UTF-8.
+    // atob yields a byte string; run it back through a decoder for the part's
+    // own charset. Gmail decodes the transfer encoding and leaves the character
+    // set alone, so assuming UTF-8 rendered every windows-1252 or Shift_JIS
+    // message as a field of replacement characters — which is most mail from
+    // mailing lists and older senders.
     const binary = atob(padded);
     const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-    return new TextDecoder('utf-8').decode(bytes);
+    try {
+      return new TextDecoder(charset).decode(bytes);
+    } catch {
+      // An unknown label is not a reason to lose the message.
+      return new TextDecoder('utf-8').decode(bytes);
+    }
   } catch {
     return '';
   }
+}
+
+/** The `charset` parameter off a part's own Content-Type, if it declared one. */
+function charsetOf(part: GmailPart): string | undefined {
+  const contentType = header(part.headers, 'Content-Type');
+  return contentType.match(/charset=\s*"?([^";\s]+)"?/i)?.[1];
 }
 
 export function encodeBase64Url(text: string): string {
@@ -100,10 +115,10 @@ function findBody(part: GmailPart | undefined): { text: string; html: string } {
   if (!part) return { text: '', html: '' };
 
   if (part.mimeType === 'text/plain' && part.body?.data) {
-    return { text: decodeBase64Url(part.body.data), html: '' };
+    return { text: decodeBase64Url(part.body.data, charsetOf(part)), html: '' };
   }
   if (part.mimeType === 'text/html' && part.body?.data) {
-    return { text: '', html: decodeBase64Url(part.body.data) };
+    return { text: '', html: decodeBase64Url(part.body.data, charsetOf(part)) };
   }
 
   let text = '';
@@ -160,13 +175,43 @@ export function splitQuoted(body: string): { body: string; quoted?: string } {
 
   const firstQuote = lines.findIndex((l) => l.startsWith('>'));
   if (firstQuote > 0) {
+    /*
+     * Cut above the attribution, not below it. The markers above want the whole
+     * of "On Mon, 20 Jul 2026 at 16:12 Dana Whitlock <dana@lumen.com> wrote:"
+     * on one line, and Gmail wraps it for any reasonably long name or date —
+     * so the fallback fired instead and left the attribution sitting in the
+     * visible body of essentially every threaded reply. Non-English clients
+     * ("Le … a écrit :", "Am … schrieb:") never matched a marker at all, and
+     * this catches them by shape rather than by language.
+     */
+    // The contiguous non-empty run directly above the quote, at most three
+    // lines — which is as long as a wrapped attribution ever gets.
+    let top = firstQuote;
+    while (top > 0 && lines[top - 1].trim() !== '' && firstQuote - top < 3) top -= 1;
+
+    const cut = top < firstQuote && isAttribution(lines.slice(top, firstQuote))
+      ? top
+      : firstQuote;
+
     return {
-      body: lines.slice(0, firstQuote).join('\n').trimEnd(),
-      quoted: lines.slice(firstQuote).join('\n').trim(),
+      body: lines.slice(0, cut).join('\n').trimEnd(),
+      quoted: lines.slice(cut).join('\n').trim(),
     };
   }
 
   return { body: body.trimEnd() };
+}
+
+/**
+ * Does this run of lines end in an attribution? Shape rather than wording: an
+ * address or a date, ending in a colon, within the last few lines before the
+ * quote. That covers Gmail's wrapped English form and the common translations
+ * without keeping a list of languages.
+ */
+function isAttribution(block: string[]): boolean {
+  const joined = block.map((l) => l.trim()).filter(Boolean).join(' ');
+  if (!joined || !/[:：]\s*$/.test(joined)) return false;
+  return /@|\d{4}|\d{1,2}:\d{2}/.test(joined);
 }
 
 export function toMessage(raw: GmailMessage, userEmail: string): Message {
