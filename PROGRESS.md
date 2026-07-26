@@ -429,6 +429,13 @@ user-visible. Worth doing deliberately rather than at the end of a long session.
 
 ## Open items
 
+- The thread list fills in as it loads rather than after the whole walk, so the
+  Archive is usable within a second of opening it instead of after a walk that a
+  throttled 2,000-thread mailbox can stretch to thirteen minutes. Two things
+  that are easy to get wrong and are tested: partial pages go through the same
+  §2.3 filter as the final list, and an *empty* page never publishes — §2.3 can
+  filter an early page down to nothing, and going `ready` on it would flash
+  "you're all caught up" before the inbox fills in behind it.
 - The Gmail path has never run against a real account. It needs a Google OAuth
   client ID in `.env.local` (see the README) and a careful first run. Everything
   above it is wired: consent, provider swap, token restore on reload, and
