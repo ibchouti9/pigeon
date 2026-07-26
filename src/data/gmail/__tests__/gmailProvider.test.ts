@@ -503,6 +503,33 @@ describe('search (§5.11)', () => {
  * first run can least afford them.
  */
 describe('concurrent walks of the same place', () => {
+  it('builds the known-sender set once, however many callers ask', async () => {
+    let contactWalks = 0;
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\/connections/.test(href)) {
+        contactWalks += 1;
+        await new Promise((r) => setTimeout(r, 5));
+        return new Response(JSON.stringify({ connections: [] }), { status: 200 });
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/messages\?/.test(href)) {
+        return new Response(JSON.stringify({ messages: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ threads: [] }), { status: 200 });
+    });
+
+    const provider = new GmailMailProvider();
+    await Promise.all([provider.getKnownSenders(), provider.listContacts()]);
+
+    expect(contactWalks).toBe(1);
+  });
+
   it('shares one walk rather than starting three', async () => {
     let listings = 0;
     vi.stubGlobal('fetch', async (url: string) => {

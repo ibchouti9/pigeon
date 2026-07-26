@@ -95,6 +95,7 @@ export class GmailMailProvider implements MailProvider {
   /** Gmail's own change token per thread — the key to a cache that stays fresh. */
   private historyIds = new Map<string, string>();
   private hydrating = new Map<string, Promise<Thread[]>>();
+  private buildingKnown: Promise<void> | null = null;
 
   private async call<T>(url: string, init: RequestInit = {}): Promise<T> {
     let token: string;
@@ -182,7 +183,24 @@ export class GmailMailProvider implements MailProvider {
   }
 
   /** Builds the known-sender set: Contacts, plus everyone written to (D10). */
-  private async buildKnownSet(onProgress?: (done: number) => void): Promise<void> {
+  /**
+   * Deduplicated for the same reason `hydrate` is: `sync`, `getKnownSenders`
+   * and `listContacts` can all ask for this, and the "have we built it yet"
+   * checks at the call sites all read false until the first one finishes. Two
+   * callers meant two full contact-and-sent-mail walks.
+   */
+  private buildKnownSet(onProgress?: (done: number) => void): Promise<void> {
+    const inFlight = this.buildingKnown;
+    if (inFlight) return inFlight;
+
+    const build = this.doBuildKnownSet(onProgress).finally(() => {
+      this.buildingKnown = null;
+    });
+    this.buildingKnown = build;
+    return build;
+  }
+
+  private async doBuildKnownSet(onProgress?: (done: number) => void): Promise<void> {
     this.known.clear();
     this.contacts = [];
 
