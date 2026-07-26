@@ -6,9 +6,28 @@ import type { ProviderConfig } from '../../store/settings';
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
 
+interface AnthropicModel {
+  /** USD per million tokens. */
+  pricing: ModelPricing;
+  /**
+   * Whether the model accepts `output_config.effort` and an explicit
+   * `thinking` block. Both arrived with the Opus 4.5 / Sonnet 4.6 generation;
+   * Haiku 4.5 predates them and answers a request carrying `effort` with a
+   * 400. Sending them to every model is what made Test connection pass on
+   * Sonnet and fail on Haiku with the same good key — and the failure read as
+   * "Anthropic rejected this key", because the request was refused and the
+   * key never was.
+   *
+   * Omitting `thinking` on a model without it is the same instruction the
+   * explicit `disabled` was giving: those models do not think unless asked.
+   */
+  tunable: boolean;
+}
+
 /**
- * USD per million tokens. Reported in Settings → Assistant; Pigeon never caps
- * or bills (D46).
+ * The models Pigeon offers, with what each costs and what each accepts.
+ * Pricing is reported in Settings → Assistant; Pigeon never caps or bills
+ * (D46).
  *
  * These keys are also the curated model list O2 offers, via CURATED_MODELS.
  * `claude-sonnet-5` is deliberate and is not a typo for the `claude-sonnet-4-5`
@@ -16,9 +35,9 @@ const API_VERSION = '2023-06-01';
  * generation. D45's whole rationale is that this list gets updated in one
  * place — this is that place.
  */
-const PRICING: Record<string, ModelPricing> = {
-  'claude-sonnet-5': { input: 3, output: 15 },
-  'claude-haiku-4-5': { input: 1, output: 5 },
+const MODELS: Record<string, AnthropicModel> = {
+  'claude-sonnet-5': { pricing: { input: 3, output: 15 }, tunable: true },
+  'claude-haiku-4-5': { pricing: { input: 1, output: 5 }, tunable: false },
 };
 
 interface AnthropicResponse {
@@ -104,9 +123,11 @@ async function post(
         messages: [{ role: 'user', content: user }],
         // Short, structured outputs on a latency-sensitive surface: the reader
         // is watching a skeleton. Low effort with thinking off is the fastest
-        // configuration that still holds the §7.9 rules.
-        thinking: { type: 'disabled' },
-        output_config: { effort: 'low' },
+        // configuration that still holds the §7.9 rules — on the models that
+        // have those dials. See `AnthropicModel.tunable`.
+        ...(MODELS[config.model]?.tunable
+          ? { thinking: { type: 'disabled' }, output_config: { effort: 'low' } }
+          : {}),
       }),
     });
   } catch {
@@ -124,7 +145,7 @@ async function post(
     .map((b) => b.text ?? '')
     .join('');
 
-  const pricing = PRICING[config.model] ?? { input: 3, output: 15 };
+  const pricing = MODELS[config.model]?.pricing ?? { input: 3, output: 15 };
   const usd =
     ((body?.usage?.input_tokens ?? 0) / 1_000_000) * pricing.input +
     ((body?.usage?.output_tokens ?? 0) / 1_000_000) * pricing.output;
@@ -154,4 +175,4 @@ export const anthropicAdapter: Adapter = {
   complete: post,
 };
 
-export const ANTHROPIC_MODELS = Object.keys(PRICING);
+export const ANTHROPIC_MODELS = Object.keys(MODELS);

@@ -123,6 +123,15 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     return 'empty';
   });
   const [testMs, setTestMs] = useState<number | undefined>(undefined);
+  /*
+   * What the provider itself said, kept *alongside* §7.6's status line rather
+   * than replacing it. The status line can only speak from the four statuses,
+   * and one of them lies by omission: a model that refuses a *parameter* comes
+   * back as `rejected`, so the panel sent the user off to re-check a key that
+   * was never the problem. The adapter already quotes the API — this stopped
+   * the panel from throwing that quote away.
+   */
+  const [testDetail, setTestDetail] = useState<string | null>(null);
   const [localModels, setLocalModels] = useState<string[] | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -181,6 +190,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     if (!providerId) return;
     const isLocalProvider = providerId === 'local';
     setStatus('testing');
+    setTestDetail(null);
     const config: ProviderConfig = {
       provider: providerId,
       apiKey: isLocalProvider ? '' : apiKey,
@@ -199,6 +209,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
         }
       } else {
         setStatus(result.status);
+        setTestDetail(result.message ?? null);
         useSettings.getState().setConnection(result.status === 'rejected' ? 'rejected' : 'unknown');
       }
     } catch {
@@ -321,6 +332,9 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
               )}
               {statusMessage(status, providerName, baseUrl, testMs)}
             </p>
+            {testDetail && (
+              <p className={cn('t-xs', 'ink-tertiary', styles.statusDetail)}>{testDetail}</p>
+            )}
             <p className={cn('t-xs', 'ink-tertiary', styles.provenance)}>
               {provenanceNote(providerId)}
             </p>

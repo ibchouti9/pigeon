@@ -75,6 +75,12 @@
   max-width: 70ch;
 }
 
+/* The provider's own words, under §7.6's line rather than instead of it. */
+.statusDetail {
+  margin-top: var(--space-1);
+  max-width: 70ch;
+}
+
 .modelWrap {
   position: relative;
   display: flex;
