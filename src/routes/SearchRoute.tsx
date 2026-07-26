@@ -241,7 +241,12 @@ export function SearchRoute() {
         }
         case 'e': {
           const thread = flatThreads[cursor];
-          if (thread && online) void setPlace(thread.id, 'archive');
+          // §8.1 — "archive the cursor row (Inbox) / move to inbox (Archive)".
+          // Results carry their real place and the list is grouped by it, so an
+          // ARCHIVE row was being re-archived where it should come back.
+          if (thread && online) {
+            void setPlace(thread.id, thread.place === 'inbox' ? 'archive' : 'inbox');
+          }
           e.preventDefault();
           break;
         }
@@ -422,9 +427,17 @@ export function SearchRoute() {
                       place={t.place}
                       online={online}
                       tabIndex={index === cursor ? 0 : -1}
-                      onOpen={() => openResult(t.id)}
+                      onOpen={() => {
+                        // Without this the cursor stays where it was, so `e`
+                        // archives a thread the user isn't looking at and j/k
+                        // jump back to somewhere else entirely.
+                        setCursor(index);
+                        openResult(t.id);
+                      }}
                       onToggleCheck={() => {}}
-                      onArchive={() => void setPlace(t.id, 'archive')}
+                      onArchive={() =>
+                        void setPlace(t.id, t.place === 'inbox' ? 'archive' : 'inbox')
+                      }
                       buttonRef={(el) => {
                         if (el) el.dataset.searchRow = String(index);
                       }}

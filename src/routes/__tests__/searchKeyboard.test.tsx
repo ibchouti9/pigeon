@@ -124,4 +124,47 @@ describe('search result keyboard navigation (§8.1)', () => {
 
     await waitFor(() => expect(useMail.getState().archive.length).toBe(archived + 1));
   });
+
+  /**
+   * §8.1 — "`e` archives the cursor row (Inbox) / moves to inbox (Archive)".
+   * Search groups its results by place and every row carries its own, but `e`
+   * sent them all to the archive, so an ARCHIVE result was re-archived where it
+   * should have come back.
+   */
+  it('sends an archived result back to the inbox on e', async () => {
+    const user = userEvent.setup();
+    await useMail.getState().loadThreads('archive');
+    await renderSearch('the');
+
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
+    const subjects = useMail.getState().archive.map((t) => t.subject);
+    const index = rows.findIndex((r) => subjects.some((s) => r.textContent?.includes(s)));
+    expect(index, 'the query needs at least one archived result').toBeGreaterThan(-1);
+
+    await enterList(user);
+    await user.keyboard('{Home}');
+    for (let i = 0; i < index; i++) await user.keyboard('j');
+    expect(cursorIndex()).toBe(index);
+
+    const inboxBefore = useMail.getState().inbox.length;
+    await user.keyboard('e');
+
+    await waitFor(() => expect(useMail.getState().inbox.length).toBe(inboxBefore + 1));
+  });
+
+  /**
+   * Clicking left the cursor where it was, so `e` acted on a thread that was
+   * not the one on screen, and j/k jumped back somewhere else.
+   */
+  it('moves the cursor to a row that is opened by clicking', async () => {
+    const user = userEvent.setup();
+    await renderSearch('the');
+
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
+    expect(rows.length).toBeGreaterThan(2);
+
+    await user.click(rows[2]);
+
+    await waitFor(() => expect(cursorIndex()).toBe(2));
+  });
 });
