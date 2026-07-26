@@ -37,6 +37,11 @@ const TONES: { value: Tone; label: string }[] = [
 ];
 
 export interface ComposerProps {
+  /**
+   * Bump to pull focus into the body. §3.5 1a's second compose focuses the
+   * open dock; a boolean would only fire once.
+   */
+  focusToken?: number;
   draft: Draft;
   onChange: (patch: Partial<Draft>) => void;
   onSend: () => void | Promise<void>;
@@ -57,6 +62,7 @@ export interface ComposerProps {
 }
 
 export function Composer({
+  focusToken,
   draft,
   onChange,
   onSend,
@@ -91,6 +97,11 @@ export function Composer({
     if (variant !== 'inline') return;
     bodyRef.current?.focus();
   }, [variant]);
+
+  useEffect(() => {
+    if (!focusToken) return;
+    bodyRef.current?.focus();
+  }, [focusToken]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
   const provenanceId = useId();
@@ -386,29 +397,44 @@ export function Composer({
           Send
         </Button>
 
+        {/*
+          `title` on a disabled button never shows — the browser dispatches no
+          pointer events for one. aria-disabled keeps the control hoverable and
+          focusable, which is the only way C-28's explanation reaches anyone.
+        */}
         <Button
           variant="secondary"
           loading={generating}
-          disabled={!connected || sending}
+          disabled={sending}
+          aria-disabled={!connected || undefined}
           iconLeading={<Icon name="pen" size={16} />}
-          onClick={() => void generate()}
+          onClick={() => {
+            if (connected) void generate();
+          }}
           title={connected ? undefined : 'Connect a provider in Settings → Assistant'}
         >
           Draft with Pigeon
         </Button>
 
-        {!connected && (
-          <span className={cn('t-xs', styles.helper)}>Connect a provider to draft replies.</span>
-        )}
-        {connected && blockedReason && (
+        {/*
+          Why-you-can't-send always wins over why-you-can't-draft. These used to
+          be mutually exclusive on `connected`, so anyone who took D43's
+          "Continue without the assistant" saw only "Connect a provider to draft
+          replies." — offline, or with a malformed recipient, Send was greyed
+          out with nothing on screen explaining it.
+        */}
+        {blockedReason ? (
           <span className={cn('t-xs', styles.helper, placeholderBlocked && styles.helperBlocked)}>
             {blockedReason}
           </span>
-        )}
-        {connected && !blockedReason && invalidRecipient && (
+        ) : invalidRecipient ? (
           <span className={cn('t-xs', styles.helper, styles.helperBlocked)}>
             {invalidRecipient.email} isn't a complete address.
           </span>
+        ) : (
+          !connected && (
+            <span className={cn('t-xs', styles.helper)}>Connect a provider to draft replies.</span>
+          )
         )}
 
         <span className={styles.actionsSpacer} />

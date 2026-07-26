@@ -441,7 +441,9 @@ function EmptyListState({
         headline="Nothing left."
         body={
           heldCount > 0
-            ? `You've read everything. ${plural(heldCount, 'sender')} are waiting in the Screener.`
+            ? // §7.4's row is written at 7 senders. The verb has to follow the
+              // count, or one waiting sender reads "1 sender are waiting".
+              `You've read everything. ${plural(heldCount, 'sender')} ${heldCount === 1 ? 'is' : 'are'} waiting in the Screener.`
             : "You've read everything."
         }
         action={

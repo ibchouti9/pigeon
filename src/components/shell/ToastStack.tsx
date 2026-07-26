@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useToasts, type Toast } from '../../store/toast';
+import { MAX_VISIBLE, useToasts, type Toast } from '../../store/toast';
 import { Icon } from '../primitives/Icon';
 import { cn } from '../../lib/cn';
 import styles from './ToastStack.module.css';
@@ -89,8 +89,10 @@ function ToastItem({ toast }: { toast: Toast }) {
  */
 export function ToastStack() {
   const toasts = useToasts((s) => s.toasts);
-  const confirms = toasts.filter((t) => t.tone === 'confirm');
-  const errors = toasts.filter((t) => t.tone === 'error');
+  // §5.14 caps what is *visible* at three. The store keeps more than that so an
+  // older toast's Undo survives a burst; the cap belongs here, at the render.
+  const confirms = toasts.filter((t) => t.tone === 'confirm').slice(0, MAX_VISIBLE);
+  const errors = toasts.filter((t) => t.tone === 'error').slice(0, MAX_VISIBLE);
 
   return (
     <div className={styles.region}>

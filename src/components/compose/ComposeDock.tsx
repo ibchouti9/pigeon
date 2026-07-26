@@ -39,9 +39,14 @@ export function ComposeDock() {
     if (pulse === firstPulse.current) return;
     firstPulse.current = pulse;
     setPulsing(true);
+    // §3.5 1a — "the existing dock is focused and pulses". Only the pulse
+    // happened; focus stayed wherever it was, so pressing c twice drew
+    // attention to a composer the keyboard still couldn't reach. `pulse` also
+    // rides down to the Composer as its focus token.
+    setMinimized(false);
     const timer = setTimeout(() => setPulsing(false), 400);
     return () => clearTimeout(timer);
-  }, [pulse]);
+  }, [pulse, setMinimized]);
 
   if (!draft) return null;
 
@@ -105,6 +110,7 @@ export function ComposeDock() {
   const composer = (
     <Composer
       variant="docked"
+      focusToken={pulse}
       draft={draft}
       onChange={update}
       onSend={send}

@@ -11,6 +11,7 @@ import {
   type BehaviourFlags,
   type ProviderConfig,
 } from '../../store/settings';
+import { testConnection } from '../../ai/client';
 import { toast } from '../../store/toast';
 import { formatSpend, plural, relativeTime } from '../../lib/format';
 import { cn } from '../../lib/cn';
@@ -69,6 +70,20 @@ function maskedKey(config: ProviderConfig): string {
 }
 
 /** §5.13c Assistant — Provider block, then Behaviour block. */
+/** §7.6's rows for a failed connection test, by status. */
+function testFailureCopy(status: string, providerName: string, baseUrl: string): string {
+  switch (status) {
+    case 'rejected':
+      return `${providerName} rejected this key. Check it in your provider dashboard and paste it again.`;
+    case 'no-credit':
+      return `${providerName} returned no credit on this account. Top up, or switch provider.`;
+    case 'unreachable':
+      return `Nothing is answering at ${baseUrl}. Start your local model, then test again.`;
+    default:
+      return `Couldn't reach ${providerName}. Check your connection and test again.`;
+  }
+}
+
 export function AssistantSettings() {
   const provider = useSettings((s) => s.provider);
   const usage = useSettings((s) => s.usage);
@@ -77,13 +92,40 @@ export function AssistantSettings() {
   const setProvider = useSettings((s) => s.setProvider);
   const removeKey = useSettings((s) => s.removeKey);
 
-  // "Change" (and, for lack of a connection-testing surface of our own,
-  // "Test connection") reopen the shared O2 form inline — see the report
-  // for why Test connection delegates here rather than testing itself.
+  /** "Change" reopens the shared O2 form inline. */
   const [editing, setEditing] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const connected = hasProvider(provider);
   const label = PROVIDER_LABELS[provider.provider];
+
+  /**
+   * §5.13c's action row means what it says. This used to call setEditing(true),
+   * which swapped in the O2 form and left the actual test one more click away —
+   * a button labelled "Test connection" that tested nothing.
+   */
+  async function handleTestConnection() {
+    if (testing) return;
+    setTesting(true);
+    try {
+      const result = await testConnection(provider);
+      if (result.ok) {
+        useSettings.getState().setConnection('connected');
+        toast.confirm(`Connected. Answered in ${result.ms} ms.`);
+      } else {
+        useSettings.getState().setConnection(result.status === 'rejected' ? 'rejected' : 'unknown');
+        toast.error(testFailureCopy(result.status, label, provider.baseUrl), {
+          label: 'Change',
+          run: () => setEditing(true),
+        });
+      }
+    } catch {
+      useSettings.getState().setConnection('unknown');
+      toast.error(`Couldn't reach ${label}. Check your connection and test again.`);
+    } finally {
+      setTesting(false);
+    }
+  }
 
   function handleRemoveKey() {
     const snapshot = { ...provider };
@@ -171,7 +213,12 @@ export function AssistantSettings() {
             </dl>
 
             <div className={styles.actionRow}>
-              <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={testing}
+                onClick={handleTestConnection}
+              >
                 Test connection
               </Button>
               <Button variant="secondary-destructive" size="sm" onClick={handleRemoveKey}>

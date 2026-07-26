@@ -5,6 +5,7 @@ import { Monogram } from '../../components/primitives/Monogram';
 import { Segmented } from '../../components/primitives/Controls';
 import { signOut } from '../../data/gmail/auth';
 import { MockMailProvider } from '../../data/mock/mockProvider';
+import { toast } from '../../store/toast';
 import { useMail } from '../../store/mail';
 import { useSettings, type Appearance } from '../../store/settings';
 import { useUi } from '../../store/ui';
@@ -28,6 +29,18 @@ export function AccountSettings() {
   const navigate = useNavigate();
 
   // §3.6 / §7.7 — both destructive account actions reset to onboarding.
+  // §5.13 — "every change saves immediately and confirms with a toast". §7.5
+  // has no row for appearance, so this follows the shape of the assistant
+  // toggles beside it: state the new state, 3s, no action.
+  function changeAppearance(next: Appearance) {
+    setAppearance(next);
+    toast.confirm(
+      next === 'system'
+        ? 'Appearance follows your system.'
+        : `Appearance is ${next}.`,
+    );
+  }
+
   function returnToOnboarding() {
     // Drop the Google token first: leaving it behind means the next boot
     // silently reconnects the account the user just signed out of.
@@ -60,7 +73,7 @@ export function AccountSettings() {
           as="radiogroup"
           label="Appearance"
           value={appearance}
-          onChange={setAppearance}
+          onChange={changeAppearance}
           options={APPEARANCE_OPTIONS}
         />
       </section>

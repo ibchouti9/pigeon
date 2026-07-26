@@ -40,6 +40,9 @@ interface MailState {
   markRead: (threadId: string) => Promise<void>;
   setPlace: (threadId: string, place: 'inbox' | 'archive') => Promise<void>;
 
+  /** One move, one toast, one undo — however many threads were selected. */
+  setPlaceMany: (threadIds: string[], place: 'inbox' | 'archive') => Promise<void>;
+
   decide: (senderId: string, decision: 'approved' | 'declined') => Promise<boolean>;
   decideMany: (
     senderIds: string[],
@@ -68,6 +71,31 @@ interface MailState {
 
 function threadsFor(state: MailState, place: 'inbox' | 'archive'): Thread[] {
   return place === 'inbox' ? state.inbox : state.archive;
+}
+
+/**
+ * Moves one thread between places in local state. Returns false when the thread
+ * isn't where it was expected, which is how both callers decide there is
+ * nothing to send to the provider.
+ */
+function moveLocally(
+  set: (partial: Partial<MailState>) => void,
+  get: () => MailState,
+  threadId: string,
+  place: 'inbox' | 'archive',
+): boolean {
+  const from = place === 'inbox' ? 'archive' : 'inbox';
+  const source = threadsFor(get(), from);
+  const thread = source.find((t) => t.id === threadId);
+  if (!thread) return false;
+
+  set({
+    [from]: source.filter((t) => t.id !== threadId),
+    [place]: [{ ...thread, place }, ...threadsFor(get(), place)].sort((a, b) =>
+      b.lastMessageAt.localeCompare(a.lastMessageAt),
+    ),
+  } as Partial<MailState>);
+  return true;
 }
 
 /**
@@ -223,19 +251,9 @@ export const useMail = create<MailState>((set, get) => ({
 
   setPlace: async (threadId, place) => {
     const from = place === 'inbox' ? 'archive' : 'inbox';
-    const source = threadsFor(get(), from);
-    const thread = source.find((t) => t.id === threadId);
-    if (!thread) return;
-
     const epoch = get().providerEpoch;
     const snapshot = { inbox: get().inbox, archive: get().archive };
-    const moved = { ...thread, place };
-    set({
-      [from]: source.filter((t) => t.id !== threadId),
-      [place]: [moved, ...threadsFor(get(), place)].sort((a, b) =>
-        b.lastMessageAt.localeCompare(a.lastMessageAt),
-      ),
-    } as Partial<MailState>);
+    if (!moveLocally(set, get, threadId, place)) return;
 
     try {
       await get().provider.setPlace(threadId, place);
@@ -255,6 +273,54 @@ export const useMail = create<MailState>((set, get) => ({
         { label: 'Try again', run: () => void get().setPlace(threadId, place) },
       );
     }
+  },
+
+  setPlaceMany: async (threadIds, place) => {
+    if (threadIds.length === 0) return;
+    if (threadIds.length === 1) return get().setPlace(threadIds[0], place);
+
+    const from = place === 'inbox' ? 'archive' : 'inbox';
+    const epoch = get().providerEpoch;
+
+    const moved = threadIds.filter((id) => moveLocally(set, get, id, place));
+    if (moved.length === 0) return;
+
+    const ok: string[] = [];
+    const failed: string[] = [];
+    for (const id of moved) {
+      try {
+        await get().provider.setPlace(id, place);
+        ok.push(id);
+      } catch {
+        failed.push(id);
+      }
+    }
+
+    if (get().providerEpoch !== epoch) return;
+
+    if (failed.length === 0) {
+      // §7.5 gives no bulk-archive row; this follows the shape of its bulk
+      // sender lines. One toast, one undo — a toast per thread meant the
+      // fourth pushed the first out of view with its undo still unused.
+      toast.undo(
+        place === 'archive'
+          ? `Archived ${plural(ok.length, 'thread')}.`
+          : `Moved ${plural(ok.length, 'thread')} to your inbox.`,
+        'Undo all',
+        () => void get().setPlaceMany(ok, from),
+      );
+      return;
+    }
+
+    // Put back only the ones that didn't make it.
+    await get().loadThreads('inbox');
+    await get().loadThreads('archive');
+    toast.error(
+      place === 'archive'
+        ? `Archived ${ok.length} of ${moved.length} threads. ${failed.length} didn't go through — try those again.`
+        : `Moved ${ok.length} of ${moved.length} threads. ${failed.length} didn't go through — try those again.`,
+      { label: 'Try again', run: () => void get().setPlaceMany(failed, place) },
+    );
   },
 
   decide: async (senderId, decision) => {

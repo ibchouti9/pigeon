@@ -26,15 +26,23 @@ interface ToastState {
 
 let counter = 0;
 
-/** §5.14 — max 3 visible, newest on top. */
-const MAX_VISIBLE = 3;
+/** §5.14 — max 3 visible, newest on top. `ToastStack` does the slicing. */
+export const MAX_VISIBLE = 3;
+
+/**
+ * A ceiling on what's kept, well above what's ever on screen. The store used to
+ * hold only the visible three: archiving five selected threads pushed five
+ * toasts, and the two oldest were dropped from state — with their undo
+ * handlers. The user saw three Undos and had silently lost two.
+ */
+const MAX_RETAINED = 20;
 
 export const useToasts = create<ToastState>((set, get) => ({
   toasts: [],
 
   push: (t) => {
     const id = `toast-${++counter}`;
-    set((s) => ({ toasts: [{ ...t, id }, ...s.toasts].slice(0, MAX_VISIBLE) }));
+    set((s) => ({ toasts: [{ ...t, id }, ...s.toasts].slice(0, MAX_RETAINED) }));
     return id;
   },
 

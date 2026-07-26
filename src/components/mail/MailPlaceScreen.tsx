@@ -5,7 +5,7 @@ import { useOnline } from '../../hooks/useOnline';
 import { useCompose } from '../../store/compose';
 import { useHeldCount, useMail, useUnreadCount } from '../../store/mail';
 import { isTypingTarget, shortcutsBlocked } from '../../store/ui';
-import type { Place } from '../../types';
+import type { Draft, Place } from '../../types';
 import { useAssistant } from '../../ai/useAssistant';
 import { useThreadSummary } from '../../ai/useThreadSummary';
 import { InlineReply } from './InlineReply';
@@ -35,12 +35,15 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const loadThreads = useMail((s) => s.loadThreads);
   const markRead = useMail((s) => s.markRead);
   const setPlace = useMail((s) => s.setPlace);
+  const setPlaceMany = useMail((s) => s.setPlaceMany);
   const openCompose = useCompose((s) => s.open);
   const heldCount = useHeldCount();
   const unreadCount = useUnreadCount();
 
   // D14 — the reply composer lives in the reading pane, not the dock.
   const [replyMode, setReplyMode] = useState<ReplyMode | null>(null);
+  /** Set by an undo, so the reopened composer holds what the user wrote. */
+  const [restoredDraft, setRestoredDraft] = useState<Draft | null>(null);
   // Set when ⌘J opened the reply, so the composer starts drafting on mount.
   const [draftWithPigeon, setDraftWithPigeon] = useState(false);
 
@@ -114,7 +117,10 @@ export function MailPlaceScreen({ place }: { place: Place }) {
 
   function archiveMany(ids: string[]) {
     const includesOpen = Boolean(threadId) && ids.includes(threadId as string);
-    ids.forEach((id) => void setPlace(id, otherPlace));
+    // One call, so the selection gets one toast with one undo. Calling
+    // setPlace per thread pushed a toast each, and past the third the earlier
+    // ones left the screen with their undo still unused.
+    void setPlaceMany(ids, otherPlace);
     if (includesOpen) navigate(pathIn(), { replace: true });
   }
 
@@ -258,13 +264,19 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           replySlot={
             openThread && replyMode ? (
               <InlineReply
-                key={`${openThread.id}-${replyMode}`}
+                key={`${openThread.id}-${replyMode}-${restoredDraft?.id ?? ''}`}
                 thread={openThread}
                 mode={replyMode}
                 draftOnOpen={draftWithPigeon}
+                initialDraft={restoredDraft ?? undefined}
+                onRestore={(draft) => {
+                  setRestoredDraft(draft);
+                  setReplyMode(draft.mode === 'forward' ? 'forward' : 'reply');
+                }}
                 onClose={() => {
                   setReplyMode(null);
                   setDraftWithPigeon(false);
+                  setRestoredDraft(null);
                 }}
               />
             ) : undefined

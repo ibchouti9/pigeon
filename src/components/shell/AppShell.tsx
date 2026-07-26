@@ -4,6 +4,7 @@ import { NavRail } from './NavRail';
 import { ToastStack } from './ToastStack';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { ComposeDock } from '../compose/ComposeDock';
+import { HeldMessageSheet } from '../screener/HeldMessageSheet';
 import { useMail } from '../../store/mail';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
@@ -72,6 +73,14 @@ export function AppShell() {
       </div>
 
       <ComposeDock />
+      {/*
+        A global layer, like the dock and the toasts. It used to be mounted by
+        the Screener alone, so a held result in Search opened nothing — and
+        because an open sheet blocks every single-key shortcut, the whole app's
+        keyboard went dead until the user pressed Esc on a sheet they could not
+        see.
+      */}
+      <HeldMessageSheet />
       <ShortcutsDialog />
       <ToastStack />
     </div>

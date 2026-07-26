@@ -20,12 +20,35 @@ describe('toasts', () => {
     expect(useToasts.getState().toasts[0].duration).toBeNull();
   });
 
-  it('shows at most 3, newest on top (§5.14)', () => {
+  it('keeps the newest first (§5.14)', () => {
     for (let i = 1; i <= 5; i++) toast.confirm(`Toast ${i}`);
     const toasts = useToasts.getState().toasts;
-    expect(toasts).toHaveLength(3);
     expect(toasts[0].message).toBe('Toast 5');
-    expect(toasts[2].message).toBe('Toast 3');
+    expect(toasts[4].message).toBe('Toast 1');
+  });
+
+  /**
+   * §5.14 caps what is *visible* at three, and the store used to enforce that
+   * by dropping the rest — taking their undo handlers with them. Five archived
+   * threads pushed five toasts and two undos vanished before anyone could
+   * reach them. The cap now lives in ToastStack's render.
+   */
+  it('does not drop an undo when a burst pushes past the visible three', () => {
+    const undos = Array.from({ length: 5 }, () => vi.fn());
+    undos.forEach((run, i) => toast.undo(`Archived ${i}.`, 'Undo', run));
+
+    const toasts = useToasts.getState().toasts;
+    expect(toasts).toHaveLength(5);
+    expect(toasts.every((t) => t.action)).toBe(true);
+
+    // The oldest is off screen but still undoable.
+    toasts[4].action!.run();
+    expect(undos[0]).toHaveBeenCalledOnce();
+  });
+
+  it('bounds what it retains, so errors cannot pile up forever', () => {
+    for (let i = 0; i < 40; i++) toast.error(`Error ${i}.`);
+    expect(useToasts.getState().toasts.length).toBeLessThanOrEqual(20);
   });
 
   it('⌘Z runs the newest action and dismisses it', () => {

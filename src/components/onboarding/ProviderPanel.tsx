@@ -8,6 +8,7 @@ import {
   type ProviderConfig,
   type ProviderId,
 } from '../../store/settings';
+import { toast } from '../../store/toast';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { Input } from '../primitives/Field';
@@ -210,6 +211,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     if (!providerId) return;
     setSaving(true);
     const isLocalProvider = providerId === 'local';
+    const previous = useSettings.getState().provider;
     useSettings.getState().setProvider({
       provider: providerId as ProviderId,
       apiKey: isLocalProvider ? '' : apiKey,
@@ -218,6 +220,19 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     });
     useSettings.getState().setSkippedProvider(false);
     setSaving(false);
+
+    // §5.13 — "every change saves immediately and confirms with a toast".
+    // Nothing confirmed a provider save at all. §7.5 splits the copy: a first
+    // connection confirms, a change offers to go back.
+    const name = PROVIDER_LABELS[providerId as ProviderId] ?? providerId;
+    if (mount === 'settings' && previous?.provider && previous.provider !== providerId) {
+      toast.undo(`Switched to ${name}.`, 'Undo', () => {
+        useSettings.getState().setProvider(previous);
+      });
+    } else if (mount === 'settings') {
+      toast.confirm(`Connected to ${name}.`);
+    }
+
     onSaved?.();
   }
 

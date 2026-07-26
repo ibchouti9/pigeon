@@ -41,9 +41,10 @@
   }
 }
 
-/* §3.5 1a — a second compose focuses the existing dock and pulses its border. */
+/* §3.5 1a — "the existing dock is focused and pulses its border once (180ms)".
+   Once, not twice: two iterations read as a flicker, and take 360ms. */
 .pulse {
-  animation: pulse var(--duration-base) var(--ease-standard) 2;
+  animation: pulse var(--duration-base) var(--ease-standard) 1;
 }
 
 @keyframes pulse {

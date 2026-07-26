@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Draft, Thread } from '../../types';
 import { Composer } from '../compose/Composer';
 import { useMail } from '../../store/mail';
+import { useUi } from '../../store/ui';
 import { useOnline } from '../../hooks/useOnline';
 import { toast } from '../../store/toast';
 import { displayName } from '../../lib/format';
@@ -13,6 +14,10 @@ export interface InlineReplyProps {
   mode: ReplyMode;
   /** ⌘J opened this reply, so start drafting as soon as it mounts (§5.6). */
   draftOnOpen?: boolean;
+  /** A draft handed back by an undo, rather than a fresh reply (§3.4 step 6). */
+  initialDraft?: Draft;
+  /** Asks the parent to reopen this composer holding the un-sent draft. */
+  onRestore?: (draft: Draft) => void;
   onClose: () => void;
 }
 
@@ -20,15 +25,22 @@ export interface InlineReplyProps {
  * D14 — the reply composer expands at the foot of the thread rather than in the
  * dock, so the quoted context stays visible while writing.
  */
-export function InlineReply({ thread, mode, draftOnOpen, onClose }: InlineReplyProps) {
+export function InlineReply({
+  thread,
+  mode,
+  draftOnOpen,
+  initialDraft,
+  onRestore,
+  onClose,
+}: InlineReplyProps) {
   const account = useMail((s) => s.account);
   const contacts = useMail((s) => s.contacts);
   const provider = useMail((s) => s.provider);
   const loadThreads = useMail((s) => s.loadThreads);
   const online = useOnline();
 
-  const [draft, setDraft] = useState<Draft>(() =>
-    buildReplyDraft(thread, mode, account?.email ?? ''),
+  const [draft, setDraft] = useState<Draft>(
+    () => initialDraft ?? buildReplyDraft(thread, mode, account?.email ?? ''),
   );
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -48,9 +60,13 @@ export function InlineReply({ thread, mode, draftOnOpen, onClose }: InlineReplyP
       onClose();
       await loadThreads(thread.place);
 
+      // §3.4 step 6 — "Undo restores the composer with the full draft and
+      // un-appends the message". The docked composer reopens its snapshot; this
+      // one used to un-send and throw away everything the user had written.
       toast.undo(`Sent to ${displayName(snapshot.to[0])}.`, 'Undo', async () => {
         await provider.unsend(message.id);
         await loadThreads(thread.place);
+        onRestore?.(snapshot);
       });
     } catch {
       setSendError(
@@ -58,6 +74,22 @@ export function InlineReply({ thread, mode, draftOnOpen, onClose }: InlineReplyP
       );
     }
   }
+
+  // §5.6 — "Esc collapses the composer if open and empty". Only when empty:
+  // closing over typed text would lose it, and there is no minimized state
+  // here to fall back to the way the dock has.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      if (draft.body.trim() || draft.attachments.length) return;
+      const ui = useUi.getState();
+      if (ui.dialog || ui.shortcutsOpen || ui.heldSheetSenderId) return;
+      onClose();
+      e.stopPropagation();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [draft.body, draft.attachments.length, onClose]);
 
   return (
     <Composer

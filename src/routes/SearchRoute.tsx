@@ -379,13 +379,20 @@ export function SearchRoute() {
                   const index = flatThreads.indexOf(t);
                   const sender =
                     t.messages.find((m) => !m.isFromUser)?.from ?? t.messages[0].from;
+                  const snippet = t.messages[t.messages.length - 1].body.slice(0, 140);
                   return (
                     <ThreadRow
                       key={t.id}
                       sender={displayName(sender)}
                       senderEmail={sender.email}
                       subject={t.subject}
-                      snippet={t.messages[t.messages.length - 1].body.slice(0, 140)}
+                      snippet={snippet}
+                      // §5.11 — "matched terms in the subject and snippet are
+                      // wrapped in a mark". Only the held rows had it; the
+                      // thread rows, which are most of every result set, showed
+                      // nothing marked at all.
+                      subjectNode={highlightTerms(t.subject, query, styles.mark)}
+                      snippetNode={highlightTerms(snippet, query, styles.mark)}
                       timestamp={formatListTimestamp(t.lastMessageAt)}
                       timestampSpoken={relativeTime(t.lastMessageAt)}
                       unread={t.unread}
@@ -417,6 +424,7 @@ export function SearchRoute() {
                   <button
                     key={h.sender.id}
                     type="button"
+                    data-held-row={h.sender.id}
                     className={styles.senderRow}
                     onClick={() => openHeldSheet(h.sender.id)}
                   >

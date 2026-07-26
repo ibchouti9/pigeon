@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 import type { Place } from '../../types';
 import { Button } from '../primitives/Button';
@@ -13,6 +14,13 @@ export interface ThreadRowProps {
   senderEmail: string;
   subject: string;
   snippet: string;
+  /**
+   * §5.11 marks matched terms in the subject and snippet. Passed alongside the
+   * plain strings rather than replacing them, because the accessible name is
+   * built from the text and must stay a flat string.
+   */
+  subjectNode?: ReactNode;
+  snippetNode?: ReactNode;
   /** Already formatted for display, e.g. `formatListTimestamp`. */
   timestamp: string;
   /** Spoken relative time for the row's accessible name, e.g. "2 hours ago". */
@@ -47,6 +55,8 @@ export function ThreadRow({
   senderEmail,
   subject,
   snippet,
+  subjectNode,
+  snippetNode,
   timestamp,
   timestampSpoken,
   unread,
@@ -109,11 +119,13 @@ export function ThreadRow({
             )}
           </span>
           <span className={cn('t-sm', styles.line2)}>
-            <span className={unread ? styles.subjectUnread : styles.subject}>{subject}</span>
+            <span className={unread ? styles.subjectUnread : styles.subject}>
+              {subjectNode ?? subject}
+            </span>
             {hasAttachment && (
               <Icon name="attach" size={16} className={styles.attachIcon} />
             )}
-            <span className={styles.snippet}> — {snippet}</span>
+            <span className={styles.snippet}> — {snippetNode ?? snippet}</span>
           </span>
         </span>
         <span className={styles.right}>

@@ -168,7 +168,11 @@ export function ThreadReader({
   // C-28 — with no provider the button is rendered *disabled* with a tooltip,
   // not hidden. Removing it would make the capability invisible rather than
   // unavailable, and a user would never learn it exists.
-  const showSummarizeButton = !showSummaryBlock && Boolean(onSummarize);
+  // C-10 — "Hide" means the block is gone for the session. Offering to
+  // regenerate what the user just dismissed is the opposite of honouring it, so
+  // a hidden summary suppresses the button too.
+  const showSummarizeButton =
+    !showSummaryBlock && !hiddenSummaryFor[thread.id] && Boolean(onSummarize);
   const summarizeDisabled = hasProvider === false;
 
   const archiveLabel = place === 'inbox' ? 'Archive' : 'Move to inbox';
@@ -188,8 +192,18 @@ export function ThreadReader({
           <div className={styles.actions}>
             {showSummarizeButton &&
               (summarizeDisabled ? (
+                // aria-disabled, not `disabled`. A disabled button takes no
+                // focus and dispatches no mouse events, so C-28's tooltip —
+                // the only thing that says *why* it is off — could not be
+                // reached by pointer or by keyboard. This way the control keeps
+                // its tab stop, and the reason is one hover or Tab away.
                 <Tooltip label="Connect a provider in Settings → Assistant">
-                  <Button variant="tertiary" size="sm" disabled>
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    aria-disabled="true"
+                    onClick={(e) => e.preventDefault()}
+                  >
                     Summarize thread
                   </Button>
                 </Tooltip>

@@ -10,7 +10,6 @@ import { EmptyState } from '../components/primitives/Feedback';
 import { ScreenerDigest } from '../components/screener/ScreenerDigest';
 import { CardStack } from '../components/screener/CardStack';
 import { BulkReview } from '../components/screener/BulkReview';
-import { HeldMessageSheet } from '../components/screener/HeldMessageSheet';
 import { useScreenerAi } from '../ai/useScreenerAi';
 import { useAssistant, useBehaviour } from '../ai/useAssistant';
 import styles from './ScreenerRoute.module.css';
@@ -246,8 +245,6 @@ export function ScreenerRoute() {
           </>
         )}
       </div>
-
-      <HeldMessageSheet />
     </div>
   );
 }
