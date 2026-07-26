@@ -1,0 +1,69 @@
+/* §5.0 / §5.7 — the Screener merges list + reader into one region. */
+
+.region {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.header {
+  flex: none;
+  height: var(--layout-header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-8);
+  border-bottom: var(--border-hairline);
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+  z-index: 1;
+}
+
+.title {
+  color: var(--color-text-primary);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-8) var(--space-10);
+}
+
+@media (max-width: 879px) {
+  .header {
+    padding: 0 var(--space-6);
+  }
+
+  .content {
+    padding: 0 var(--space-6) var(--space-10);
+  }
+}
+
+.centered {
+  flex: 1;
+  display: flex;
+}
+
+/* §5.7/§5.8 view crossfade — a lightweight nod to the spec's crossfade
+   without keeping both views mounted at once. */
+.view {
+  animation: view-in var(--duration-slow) var(--ease-standard);
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view {
+    animation-duration: var(--duration-base);
+  }
+}

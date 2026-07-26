@@ -73,58 +73,64 @@ export function CardStack({ held, status, hasProvider, online, onRead, onToggleV
     [],
   );
 
-  function cycle(dir: 1 | -1) {
-    if (overlay || ordered.length < 2) return;
-    const current = ordered[0];
-    const next = dir === 1 ? ordered[1] : ordered[ordered.length - 1];
-    setOverlay({ kind: dir === 1 ? 'cycleNext' : 'cyclePrev', entry: current });
-    setTopId(next.sender.id);
-    setEnter(dir === 1 ? 'fromRight' : 'fromLeft');
-    const ms = MOTION.base();
-    window.setTimeout(() => setOverlay(null), ms);
-    window.setTimeout(() => setEnter(null), ms);
-  }
+  const cycle = useCallback(
+    (dir: 1 | -1) => {
+      if (overlay || ordered.length < 2) return;
+      const current = ordered[0];
+      const next = dir === 1 ? ordered[1] : ordered[ordered.length - 1];
+      setOverlay({ kind: dir === 1 ? 'cycleNext' : 'cyclePrev', entry: current });
+      setTopId(next.sender.id);
+      setEnter(dir === 1 ? 'fromRight' : 'fromLeft');
+      const ms = MOTION.base();
+      window.setTimeout(() => setOverlay(null), ms);
+      window.setTimeout(() => setEnter(null), ms);
+    },
+    [overlay, ordered],
+  );
 
-  async function handleDecide(decision: 'approved' | 'declined') {
-    if (!online || !top || overlay) return;
-    const current = top;
-    const nextEntry = ordered[1] as HeldSender | undefined;
-    const nextId = nextEntry?.sender.id ?? null;
-    const senderId = current.sender.id;
-    const who = decision === 'approved' ? displayName(current.sender) : current.sender.email;
-    const remaining = held.length - 1;
-    const nextName = nextEntry ? displayName(nextEntry.sender) : null;
+  const handleDecide = useCallback(
+    async (decision: 'approved' | 'declined') => {
+      if (!online || !top || overlay) return;
+      const current = top;
+      const nextEntry = ordered[1] as HeldSender | undefined;
+      const nextId = nextEntry?.sender.id ?? null;
+      const senderId = current.sender.id;
+      const who = decision === 'approved' ? displayName(current.sender) : current.sender.email;
+      const remaining = held.length - 1;
+      const nextName = nextEntry ? displayName(nextEntry.sender) : null;
 
-    setOverlay({ kind: decision, entry: current });
-    setTopId(nextId);
-    setEnter('rise');
+      setOverlay({ kind: decision, entry: current });
+      setTopId(nextId);
+      setEnter('rise');
 
-    const totalMs = Math.max(MOTION.departDelay() + MOTION.base(), MOTION.stamp());
-    const clearTimer = window.setTimeout(() => {
-      setOverlay(null);
-      setEnter(null);
-    }, totalMs);
+      const totalMs = Math.max(MOTION.departDelay() + MOTION.base(), MOTION.stamp());
+      const clearTimer = window.setTimeout(() => {
+        setOverlay(null);
+        setEnter(null);
+      }, totalMs);
 
-    const ok = await decide(senderId, decision);
-    if (!ok) {
-      // §3.2 3d — roll the local animation back too; never leave the card gone.
-      window.clearTimeout(clearTimer);
-      setOverlay(null);
-      setEnter(null);
-      setTopId(senderId);
-      setErrorId(senderId);
-      if (errorTimer.current) clearTimeout(errorTimer.current);
-      errorTimer.current = window.setTimeout(() => setErrorId(null), 3000);
-      return;
-    }
+      const ok = await decide(senderId, decision);
+      if (!ok) {
+        // §3.2 3d — roll the local animation back too; never leave the card gone.
+        window.clearTimeout(clearTimer);
+        setOverlay(null);
+        setEnter(null);
+        setTopId(senderId);
+        setErrorId(senderId);
+        if (errorTimer.current) clearTimeout(errorTimer.current);
+        errorTimer.current = window.setTimeout(() => setErrorId(null), 3000);
+        return;
+      }
 
-    const verb = decision === 'approved' ? 'Approved' : 'Declined';
-    setAnnounce(
-      nextName
-        ? `${verb} ${who}. ${plural(remaining, 'sender')} waiting. Now showing ${nextName}.`
-        : `${verb} ${who}. ${plural(remaining, 'sender')} waiting.`,
-    );
-  }
+      const verb = decision === 'approved' ? 'Approved' : 'Declined';
+      setAnnounce(
+        nextName
+          ? `${verb} ${who}. ${plural(remaining, 'sender')} waiting. Now showing ${nextName}.`
+          : `${verb} ${who}. ${plural(remaining, 'sender')} waiting.`,
+      );
+    },
+    [online, top, overlay, ordered, held, decide],
+  );
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
