@@ -116,6 +116,35 @@ describe('⌘Enter sends from anywhere in the composer (§8.1)', () => {
     useCompose.getState().close();
   });
 
+  /**
+   * ⌘Enter in the recipient field ran two handlers: the field committed the
+   * typed text as a chip, and the same keystroke bubbled to the form and sent.
+   * `send()` reads the draft from the render it was called in, so the commit
+   * had not landed yet — the message went out without the recipient the user
+   * could see sitting in the field.
+   */
+  it('does not send without a recipient that is still being typed', async () => {
+    const user = userEvent.setup();
+    const send = vi.spyOn(provider, 'send');
+    const { to } = await openDraft(user);
+
+    await user.click(to);
+    await user.type(to, 'sana@northbound.io');
+    await user.keyboard('{Meta>}{Enter}{/Meta}');
+
+    // The address becomes a chip; nothing is sent while it is still uncommitted.
+    expect(send).not.toHaveBeenCalled();
+    expect(screen.getByText('sana@northbound.io')).toBeInTheDocument();
+
+    // A second ⌘Enter sends, now that the draft holds both recipients.
+    await user.keyboard('{Meta>}{Enter}{/Meta}');
+    await expectSent(send);
+    expect(send.mock.calls[0][0].to.map((a: { email: string }) => a.email)).toEqual([
+      'dana@lumenpartners.com',
+      'sana@northbound.io',
+    ]);
+  });
+
   it('does not send on a bare Enter in the Subject line', async () => {
     const user = userEvent.setup();
     const send = vi.spyOn(provider, 'send');

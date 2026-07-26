@@ -71,9 +71,23 @@ export function RecipientField({
       setActiveIndex((i) => (i - 1 + options.length) % options.length);
       e.preventDefault();
     } else if (e.key === 'Enter') {
+      /*
+       * §8.1 makes ⌘Enter send from anywhere in the composer, and this field
+       * commits on Enter — so ⌘Enter used to do both. The commit lands in the
+       * next render while `send()` reads the draft from this one, so the
+       * message went out without the recipient still sitting in the field.
+       *
+       * With something to commit, ⌘Enter commits it and goes no further; the
+       * next one sends, with the address included. With the field empty there
+       * is nothing to lose, so it passes straight through to send.
+       */
+      const sending = e.metaKey || e.ctrlKey;
+      if (sending && !options.length && !query.trim()) return;
+
       if (options.length) commit(options[activeIndex]);
       else commitTyped();
       e.preventDefault();
+      if (sending) e.stopPropagation();
     } else if (e.key === ',' || e.key === ';' || (e.key === 'Tab' && query.trim())) {
       commitTyped();
       if (e.key !== 'Tab') e.preventDefault();
