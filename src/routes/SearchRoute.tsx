@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { HeldSender, Thread } from '../types';
 import type { SearchResults } from '../data/provider';
 import { useMail } from '../store/mail';
-import { useUi } from '../store/ui';
+import { shortcutsBlocked, useUi } from '../store/ui';
 import { useOnline } from '../hooks/useOnline';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useThreadSummary } from '../ai/useThreadSummary';
@@ -75,7 +75,7 @@ export function SearchRoute() {
   const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS);
   const [status, setStatus] = useState<Status>('empty');
   const [recent, setRecent] = useState<string[]>(readRecent);
-  const [cursor] = useState(0);
+  const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const latestRequest = useRef(0);
 
@@ -165,6 +165,74 @@ export function SearchRoute() {
     );
   }
 
+  function focusRow(index: number) {
+    document.querySelector<HTMLElement>(`[data-search-row="${index}"]`)?.focus();
+  }
+
+  function moveCursor(to: number) {
+    if (!flatThreads.length) return;
+    const next = Math.min(flatThreads.length - 1, Math.max(0, to));
+    setCursor(next);
+    focusRow(next);
+  }
+
+  // §8.1 puts Search in the thread-list scope. Nothing here was bound, and the
+  // rows carry a roving tabindex keyed to `cursor` — which was a frozen 0 — so
+  // only the first result was reachable by Tab and nothing could move off it.
+  // Bulk keys (x, Shift+J/K) are deliberately absent: §5.11 gives this screen
+  // no selection model, and the rows pass a no-op toggle.
+  useEffect(() => {
+    function onListKeyDown(e: KeyboardEvent) {
+      if (shortcutsBlocked(e)) return;
+      if (!flatThreads.length) return;
+
+      switch (e.key) {
+        case 'j':
+        case 'ArrowDown':
+          moveCursor(cursor + 1);
+          e.preventDefault();
+          break;
+        case 'k':
+        case 'ArrowUp':
+          moveCursor(cursor - 1);
+          e.preventDefault();
+          break;
+        case 'Home':
+          moveCursor(0);
+          e.preventDefault();
+          break;
+        case 'End':
+          moveCursor(flatThreads.length - 1);
+          e.preventDefault();
+          break;
+        case 'Enter':
+        case 'o': {
+          const thread = flatThreads[cursor];
+          if (thread) navigate(`/search/t/${thread.id}`);
+          e.preventDefault();
+          break;
+        }
+        case 'e': {
+          const thread = flatThreads[cursor];
+          if (thread && online) void setPlace(thread.id, 'archive');
+          e.preventDefault();
+          break;
+        }
+        default:
+          break;
+      }
+    }
+
+    window.addEventListener('keydown', onListKeyDown);
+    return () => window.removeEventListener('keydown', onListKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flatThreads, cursor, online, navigate]);
+
+  // A new result set invalidates wherever the cursor was pointing.
+  useEffect(() => {
+    setCursor(0);
+  }, [results]);
+
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Escape') {
       if (draftQuery) {
@@ -175,7 +243,8 @@ export function SearchRoute() {
       }
       e.stopPropagation();
     } else if (e.key === 'ArrowDown' && flatThreads.length) {
-      document.querySelector<HTMLElement>('[data-search-row="0"]')?.focus();
+      // §5.11 — "↓ from the field moves the cursor into results".
+      moveCursor(0);
       e.preventDefault();
     }
   }
