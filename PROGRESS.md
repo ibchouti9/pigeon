@@ -129,6 +129,18 @@ Each is a considered call, not an oversight.
    per account in the browser. A Gmail label cannot express "this address may
    reach me" for mail that has not arrived yet, and D41 rules out a server.
    They do not follow the user across devices.
+5. **One-phase Stack⇄Bulk crossfade** — §4.6 describes a two-phase transition
+   (outgoing view fades, then the incoming one). Running both phases means
+   keeping both views mounted through the overlap, which duplicates their
+   keyboard handlers and gives the Screener two live cursors. The single fade
+   is the same duration and reads the same; correctness beat the extra phase.
+6. **No blocked-images state for C-8** — the component specifies a placeholder
+   for images suppressed until a sender is approved. Message bodies render as
+   plain text everywhere in this build (the Gmail parser walks the MIME tree
+   for `text/plain` and falls back to stripping HTML), so no remote image is
+   ever requested and the state is unreachable. §5.9's copy about blocked
+   images still holds — it just describes a property the renderer has by
+   construction rather than one a placeholder announces.
 
 ## Where to look next
 
@@ -149,8 +161,10 @@ In rough order of expected value:
 - Toast copy for two of the three Assistant toggles is extrapolated; §7.5 spells
   out only the summaries one.
 - No dev harness for reaching every empty/loading/error state (§8.5 item 1).
-- Attachments render as chips but have no download action — there is no file
-  backend behind the demo account.
+- Received attachments render as chips but have no download action — there is
+  no file backend behind the demo account. Attaching on compose works end to
+  end (D20): the composer holds files in memory and the Gmail client sends them
+  as `multipart/mixed`.
 
 ## Notes
 
