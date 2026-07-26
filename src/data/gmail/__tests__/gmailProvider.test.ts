@@ -1126,3 +1126,85 @@ describe('a long walk fills the screen as it goes', () => {
     expect(dates).toEqual([...dates].sort().reverse());
   });
 });
+
+/**
+ * D7 — "declined senders' future mail is archived in Gmail under the label
+ * Pigeon/Declined and **never appears in Pigeon**." §2.3's carve-out is only
+ * for a sender who was already *approved*: their existing threads stay.
+ *
+ * These drive both places, because the filter takes `place` and the archive
+ * branch is the one that was never exercised.
+ */
+describe('a declined sender appears in neither place', () => {
+  function stubMailbox(sender: string) {
+    const archivedIds = new Set<string>();
+    const threads = [
+      { id: 'a1', date: '2026-07-01T09:00:00.000Z' },
+      { id: 'a2', date: '2026-07-02T09:00:00.000Z' },
+    ];
+
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      const href = String(url);
+      const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
+
+      if (/users\/me\/profile/.test(href)) return json(PROFILE.body);
+      if (/people\/me\?/.test(href)) return json(PEOPLE_ME.body);
+      if (/people\/me\/connections/.test(href)) return json({ connections: [] });
+      if (/messages\?/.test(href)) return json({ messages: [] });
+      if (/\/labels$/.test(href)) return json({ labels: [{ id: 'lbl', name: 'Pigeon/Declined' }] });
+      if (/\/modify$/.test(href)) {
+        const id = href.match(/threads\/([^/]+)\/modify/)?.[1];
+        if (id && String(init?.body ?? '').includes('INBOX')) archivedIds.add(id);
+        return json({ id });
+      }
+
+      if (/threads\?/.test(href)) {
+        // Gmail's own split: the archive query is `-in:inbox`, so a thread that
+        // `silence()` archived stops matching the inbox and starts matching it.
+        const wantsArchive = /-in%3Ainbox|-in:inbox/.test(href);
+        const visible = threads.filter((t) => archivedIds.has(t.id) === wantsArchive);
+        return json({ threads: visible.map((t) => ({ id: t.id, historyId: '1' })) });
+      }
+
+      const id = href.match(/threads\/([^?/]+)/)?.[1];
+      const thread = threads.find((t) => t.id === id);
+      if (!thread) return json({});
+      return json({
+        id: thread.id,
+        messages: [
+          {
+            id: `m-${thread.id}`,
+            threadId: thread.id,
+            labelIds: archivedIds.has(thread.id) ? [] : ['INBOX'],
+            internalDate: String(Date.parse(thread.date)),
+            payload: {
+              headers: [
+                { name: 'From', value: sender },
+                { name: 'Subject', value: 'Hello' },
+              ],
+              mimeType: 'text/plain',
+              body: { data: encodeBase64Url('Body.') },
+            },
+          },
+        ],
+      });
+    });
+  }
+
+  it('hides them from the archive too, not just the inbox', async () => {
+    stubMailbox('Recruiter <recruiter@example.com>');
+    const provider = new GmailMailProvider();
+
+    // The real sequence: their mail is waiting in the Screener, so it has been
+    // walked — `silence()` only reaches threads the provider has cached.
+    const held = await provider.listHeld();
+    expect(held.map((h) => h.sender.email)).toContain('recruiter@example.com');
+
+    await provider.decideSender('recruiter@example.com', 'declined');
+
+    expect(await provider.listThreads('inbox')).toEqual([]);
+    // D7's whole promise. `silence()` moves them out of the Gmail inbox, which
+    // is exactly what makes them match the archive query.
+    expect(await provider.listThreads('archive')).toEqual([]);
+  });
+});

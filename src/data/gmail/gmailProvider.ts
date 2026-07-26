@@ -82,7 +82,17 @@ async function isRateLimit(response: Response): Promise<boolean> {
 
 interface Decisions {
   /** Lowercased email → decision + ISO date. */
-  [email: string]: { status: 'approved' | 'declined'; at: string; name?: string };
+  [email: string]: {
+    status: 'approved' | 'declined';
+    at: string;
+    name?: string;
+    /**
+     * Set when a decline reversed an approval. §2.3 keeps that sender's
+     * existing threads and silences only what arrives afterwards; a decline
+     * from the Screener silences everything (D7), which is the default.
+     */
+    keptExisting?: boolean;
+  };
 }
 
 /**
@@ -256,6 +266,18 @@ export class GmailMailProvider implements MailProvider {
   private silencedByDecline(thread: Thread, email: string): boolean {
     const decision = this.decisions[email.toLowerCase()];
     if (decision?.status !== 'declined') return false;
+
+    /*
+     * D7 — a sender declined from the Screener "never appears in Pigeon", and
+     * that has to mean both places. Asking only whether a thread postdates the
+     * decline left everything older visible in the *Archive*: `silence()` takes
+     * those threads out of the Gmail inbox, which is exactly what makes them
+     * match the archive query on the next walk.
+     */
+    if (!decision.keptExisting) return true;
+
+    // §2.3's carve-out: a decline that reversed an approval keeps what was
+    // already there and silences only what arrives afterwards.
     return thread.lastMessageAt >= decision.at;
   }
 
@@ -757,7 +779,11 @@ export class GmailMailProvider implements MailProvider {
   async decideSender(senderId: string, decision: 'approved' | 'declined'): Promise<void> {
     const email = senderId.toLowerCase();
     const previous = this.decisions[email]?.status;
-    this.decisions[email] = { status: decision, at: new Date().toISOString() };
+    this.decisions[email] = {
+      status: decision,
+      at: new Date().toISOString(),
+      keptExisting: decision === 'declined' && previous === 'approved',
+    };
     writeDecisions(this.userEmail(), this.decisions);
 
     if (decision === 'approved') {
