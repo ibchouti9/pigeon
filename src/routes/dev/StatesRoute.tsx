@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { isAiFailingForDev, setAiFailureForDev } from '../../ai/client';
 import { SCENARIOS, type ScenarioName } from '../../data/mock/scenarios';
 import { useCompose } from '../../store/compose';
 import { useSettings } from '../../store/settings';
@@ -84,6 +86,7 @@ function withScenario(path: string, scenario: ScenarioName): string {
 
 export function StatesRoute() {
   const navigate = useNavigate();
+  const [aiFailing, setAiFailing] = useState(isAiFailingForDev());
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
@@ -158,6 +161,31 @@ export function StatesRoute() {
                 <span className={cn('t-xs', styles.linkNote)}>{state.note}</span>
               </button>
             ))}
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={cn('t-mono-sm', styles.sectionTitle)}>Assistant failure</h2>
+          <p className={cn('t-sm', styles.sectionNote)}>
+            The scenarios above swap the mail provider; the assistant is separate, and no
+            provider that runs without a key ever fails. This makes every AI call reject,
+            so §3.4 2b&apos;s &quot;Summary unavailable.&quot;, the omitted card read and
+            the digest fallback are all reachable. Stays on until you turn it off.
+          </p>
+          <div className={styles.grid}>
+            <button
+              type="button"
+              className={styles.link}
+              onClick={() => {
+                setAiFailureForDev(!isAiFailingForDev());
+                setAiFailing(isAiFailingForDev());
+              }}
+            >
+              <span className={cn('t-sm', styles.linkRoute)}>
+                {aiFailing ? 'Assistant is failing — turn off' : 'Make every AI call fail'}
+              </span>
+              <span className={cn('t-xs', styles.linkNote)}>§3.4 2b · §5.7</span>
+            </button>
           </div>
         </section>
 

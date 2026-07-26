@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { CURATED_MODELS, getAiClient } from '../client';
+import { afterEach, describe, expect, it } from 'vitest';
+import { CURATED_MODELS, getAiClient, isAiFailingForDev, setAiFailureForDev } from '../client';
 import { DEFAULT_BASE_URL, hasProvider, type ProviderConfig } from '../../store/settings';
 
 function config(patch: Partial<ProviderConfig> = {}): ProviderConfig {
@@ -67,5 +67,51 @@ describe('CURATED_MODELS — D45', () => {
 
   it('offers nothing for local until the endpoint reports its models (D47)', () => {
     expect(CURATED_MODELS.local).toEqual([]);
+  });
+});
+
+/**
+ * §8.5 item 1 wants every state reachable in the harness, and the AI failure
+ * states were the last that weren't: `/dev/states` swaps the *mail* provider,
+ * and no assistant anyone can run without a key ever fails.
+ */
+describe('the dev-only assistant failure switch', () => {
+  afterEach(() => setAiFailureForDev(false));
+
+  const demo = (): ProviderConfig => ({
+    provider: 'demo',
+    apiKey: '',
+    baseUrl: DEFAULT_BASE_URL,
+    model: 'demo',
+  });
+
+  it('is off unless it is turned on', () => {
+    expect(isAiFailingForDev()).toBe(false);
+  });
+
+  it('makes every call reject once on', async () => {
+    setAiFailureForDev(true);
+    const client = getAiClient(demo());
+    expect(client).not.toBeNull();
+
+    await expect(client!.summarizeThread({ messages: [] } as never, 'a@b.c')).rejects.toThrow();
+    await expect(client!.digest([])).rejects.toThrow();
+    await expect(
+      client!.draftReply({ messages: [], subject: '', recipients: [], userName: '' }),
+    ).rejects.toThrow();
+  });
+
+  it('still returns null where C-28 says there is no client at all', () => {
+    setAiFailureForDev(true);
+    // A failing assistant is not the same as an unconnected one: D44's degraded
+    // form has to stay reachable while the switch is on.
+    expect(getAiClient({ ...demo(), provider: 'none' })).toBeNull();
+  });
+
+  it('goes back to the real client when turned off', async () => {
+    setAiFailureForDev(true);
+    setAiFailureForDev(false);
+    const client = getAiClient(demo());
+    await expect(client!.digest([])).resolves.toBeTruthy();
   });
 });

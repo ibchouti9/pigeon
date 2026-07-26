@@ -50,10 +50,15 @@ Every screen in §5 is built and runs against the demo account.
 
 1. Empty, loading and error states — reachable at **`/dev/states`**, which swaps
    the mail provider for one of six scenarios and opens a real route, so each
-   state is reached through the screen's own code. Now also covers the
-   held-message sheet, the composer's own five states and C-27's connection
-   pill. Dev builds only; it tree-shakes out of production. The offline banner
-   is the one exclusion — it follows the browser, not the provider.
+   state is reached through the screen's own code. Covers the held-message
+   sheet, the composer's five states, C-27's connection pill, and a switch that
+   makes every assistant call fail — the AI failure states were the last ones
+   nothing could produce, since the scenarios swap the *mail* provider and no
+   assistant that runs without a key ever fails. The full matrix has been
+   walked: six scenarios across nine screens, no blank renders, no overflow, no
+   uncaught errors. Dev builds only; verified absent from the production bundle.
+   The offline banner is the one exclusion — it follows the browser, not the
+   provider.
 2. Focus ring on `:focus-visible` only — one rule in `base.css`, never
    overridden. The "never on mouse click" half rests on the browser's own
    `:focus-visible` heuristics and is not separately asserted.

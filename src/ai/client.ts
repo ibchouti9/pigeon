@@ -122,10 +122,49 @@ function makeClient(config: ProviderConfig): AiClient {
  * Returns null when no provider is connected. Every caller must handle null by
  * rendering the C-28 degraded form — never an error, never a nag (D44).
  */
+/**
+ * Dev-only. §8.5 item 1 wants every state reachable in the harness, and the AI
+ * failure states — §3.4 2b's "Summary unavailable.", §5.7's omitted card read,
+ * §5.7's digest fallback — were the last ones that weren't: `/dev/states` swaps
+ * the *mail* provider, and no provider anyone can run without a key fails.
+ *
+ * Folded away in production by the `import.meta.env.DEV` guard at its only
+ * caller below.
+ */
+const AI_FAILURE_KEY = 'pigeon.dev.aiFailure';
+
+export function setAiFailureForDev(fail: boolean): void {
+  // sessionStorage, not a module variable: the harness is most useful when the
+  // state survives the reload you do to look at a screen, and it dies with the
+  // tab rather than following anyone into a later session.
+  if (fail) sessionStorage.setItem(AI_FAILURE_KEY, '1');
+  else sessionStorage.removeItem(AI_FAILURE_KEY);
+}
+
+export function isAiFailingForDev(): boolean {
+  return import.meta.env.DEV && sessionStorage.getItem(AI_FAILURE_KEY) === '1';
+}
+
+function failingClient(provider: ProviderId): AiClient {
+  const fail = async (): Promise<never> => {
+    await new Promise((r) => setTimeout(r, 300));
+    throw new AiError("Pigeon couldn't write a draft. Write your reply, or try again.");
+  };
+  return {
+    provider,
+    summarizeThread: fail,
+    readSender: fail,
+    digest: fail,
+    draftReply: fail,
+    retone: fail,
+  };
+}
+
 export function getAiClient(config: ProviderConfig): AiClient | null {
   if (config.provider === 'none') return null;
   if (config.provider === 'local' && !(config.baseUrl && config.model)) return null;
   if (config.provider !== 'local' && config.provider !== 'demo' && !config.apiKey) return null;
   if (!config.model) return null;
+  if (isAiFailingForDev()) return failingClient(config.provider);
   return makeClient(config);
 }
