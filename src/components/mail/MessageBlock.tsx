@@ -1,6 +1,10 @@
+import { useState } from 'react';
+import { useMail } from '../../store/mail';
+import { toast } from '../../store/toast';
+import { downloadBase64 } from '../../lib/download';
 import { cn } from '../../lib/cn';
 import { formatBytes, formatMessageTimestamp, formatTimestampSpoken } from '../../lib/format';
-import type { Message } from '../../types';
+import type { Attachment, Message } from '../../types';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { Monogram } from '../primitives/Monogram';
@@ -44,6 +48,26 @@ export function MessageBlock({
 }: MessageBlockProps) {
   const spokenTimestamp = formatTimestampSpoken(message.date);
   const label = `Message from ${senderName}, ${spokenTimestamp}`;
+
+  const provider = useMail((s) => s.provider);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  /** §5.6's attachment chip: "click downloads. No preview." */
+  async function download(attachment: Attachment) {
+    if (downloading) return;
+    setDownloading(attachment.id);
+    try {
+      const base64 = await provider.downloadAttachment(message.id, attachment.id);
+      downloadBase64(base64, attachment.filename, attachment.mimeType);
+    } catch {
+      toast.error("This attachment didn't download. It's still in Gmail.", {
+        label: 'Try again',
+        run: () => void download(attachment),
+      });
+    } finally {
+      setDownloading(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -164,6 +188,8 @@ export function MessageBlock({
                 type="button"
                 className={cn('t-xs', styles.attachment)}
                 aria-label={`Download ${a.filename}, ${formatBytes(a.size)}`}
+                aria-busy={downloading === a.id || undefined}
+                onClick={() => void download(a)}
               >
                 <Icon name="attach" size={16} className={styles.attachmentIcon} />
                 <span className={styles.attachmentName}>{a.filename}</span>

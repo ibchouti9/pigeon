@@ -161,6 +161,12 @@ class ScenarioProvider implements MailProvider {
     return this.inner.send(draft);
   }
 
+  async downloadAttachment(messageId: string, attachmentId: string): Promise<string> {
+    const failure = this.failRead();
+    if (failure) throw failure;
+    return this.inner.downloadAttachment(messageId, attachmentId);
+  }
+
   unsend(messageId: string): Promise<void> {
     return this.inner.unsend(messageId);
   }

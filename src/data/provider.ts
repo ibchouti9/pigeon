@@ -63,6 +63,13 @@ export interface MailProvider {
     attachments?: OutgoingAttachment[];
   }): Promise<Message>;
 
+  /**
+   * D20 — "receive, preview by filename, download". Returns the file's bytes as
+   * base64; the caller already holds the `Attachment` it rendered, so it has
+   * the filename and type and is what turns these into a download.
+   */
+  downloadAttachment(messageId: string, attachmentId: string): Promise<string>;
+
   /** Un-appends a sent message during the 8s undo window (§3.4 step 6). */
   unsend(messageId: string): Promise<void>;
 

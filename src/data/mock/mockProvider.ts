@@ -382,6 +382,27 @@ export class MockMailProvider implements MailProvider {
     return delay(message, 220);
   }
 
+  async downloadAttachment(messageId: string, attachmentId: string): Promise<string> {
+    const message = this.state.threads
+      .flatMap((t) => t.messages)
+      .find((m) => m.id === messageId);
+    const found = message?.attachments.find((a) => a.id === attachmentId);
+    if (!found) {
+      throw new MailError("This attachment didn't download. It's still in Gmail.", 'not-found');
+    }
+
+    // The demo has no file store behind it. Rather than fail — which would make
+    // a working affordance look broken — it hands back a readable placeholder
+    // that says what the file would have been. Same shape as the real thing:
+    // base64 bytes the caller turns into a download.
+    const note =
+      `${found.filename}\n\n` +
+      `This is Pigeon's demo account, so there is no real file behind this ` +
+      `attachment. Connect Gmail to download the real one.\n\n` +
+      `${found.mimeType} · ${found.size} bytes\n`;
+    return delay(btoa(unescape(encodeURIComponent(note))));
+  }
+
   async unsend(messageId: string): Promise<void> {
     for (const t of this.state.threads) {
       const before = t.messages.length;

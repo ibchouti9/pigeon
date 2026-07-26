@@ -58,6 +58,9 @@ class StubSendersProvider implements MailProvider {
   async send(): Promise<Message> {
     throw new Error('not implemented');
   }
+  async downloadAttachment(_m: string, _a: string): Promise<string> {
+    return '';
+  }
   async unsend(_messageId: string): Promise<void> {}
   async search(_query: string, _includeHeld: boolean): Promise<SearchResults> {
     return { inbox: [], archive: [], held: [] };

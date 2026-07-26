@@ -576,6 +576,17 @@ export class GmailMailProvider implements MailProvider {
     };
   }
 
+  async downloadAttachment(messageId: string, attachmentId: string): Promise<string> {
+    const body = await this.call<{ data?: string }>(
+      `${GMAIL}/messages/${messageId}/attachments/${attachmentId}`,
+    );
+    if (!body.data) {
+      throw new MailError("This attachment didn't download. It's still in Gmail.", 'not-found');
+    }
+    // Gmail returns base64url; atob and a data: URL both want plain base64.
+    return body.data.replace(/-/g, '+').replace(/_/g, '/');
+  }
+
   async unsend(messageId: string): Promise<void> {
     // Gmail has no unsend after the fact, and D8 forbids trashing. The message
     // is moved out of the inbox view instead; it stays in the user's Sent mail.
