@@ -35,8 +35,14 @@ export function useBreakpoint(): Breakpoint {
     const update = () => setBp(current());
     const lists = QUERIES.map(({ query }) => window.matchMedia(query));
     lists.forEach((list) => list.addEventListener('change', update));
+    // `resize` as well: some embedded webviews resize without firing a
+    // media-query change, and a stale breakpoint is a broken layout.
+    window.addEventListener('resize', update);
     update();
-    return () => lists.forEach((list) => list.removeEventListener('change', update));
+    return () => {
+      lists.forEach((list) => list.removeEventListener('change', update));
+      window.removeEventListener('resize', update);
+    };
   }, []);
 
   return bp;
