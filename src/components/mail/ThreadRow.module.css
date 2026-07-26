@@ -1,0 +1,183 @@
+/* C-5 Thread list item (§6, §5.5, §4.4). 56px, no divider lines between rows. */
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--layout-row-height);
+  flex: none;
+}
+
+/* ---------- checkbox ---------- */
+.checkbox {
+  flex: none;
+  margin-left: var(--space-2);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.row:hover .checkbox,
+.row.fillChecked .checkbox,
+.row.cursor .checkbox {
+  opacity: 1;
+}
+
+/* ---------- the row button (carries the accessible name) ---------- */
+.content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-4) 0 var(--space-2);
+  text-align: left;
+  color: inherit;
+}
+
+/* ---------- fills (checked wins over open when both are true) ---------- */
+.fillOpen {
+  background: var(--color-surface-active);
+}
+
+.fillChecked {
+  background: var(--color-accent-subtle);
+}
+
+.row:not(.fillOpen):not(.fillChecked):hover {
+  background: var(--color-surface-hover);
+}
+
+/* Left bar for the open state — independent of which fill is showing. */
+.hasBar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--border-width-emphasis);
+  background: var(--color-accent);
+}
+
+/* Keyboard cursor — an inset outline that stays visible over any fill. */
+.cursor {
+  outline: var(--border-width-emphasis) solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* ---------- unread dot slot ---------- */
+.dotSlot {
+  flex: none;
+  width: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--space-2);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}
+
+.monogram {
+  flex: none;
+  margin-right: var(--space-3);
+}
+
+/* ---------- middle column ---------- */
+.middle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.line1 {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.senderName {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.senderCount {
+  flex: none;
+  margin-left: 4px;
+  color: var(--color-text-tertiary);
+}
+
+.line2 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subject {
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.subjectUnread {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.attachIcon {
+  display: inline-block;
+  vertical-align: -3px;
+  margin: 0 2px;
+  color: var(--color-text-tertiary);
+}
+
+.snippet {
+  color: var(--color-text-tertiary);
+}
+
+/* ---------- right column ---------- */
+.right {
+  flex: none;
+  width: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-left: var(--space-3);
+}
+
+.arrivalRing {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-accent);
+}
+
+.timestampText {
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.row:hover .timestampText {
+  visibility: hidden;
+}
+
+.archiveHover {
+  display: none;
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.row:hover .archiveHover {
+  display: inline-flex;
+}
