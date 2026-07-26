@@ -9,7 +9,6 @@ import {
 } from 'react';
 import { cn } from '../../lib/cn';
 import {
-  dateGroupLabel,
   displayName,
   formatCount,
   formatListTimestamp,
@@ -23,33 +22,9 @@ import { useCompose } from '../../store/compose';
 import { isTypingTarget } from '../../store/ui';
 import { Button } from '../primitives/Button';
 import { EmptyState, SkeletonRows } from '../primitives/Feedback';
+import { groupThreadsByDate } from './grouping';
 import { ThreadRow } from './ThreadRow';
 import styles from './MailListColumn.module.css';
-
-export interface ThreadGroup {
-  label: string;
-  threads: Thread[];
-}
-
-/** Buckets an already date-sorted thread list without reordering it. */
-export function groupThreadsByDate(
-  threads: Thread[],
-  opts: { archive?: boolean; now?: Date } = {},
-): ThreadGroup[] {
-  const groups: ThreadGroup[] = [];
-  const index = new Map<string, ThreadGroup>();
-  for (const t of threads) {
-    const label = dateGroupLabel(t.lastMessageAt, opts);
-    let group = index.get(label);
-    if (!group) {
-      group = { label, threads: [] };
-      index.set(label, group);
-      groups.push(group);
-    }
-    group.threads.push(t);
-  }
-  return groups;
-}
 
 export interface MailListColumnHandle {
   focusThread: (id: string) => void;

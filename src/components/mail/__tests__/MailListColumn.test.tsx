@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
 import type { Thread } from '../../../types';
-import { MailListColumn, groupThreadsByDate } from '../MailListColumn';
+import { MailListColumn } from '../MailListColumn';
+import { groupThreadsByDate } from '../grouping';
 import rowStyles from '../ThreadRow.module.css';
 
 const NOW = new Date('2026-07-26T18:00:00.000Z');
