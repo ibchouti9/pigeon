@@ -88,6 +88,14 @@ Every screen in §5 is built and runs against the demo account.
 10. No text below 11px — measured in the running app, including the bulk
     postmark, which is computed in JS and so invisible to the type-floor test.
 
+## Keeping the two providers honest
+
+`src/data/__tests__/providerContract.test.ts` runs the same assertions against
+`MockMailProvider` and `GmailMailProvider`. The UI is written against the
+interface, so where they disagree, testing on the demo account stops predicting
+what the product does — which had already happened once. Anything one provider
+does that the other doesn't belongs in that file or in neither.
+
 ## Bugs found and fixed while verifying
 
 Worth keeping: each was invisible to typecheck, lint and tests. Every one was
@@ -296,6 +304,13 @@ found by driving the running app, not by reading the code.
 - Four smaller ones: the body's own newlines went out without CRLF, the
   HTML-escaped snippet was rendered raw, the Screener sorted by each sender's
   oldest held message, and the archive query excluded the wrong things.
+- **Two fixes that stopped one layer short of the user.** The Screener ordering
+  was corrected in the Gmail provider and left wrong in the demo — so the fix
+  landed only on the path nobody can run, and every screenshot would have shown
+  a different order from the product. The send-error work made the provider
+  distinguish a revoked token from a rejected message, and both call sites went
+  on hardcoding "check the recipient addresses" in their catch. Both found by
+  going back over the same day's work rather than by any test.
 
 ## Deliberate deviations from the spec
 
