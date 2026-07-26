@@ -87,6 +87,14 @@ export function Composer({
   );
   const [sending, setSending] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  /*
+   * Which action the error's "Try again" should repeat. §7.6 gives one line
+   * for both — "Pigeon couldn't write a draft." — and it used to always retry
+   * a whole fresh draft. So a failed *tone change* offered a button that threw
+   * away everything the user had written and replaced it with a new
+   * generation, which is the one thing the error must not do.
+   */
+  const [failedTone, setFailedTone] = useState<Tone | null>(null);
   const [tonePending, setTonePending] = useState<Tone | null>(null);
   const [toneDone, setToneDone] = useState<Tone | null>(null);
   const [undoBody, setUndoBody] = useState<string | null>(null);
@@ -164,6 +172,7 @@ export function Composer({
   async function generate() {
     if (!client) return;
     setDraftError(null);
+    setFailedTone(null);
     onChange({ aiState: 'generating' });
     try {
       const body = await client.draftReply({
@@ -185,6 +194,7 @@ export function Composer({
   async function applyTone(tone: Tone) {
     if (!client) return;
     setTonePending(tone);
+    setDraftError(null);
     const previous = draft.body;
     try {
       const body = await client.retone(draft.body, tone);
@@ -193,6 +203,7 @@ export function Composer({
       setToneDone(tone);
       setTimeout(() => setToneDone(null), 1200);
     } catch {
+      setFailedTone(tone);
       setDraftError("Pigeon couldn't write a draft. Write your reply, or try again.");
     } finally {
       setTonePending(null);
@@ -406,7 +417,11 @@ export function Composer({
         <div className={cn('t-sm', styles.errorBlock)} role="alert">
           {draftError}
           <div className={styles.errorActions}>
-            <Button variant="tertiary" size="sm" onClick={() => void generate()}>
+            <Button
+              variant="tertiary"
+              size="sm"
+              onClick={() => void (failedTone ? applyTone(failedTone) : generate())}
+            >
               Try again
             </Button>
           </div>
