@@ -22,7 +22,16 @@ import { AssistantSettings } from './routes/settings/AssistantSettings';
 import { AboutSettings } from './routes/settings/AboutSettings';
 import { StatesRoute } from './routes/dev/StatesRoute';
 
-/** Onboarding runs once per account; after that /welcome redirects to /inbox. */
+/**
+ * §3.1 step 6 — "O1–O5 are never shown again for this account". Only /welcome
+ * was gated, so the four /setup routes stayed reachable by URL and, more
+ * realistically, by pressing Back from the inbox at the end of onboarding —
+ * which walked a finished user straight into O5 again.
+ *
+ * `onboarded` is set once, at the end of O5, so gating these does not fence
+ * anyone out of the flow they are still walking. The dev harness clears the
+ * flag first (`/welcome?reset=1`), which is how it reaches them.
+ */
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const onboarded = useSettings((s) => s.onboarded);
   if (onboarded) return <Navigate to="/inbox" replace />;
@@ -54,10 +63,38 @@ export default function App() {
           </OnboardingGate>
         }
       />
-      <Route path="/setup/provider" element={<ProviderSetupRoute />} />
-      <Route path="/setup/sync" element={<SyncRoute />} />
-      <Route path="/setup/senders" element={<KnownSendersRoute />} />
-      <Route path="/setup/screener" element={<ScreenerIntroRoute />} />
+      <Route
+        path="/setup/provider"
+        element={
+          <OnboardingGate>
+            <ProviderSetupRoute />
+          </OnboardingGate>
+        }
+      />
+      <Route
+        path="/setup/sync"
+        element={
+          <OnboardingGate>
+            <SyncRoute />
+          </OnboardingGate>
+        }
+      />
+      <Route
+        path="/setup/senders"
+        element={
+          <OnboardingGate>
+            <KnownSendersRoute />
+          </OnboardingGate>
+        }
+      />
+      <Route
+        path="/setup/screener"
+        element={
+          <OnboardingGate>
+            <ScreenerIntroRoute />
+          </OnboardingGate>
+        }
+      />
 
       <Route element={<ShellGate />}>
         <Route path="/inbox" element={<InboxRoute />} />
