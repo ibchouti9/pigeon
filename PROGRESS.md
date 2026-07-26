@@ -75,7 +75,11 @@ Every screen in §5 is built and runs against the demo account.
    max-height expansion is the one animation outside that rule.
 6. Every AI string carries its label and hidden prefix — the reader, the
    Screener card, the composer and the bulk row.
-7. No banned words or exclamation marks — enforced by `src/test/copy.test.ts`.
+7. No banned words or exclamation marks — enforced by `src/test/copy.test.ts`,
+   and every string §7 specifies verbatim has been compared character for
+   character against what the code renders. The wording is faithful throughout;
+   the four defects that audit found were all about a correct string reaching
+   the wrong place, or nowhere.
 8. Undo or confirm, never neither — D11's two dialogs plus 8s undo elsewhere,
    and a burst of undos no longer evicts the earlier ones from the store.
 9. Usable at 720px, no horizontal scroll to 2560px — **measured**, not eyeballed:
@@ -239,6 +243,14 @@ found by driving the running app, not by reading the code.
   "Search didn't run." in the meta line as well as the error block.
 - **Two of §2.2's URL parameters weren't implemented** — the senders tab and
   `?compose=1` — so a reload or a shared link always landed somewhere else.
+- **§7.6's rate-limit line never reached a surface.** All three remote adapters
+  throw it; every consumer discarded the error, so the one failure that fixes
+  itself read exactly like a hard one.
+- **The four provider-test errors offered the wrong action** ("Change" instead
+  of §7.6's "Test connection"), and the network branch offered none at all.
+- **The composer carried the Summarize control's tooltip** as well as its own
+  helper text, saying the same thing twice in two different wordings (C-28).
+- **"1 senders"** in §7.3's first-run toast.
 
 ## Deliberate deviations from the spec
 
