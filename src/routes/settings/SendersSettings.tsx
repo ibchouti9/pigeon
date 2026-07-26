@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { shortcutsBlocked } from '../../store/ui';
 import { useNavigate } from 'react-router-dom';
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import { useVirtualRows } from '../../components/settings/useVirtualRows';
@@ -58,6 +59,64 @@ export function SendersSettings() {
     ROW_HEIGHT,
   );
   const visible = filtered.slice(startIndex, endIndex);
+
+  // §8.1 puts sender lists in the thread-list scope. Every row's button is
+  // tabbable, so nothing was unreachable — but tabbing to row 300 of an
+  // approved list is not a way anyone would choose to get there.
+  const [cursor, setCursor] = useState(0);
+
+  useEffect(() => {
+    setCursor(0);
+  }, [tab, query]);
+
+  function moveCursor(to: number) {
+    if (filtered.length === 0) return;
+    const next = Math.min(filtered.length - 1, Math.max(0, to));
+    setCursor(next);
+
+    // The row may be outside the window, so scroll first and focus after the
+    // virtualizer has had a chance to render it.
+    containerRef.current?.scrollTo({
+      top: Math.max(0, next * ROW_HEIGHT - ROW_HEIGHT * 2),
+      behavior: 'auto',
+    });
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-sender-row="${next}"] button`)?.focus();
+    });
+  }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (shortcutsBlocked(e)) return;
+      if (status !== 'ready' || filtered.length === 0) return;
+
+      switch (e.key) {
+        case 'j':
+        case 'ArrowDown':
+          moveCursor(cursor + 1);
+          e.preventDefault();
+          break;
+        case 'k':
+        case 'ArrowUp':
+          moveCursor(cursor - 1);
+          e.preventDefault();
+          break;
+        case 'Home':
+          moveCursor(0);
+          e.preventDefault();
+          break;
+        case 'End':
+          moveCursor(filtered.length - 1);
+          e.preventDefault();
+          break;
+        default:
+          break;
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursor, filtered.length, status]);
 
   return (
     <SettingsPage noScroll>
@@ -120,11 +179,14 @@ export function SendersSettings() {
         {status === 'ready' && list.length > 0 && (
           <div ref={containerRef} className={styles.list}>
             <div style={{ height: topPad }} aria-hidden="true" />
-            {visible.map((sender) => (
+            {visible.map((sender, i) => {
+              const index = startIndex + i;
+              return (
               <div
                 key={sender.id}
                 data-testid={`sender-row-${sender.id}`}
-                className={styles.row}
+                data-sender-row={index}
+                className={cn(styles.row, index === cursor && styles.cursor)}
                 style={{ height: ROW_HEIGHT }}
               >
                 <Monogram name={sender.name} email={sender.email} size={24} />
@@ -150,7 +212,8 @@ export function SendersSettings() {
                   {tab === 'approved' ? 'Decline' : 'Approve'}
                 </Button>
               </div>
-            ))}
+              );
+            })}
             {filtered.length === 0 && (
               <p className={cn('t-sm', styles.noMatches)}>No senders match “{query}”.</p>
             )}

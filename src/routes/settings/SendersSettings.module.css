@@ -95,3 +95,9 @@
   padding: var(--space-6) var(--space-2);
   color: var(--color-text-tertiary);
 }
+
+/* D29 — the keyboard cursor is its own state, distinct from hover. */
+.cursor {
+  outline: var(--border-width-emphasis) solid var(--color-focus);
+  outline-offset: -2px;
+}
