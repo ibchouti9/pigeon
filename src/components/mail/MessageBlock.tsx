@@ -77,7 +77,7 @@ export function MessageBlock({
 
   if (loading) {
     return (
-      <article aria-label={label} aria-busy="true" className={styles.block}>
+      <article aria-label={label} aria-busy="true" className={styles.block} data-message-id={message.id}>
         <span className={styles.gutter}>
           <SkeletonCircle size={28} />
         </span>
@@ -95,7 +95,7 @@ export function MessageBlock({
 
   if (error) {
     return (
-      <article aria-label={label} className={styles.block}>
+      <article aria-label={label} className={styles.block} data-message-id={message.id}>
         <span className={styles.gutter}>
           <Monogram name={senderName} email={message.from.email} size={28} />
         </span>
@@ -117,7 +117,7 @@ export function MessageBlock({
 
   if (collapsed) {
     return (
-      <article aria-label={label} className={styles.block}>
+      <article aria-label={label} className={styles.block} data-message-id={message.id}>
         <span className={styles.gutter}>
           <Monogram name={senderName} email={message.from.email} size={20} />
         </span>
@@ -148,7 +148,11 @@ export function MessageBlock({
   );
 
   return (
-    <article aria-label={label} className={cn(styles.block, styles.expanded)}>
+    <article
+      aria-label={label}
+      className={cn(styles.block, styles.expanded)}
+      data-message-id={message.id}
+    >
       <span className={styles.gutter}>
         <Monogram name={senderName} email={message.from.email} size={28} />
       </span>

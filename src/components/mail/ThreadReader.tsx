@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMinimumVisible } from '../../hooks/useMinimumVisible';
+import { defaultCollapse, firstExpandedId, readerStartOffset } from './readerLayout';
 import { cn } from '../../lib/cn';
 import { displayName, joinNames, plural } from '../../lib/format';
 import type { Address, Message, Place, Thread } from '../../types';
@@ -67,21 +68,6 @@ function collectParticipants(messages: Message[], selfEmail: string): string[] {
   return Array.from(seen.values());
 }
 
-/**
- * §5.6 — expanded by default except messages the user sent that already have a
- * later message after them, and any message beyond the 8 most recent.
- */
-function defaultCollapse(messages: Message[]): Set<string> {
-  const n = messages.length;
-  const collapsed = new Set<string>();
-  messages.forEach((m, i) => {
-    const hasLaterMessage = i < n - 1;
-    const beyondRecent8 = i < n - 8;
-    if ((m.isFromUser && hasLaterMessage) || beyondRecent8) collapsed.add(m.id);
-  });
-  return collapsed;
-}
-
 const HEADER_ICONS: { mode: ReplyMode; icon: IconName; label: string }[] = [
   { mode: 'reply', icon: 'reply', label: 'Reply' },
   { mode: 'reply-all', icon: 'reply-all', label: 'Reply all' },
@@ -110,11 +96,37 @@ export function ThreadReader({
   onSummarize,
   hasProvider,
 }: ThreadReaderProps) {
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
   const [quotedOpen, setQuotedOpen] = useState<Record<string, boolean>>({});
   const [hiddenSummaryFor, setHiddenSummaryFor] = useState<Record<string, boolean>>({});
   // C-21 — 200ms minimum, so a cached thread doesn't flash a skeleton reader.
   const showSkeleton = useMinimumVisible(status === 'loading');
+
+  const threadId = thread?.id;
+  const startId = thread ? firstExpandedId(thread.messages, defaultCollapse(thread.messages)) : null;
+
+  /*
+   * Open a long thread where reading starts. Only when the collapsed history is
+   * deep enough to push that message off screen — on a short thread the pane
+   * stays at the top, where §5.6 puts the summary block.
+   */
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body || !startId) return;
+
+    const target = [...body.querySelectorAll('[data-message-id]')].find(
+      (el) => el.getAttribute('data-message-id') === startId,
+    );
+    if (!target) return;
+
+    const offset = readerStartOffset(
+      target.getBoundingClientRect().top,
+      body.getBoundingClientRect().top,
+      body.clientHeight,
+    );
+    if (offset !== null) body.scrollTop += offset;
+  }, [threadId, startId]);
 
   if (status === 'none' || !thread) {
     /*
@@ -285,7 +297,7 @@ export function ThreadReader({
         </p>
       </header>
 
-      <div className={styles.body}>
+      <div className={styles.body} ref={bodyRef}>
         {showSummaryBlock && (
           <AiBlock
             kind="summary"
