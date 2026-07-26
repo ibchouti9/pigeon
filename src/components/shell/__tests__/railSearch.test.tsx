@@ -80,6 +80,32 @@ describe('the rail’s search field', () => {
     expect(screen.getByTestId('url')).toHaveTextContent('/search?q=dana');
   });
 
+  /**
+   * §8.1's Esc is a layer stack: one press closes one layer. Leaving the field
+   * was one, and the event carried on to the window handler, which minimized
+   * the composer as well. The list columns already stop exactly this.
+   */
+  it('leaves the field on Esc without letting the press reach anything else', async () => {
+    const user = userEvent.setup();
+    let reachedWindow = false;
+    const spy = () => {
+      reachedWindow = true;
+    };
+    window.addEventListener('keydown', spy);
+    try {
+      renderRail('/search?q=atlas');
+      await user.click(field());
+      expect(field()).toHaveFocus();
+
+      await user.keyboard('{Escape}');
+
+      expect(field()).not.toHaveFocus();
+      expect(reachedWindow, 'Esc reached the window handler too').toBe(false);
+    } finally {
+      window.removeEventListener('keydown', spy);
+    }
+  });
+
   it('goes back to an empty search when the query is cleared', async () => {
     const user = userEvent.setup();
     renderRail('/search?q=a&held=1');

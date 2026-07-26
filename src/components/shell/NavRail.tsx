@@ -141,9 +141,19 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
             className={cn('t-base', styles.searchInput)}
             placeholder="Search mail"
             aria-label="Search mail"
-            data-search-field="true"
+            data-search-field="rail"
             onKeyDown={(e) => {
-              if (e.key === 'Escape') e.currentTarget.blur();
+              if (e.key !== 'Escape') return;
+              /*
+               * §8.1's Esc is a layer stack — one press closes one layer.
+               * Leaving the field was one, and the event then carried on to
+               * the window handler, which minimized the composer as well: one
+               * press, two layers. The list columns already stop exactly this
+               * (MailListColumn, BulkReview); the rail did not.
+               */
+              e.currentTarget.blur();
+              e.stopPropagation();
+              e.preventDefault();
             }}
             value={query}
             onChange={(e) => search(e.currentTarget.value)}
