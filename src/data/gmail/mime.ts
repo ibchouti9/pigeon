@@ -131,6 +131,12 @@ function findBody(part: GmailPart | undefined): { text: string; html: string } {
   return { text, html };
 }
 
+function unescapeHtml(value: string): string {
+  if (!value.includes('&')) return value;
+  const doc = new DOMParser().parseFromString(value, 'text/html');
+  return doc.body?.textContent ?? value;
+}
+
 /** Last-resort conversion when a message carries no text/plain alternative. */
 export function htmlToText(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -218,7 +224,11 @@ export function toMessage(raw: GmailMessage, userEmail: string): Message {
   const headers = raw.payload?.headers;
   const from = parseAddressList(header(headers, 'From'))[0] ?? { name: '', email: '' };
   const found = findBody(raw.payload);
-  const text = found.text || (found.html ? htmlToText(found.html) : (raw.snippet ?? ''));
+  // Gmail's snippet is HTML-escaped, so as plain text it reads "Don&#39;t
+  // forget". It is only reached when a message carries neither a text nor an
+  // HTML part, but that is exactly when it is all the user has.
+  const text =
+    found.text || (found.html ? htmlToText(found.html) : unescapeHtml(raw.snippet ?? ''));
   const split = splitQuoted(text);
 
   return {
@@ -286,6 +296,14 @@ function filenameParams(filename: string): string {
   return `filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
+/**
+ * The body as separate lines, so `join('\r\n')` gives it the line endings RFC
+ * 5322 asks for. Pushed as one string, its own `\n` breaks went out unchanged.
+ */
+function bodyLines(body: string): string[] {
+  return body.replace(/\r\n/g, '\n').split('\n');
+}
+
 /** Wraps base64 at 76 characters, as RFC 2045 requires. */
 function wrapBase64(data: string): string {
   return (data.match(/.{1,76}/g) ?? []).join('\r\n');
@@ -317,10 +335,10 @@ export function buildRawMessage(input: {
   const attachments = input.attachments ?? [];
 
   if (attachments.length === 0) {
-    lines.push('Content-Type: text/plain; charset="UTF-8"');
+      lines.push('Content-Type: text/plain; charset="UTF-8"');
     lines.push('Content-Transfer-Encoding: 8bit');
     lines.push('');
-    lines.push(input.body);
+    lines.push(...bodyLines(input.body));
     return encodeBase64Url(lines.join('\r\n'));
   }
 
@@ -334,7 +352,7 @@ export function buildRawMessage(input: {
   lines.push('Content-Type: text/plain; charset="UTF-8"');
   lines.push('Content-Transfer-Encoding: 8bit');
   lines.push('');
-  lines.push(input.body);
+  lines.push(...bodyLines(input.body));
 
   for (const file of attachments) {
     lines.push('');

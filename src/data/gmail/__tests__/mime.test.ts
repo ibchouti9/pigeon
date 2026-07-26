@@ -493,3 +493,41 @@ describe('splitting a wrapped attribution', () => {
     expect(quoted).toContain('> Hello');
   });
 });
+
+/** Details that only bite on real mail. */
+describe('smaller real-mail details', () => {
+  it("gives the body CRLF line endings, not the browser's", () => {
+    const raw = buildRawMessage({
+      from: { name: '', email: 'marc@ferrum.dev' },
+      to: [{ name: '', email: 'dana@lumen.com' }],
+      cc: [],
+      bcc: [],
+      subject: 'Notes',
+      body: 'First line.\nSecond line.',
+    });
+
+    const decoded = decodeBase64Url(raw);
+    expect(decoded).toContain('First line.\r\nSecond line.');
+    expect(decoded).not.toMatch(/[^\r]\nSecond/);
+  });
+
+  it('unescapes the snippet it falls back to', () => {
+    const parsed = toMessage(
+      {
+        id: 'm1',
+        threadId: 't1',
+        internalDate: '1750000000000',
+        snippet: 'Don&#39;t forget the &amp; sign',
+        payload: {
+          headers: [
+            { name: 'From', value: 'Dana <dana@lumen.com>' },
+            { name: 'Subject', value: 'Reminder' },
+          ],
+        },
+      },
+      'marc@ferrum.dev',
+    );
+
+    expect(parsed.body).toBe("Don't forget the & sign");
+  });
+});

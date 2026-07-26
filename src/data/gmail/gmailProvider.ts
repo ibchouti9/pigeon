@@ -503,7 +503,10 @@ export class GmailMailProvider implements MailProvider {
   ): Promise<Thread[]> {
     await this.getAccount();
 
-    const query = place === 'inbox' ? 'in:inbox' : '-in:inbox -in:sent -in:trash -in:spam';
+    // Trash and spam are excluded by default; drafts and chats are not, and
+    // neither is archived mail.
+    const query =
+      place === 'inbox' ? 'in:inbox' : '-in:inbox -in:sent -in:drafts -in:chats';
     const listed: { id: string; historyId?: string }[] = [];
     let pageToken: string | undefined;
 
@@ -662,8 +665,13 @@ export class GmailMailProvider implements MailProvider {
       });
     }
 
+    // By each sender's *newest* held message. `messages[0]` is their oldest, so
+    // the Screener led with whoever had been waiting longest at the top of
+    // their own pile rather than with what just arrived.
+    const newest = (h: HeldSender) =>
+      h.messages.reduce((latest, m) => (m.date > latest ? m.date : latest), '');
     return [...bySender.values()].sort((a, b) =>
-      b.messages[0].date.localeCompare(a.messages[0].date),
+      newest(b).localeCompare(newest(a)),
     );
   }
 
