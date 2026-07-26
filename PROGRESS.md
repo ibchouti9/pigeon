@@ -254,6 +254,12 @@ found by driving the running app, not by reading the code.
 - **A real mailbox would have shown only its first 100 threads.** The thread
   walk asked for one page and stopped, silently — against D34, whose sync
   counter reports totals in the thousands, and D38's "capped at no page size".
+- **Search reported the size of its page, not of its answer** — one page of 50,
+  so §5.11's meta line said "50 results" for a query matching five hundred. It
+  also fired one thread fetch per result at once, which the main walk batches at
+  ten specifically to avoid.
+- **The shell's three mount loads each started their own inbox walk**, tripling
+  the requests on a first run.
 
 ## Deliberate deviations from the spec
 
