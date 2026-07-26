@@ -1397,6 +1397,36 @@ describe('a conversation that was already there survives a reply', () => {
     expect(await provider.listThreads('archive')).toEqual([]);
   });
 
+  /**
+   * D7 in three decisions, no undo needed. "This decline reverses an approval,
+   * so keep their existing conversations" was set for *any* approval —
+   * including one that was itself the reversal of a Screener decline, which
+   * had never put anything back on screen. So the third decision marked mail
+   * D7 had silenced as "existing", and it returned to the Inbox.
+   *
+   * The mirror of the flag fixed one commit earlier; the pair only make sense
+   * together.
+   */
+  it('keeps D7 silenced mail hidden through decline, approve, decline', async () => {
+    const arriving: { id: string; date: string; from: string }[] = [];
+    stubConversation([{ id: 'm1', date: BEFORE, from: THEM }], arriving);
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+
+    await provider.decideSender('sam@example.com', 'declined');
+    // Mail that turns up while they are declined: hidden, but never archived,
+    // so nothing but the decision record is holding it back.
+    arriving.push({ id: 'm2', date: BEFORE, from: THEM });
+    expect(await provider.listThreads('inbox')).toEqual([]);
+
+    await provider.decideSender('sam@example.com', 'approved');
+    expect(await provider.listThreads('inbox')).toEqual([]);
+
+    await provider.decideSender('sam@example.com', 'declined');
+    expect(await provider.listThreads('inbox')).toEqual([]);
+    expect(await provider.listThreads('archive')).toEqual([]);
+  });
+
   it('does surface a conversation that starts after the reversal', async () => {
     /*
      * The other half of the rule: a reversal is not a permanent silence, it

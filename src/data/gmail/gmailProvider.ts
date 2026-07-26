@@ -824,7 +824,16 @@ export class GmailMailProvider implements MailProvider {
     this.decisions[email] = {
       status: decision,
       at: new Date().toISOString(),
-      keptExisting: decision === 'declined' && previous === 'approved',
+      /*
+       * Only a decline that reverses a *real* approval keeps mail on screen.
+       * An approval that was itself the reversal of a Screener decline never
+       * put anything back — treating it as one meant declining again marked
+       * the sender "keep their existing threads", and mail D7 had silenced
+       * returned to the Inbox. The mirror of the `reversedDecline` bug below,
+       * and reachable in three decisions with no undo.
+       */
+      keptExisting:
+        decision === 'declined' && previous === 'approved' && before?.reversedDecline !== true,
       /*
        * Only a decline that *hid* mail. A decline that reversed an approval
        * kept the sender's conversations on screen, so approving them again has
