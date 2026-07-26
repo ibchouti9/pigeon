@@ -489,6 +489,41 @@ found by driving the running app, not by reading the code.
   now archives what it is told to archive. A fixture too thin to express the
   behaviour is worse than no test: it reports success either way.
 
+## Reported by a review pass, not yet acted on
+
+A sub-agent critique of this session's own commits. Four of its findings were
+verified and fixed (⌘Enter sending without the recipient being typed, the
+harness losing O2–O5, the reply following the reader to the next thread, and
+the §2.3 work above came from the same kind of reading). These are the rest —
+**reported, not yet verified by me**, so treat each as a lead:
+
+- **Editing or clearing the search query unmounts an open reply**, taking the
+  typed text with it — no warning, no undo. `thread` comes from the current
+  result set, so blanking the results blanks the reader. Harmless before Search
+  had a composer; not now.
+- **Search's `r`/`a`/`f`/`u` sit under a `if (!flatThreads.length) return;`
+  guard** that belongs to the list keys. With a result open and the query
+  cleared, the reader is on screen with working buttons and dead shortcuts.
+- **Search's `e` acts on the cursor row, not the open thread** — the opposite of
+  the reader elsewhere — and `cursor` resets to 0 whenever results change, so
+  editing the query with a result open can archive a thread the user never
+  looked at.
+- **Search results hold a stale `place`.** Nothing re-syncs them with the store,
+  so pressing `e` twice on a row silently does nothing the second time: no move,
+  no toast, no error.
+- **`handleContinue` in O3 has no rejection path.** A provider failure leaves
+  Continue un-spun and inert with no error state.
+- **The composer's "Try again" is not re-entrancy guarded**, so two clicks issue
+  two concurrent retones and Undo restores the wrong text.
+- **The subject field's Enter guard ignores modifiers**, so ⌘Enter there both
+  moves focus to the body and sends.
+- **A sender row is now a focusable `div` with no role and no accessible name** —
+  the cursor lands on an unlabelled generic. The fix that put it there was
+  specifically for screen-reader users, so this is a half-move.
+- Smaller: `BodyEditor`'s `onKeyDown` prop is dead; `SearchRoute` has a doubled
+  eslint-disable and a dep array that tears down its listener every keystroke;
+  bulk review's live region says "9 selected" while a decision is in flight.
+
 ## Deliberate deviations from the spec
 
 Each is a considered call, not an oversight.
