@@ -251,6 +251,9 @@ found by driving the running app, not by reading the code.
 - **The composer carried the Summarize control's tooltip** as well as its own
   helper text, saying the same thing twice in two different wordings (C-28).
 - **"1 senders"** in §7.3's first-run toast.
+- **A real mailbox would have shown only its first 100 threads.** The thread
+  walk asked for one page and stopped, silently — against D34, whose sync
+  counter reports totals in the thousands, and D38's "capped at no page size".
 
 ## Deliberate deviations from the spec
 
@@ -332,7 +335,12 @@ In rough order of expected value:
 - The Gmail path has never run against a real account. It needs a Google OAuth
   client ID in `.env.local` (see the README) and a careful first run. Everything
   above it is wired: consent, provider swap, token restore on reload, and
-  sign-out clearing the token.
+  sign-out clearing the token. The thread walk paginates to a 2,000-thread
+  ceiling per place — high enough that a working inbox is complete, since the
+  Screener is what stops it growing without bound, and low enough that a first
+  run on a decade-old archive cannot spend someone's whole API quota. Thread
+  bodies are cached against Gmail's `historyId`, so a body is fetched once and
+  then only again when it has actually changed.
 - Toast copy for two of the three Assistant toggles is extrapolated; §7.5 spells
   out only the summaries one. So are the bulk-archive and appearance toasts —
   §7.5 has no row for either, and both follow the shape of the bulk sender lines

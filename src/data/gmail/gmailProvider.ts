@@ -28,6 +28,14 @@ const KNOWN_MONTHS = 24;
 /** Gmail's own page size ceiling for threads.list. */
 const PAGE_SIZE = 100;
 
+/**
+ * A ceiling on one place's listing. High enough that a working inbox is
+ * complete — the Screener is what keeps it from growing without bound — and low
+ * enough that a first run on a decade-old archive cannot walk away with someone
+ * else's whole API quota.
+ */
+const MAX_THREADS = 2000;
+
 interface Decisions {
   /** Lowercased email → decision + ISO date. */
   [email: string]: { status: 'approved' | 'declined'; at: string; name?: string };
@@ -69,6 +77,8 @@ export class GmailMailProvider implements MailProvider {
   private declinedLabelId: string | null = null;
   /** Cache of hydrated threads, so the list and reader share one fetch. */
   private threads = new Map<string, Thread>();
+  /** Gmail's own change token per thread — the key to a cache that stays fresh. */
+  private historyIds = new Map<string, string>();
 
   private async call<T>(url: string, init: RequestInit = {}): Promise<T> {
     let token: string;
@@ -248,7 +258,7 @@ export class GmailMailProvider implements MailProvider {
     const profile = await this.call<{ threadsTotal?: number }>(`${GMAIL}/profile`);
     const total = profile.threadsTotal ?? 0;
 
-    await this.hydrate('inbox', (done) => onProgress({ total, done, step: 'history' }), true);
+    await this.hydrate('inbox', (done) => onProgress({ total, done, step: 'history' }));
 
     onProgress({ total, done: total, step: 'senders' });
     onProgress({ total, done: total, step: 'complete' });
@@ -292,51 +302,71 @@ export class GmailMailProvider implements MailProvider {
     writeDecisions(this.userEmail(), this.decisions);
   }
 
-  /** Fetches and caches every thread in a place, newest first. */
+  /**
+   * Fetches and caches every thread in a place, newest first.
+   *
+   * The listing is paginated. It used to ask for a single page of
+   * `PAGE_SIZE` and stop, so a real mailbox showed its most recent 100 threads
+   * and silently pretended that was all of them — against D34, whose sync
+   * counter reports totals in the thousands, and D38's "capped at no page size"
+   * philosophy for the one list the spec does discuss.
+   *
+   * Thread bodies are cached against Gmail's own `historyId`, which changes
+   * whenever anything in the thread does. That is what makes the walk
+   * affordable: listing is one request per hundred threads, and a body is
+   * fetched once and then only again when it has actually changed. It also
+   * gives §3.1 3b's "pick up where it stopped" for free, without the cache
+   * freezing the mailbox at whatever it looked like on first load.
+   */
   private async hydrate(
     place: 'inbox' | 'archive',
     onProgress?: (done: number) => void,
-    /**
-     * §3.1 3b's resumption. Only a sync resumes: `listThreads` has to go back
-     * to Gmail every time or new mail would never arrive and an unread flag set
-     * on another device would never clear — the cache would freeze the mailbox
-     * at whatever it looked like on first load.
-     */
-    resume = false,
   ): Promise<Thread[]> {
     await this.getAccount();
 
     const query = place === 'inbox' ? 'in:inbox' : '-in:inbox -in:sent -in:trash -in:spam';
-    const list = await this.call<{ threads?: { id: string }[] }>(
-      `${GMAIL}/threads?${new URLSearchParams({ q: query, maxResults: String(PAGE_SIZE) })}`,
-    );
+    const listed: { id: string; historyId?: string }[] = [];
+    let pageToken: string | undefined;
 
-    const ids = (list.threads ?? []).map((t) => t.id);
+    do {
+      const params = new URLSearchParams({ q: query, maxResults: String(PAGE_SIZE) });
+      if (pageToken) params.set('pageToken', pageToken);
+      const page = await this.call<{
+        threads?: { id: string; historyId?: string }[];
+        nextPageToken?: string;
+      }>(`${GMAIL}/threads?${params}`);
+
+      listed.push(...(page.threads ?? []));
+      pageToken = page.nextPageToken;
+    } while (pageToken && listed.length < MAX_THREADS);
+
     const out: Thread[] = [];
-
-    /*
-     * §3.1 3b — "Start sync again … Pigeon will pick up where it stopped".
-     * A retry after a failure at 4,312 of 11,908 threads used to re-fetch all
-     * 4,312, so the promise in the copy was false and the second attempt was
-     * as slow as the first. Threads already hydrated are counted as done and
-     * skipped; only what is actually missing goes back over the wire.
-     */
-    const pending: string[] = [];
-    for (const id of ids) {
-      const cached = resume ? this.threads.get(id) : undefined;
-      if (cached && cached.place === place) out.push(cached);
-      else pending.push(id);
+    const pending: { id: string; historyId?: string }[] = [];
+    for (const entry of listed) {
+      const cached = this.threads.get(entry.id);
+      const unchanged =
+        cached && cached.place === place && entry.historyId
+          ? this.historyIds.get(entry.id) === entry.historyId
+          : false;
+      if (cached && unchanged) out.push(cached);
+      else pending.push(entry);
     }
     let done = out.length;
     onProgress?.(done);
 
     // Gmail rate-limits hard on parallel fetches; ten at a time is comfortable.
     for (let i = 0; i < pending.length; i += 10) {
+      const slice = pending.slice(i, i + 10);
       const batch = await Promise.all(
-        pending.slice(i, i + 10).map((id) =>
+        slice.map((entry) =>
           this.call<{ id: string; messages?: GmailMessage[] }>(
-            `${GMAIL}/threads/${id}?format=full`,
-          ).catch(() => null),
+            `${GMAIL}/threads/${entry.id}?format=full`,
+          )
+            .then((raw) => {
+              if (entry.historyId) this.historyIds.set(entry.id, entry.historyId);
+              return raw;
+            })
+            .catch(() => null),
         ),
       );
 

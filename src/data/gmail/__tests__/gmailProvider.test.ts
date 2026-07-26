@@ -255,13 +255,15 @@ describe('the Screener split', () => {
 });
 
 /**
- * §3.1 3b — "Start sync again — Pigeon will pick up where it stopped." The
- * walk re-fetched every thread it had already hydrated, so a retry after a
- * failure at 4,312 of 11,908 was exactly as slow as the first attempt and the
- * promise in the copy was false.
+ * §3.1 3b — "Start sync again — Pigeon will pick up where it stopped", and the
+ * freshness that has to survive alongside it. The walk used to re-fetch every
+ * thread it already had, so a retry was as slow as the first run; the first fix
+ * cached them outright, which froze the mailbox at whatever it looked like on
+ * first load. Gmail's own `historyId` settles both: it changes whenever
+ * anything in the thread does.
  */
-describe('sync resumes where it stopped (§3.1 3b)', () => {
-  function threadRoute(id: string) {
+describe('the thread walk (§3.1 3b)', () => {
+  function threadRoute(id: string, body = 'Body text.') {
     return {
       match: new RegExp(`threads/${id}\\?`),
       body: {
@@ -279,7 +281,7 @@ describe('sync resumes where it stopped (§3.1 3b)', () => {
                 { name: 'Subject', value: `Subject ${id}` },
               ],
               mimeType: 'text/plain',
-              body: { data: encodeBase64Url('Body text.') },
+              body: { data: encodeBase64Url(body) },
             },
           },
         ],
@@ -287,35 +289,60 @@ describe('sync resumes where it stopped (§3.1 3b)', () => {
     };
   }
 
-  const LIST = {
-    match: /threads\?/,
-    body: { threads: [{ id: 't1' }, { id: 't2' }, { id: 't3' }] },
-  };
+  /** The listing, with each thread's change token. */
+  function listRoute(entries: { id: string; historyId: string }[], nextPageToken?: string) {
+    return { match: /threads\?/, body: { threads: entries, nextPageToken } };
+  }
+
+  const AT_V1 = [
+    { id: 't1', historyId: '1' },
+    { id: 't2', historyId: '1' },
+    { id: 't3', historyId: '1' },
+  ];
 
   function fetchesFor(id: string) {
     return requests.filter((r) => new RegExp(`threads/${id}\\?`).test(r.url)).length;
   }
 
-  it('does not re-fetch a thread a previous sync already hydrated', async () => {
-    routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
+  it('fetches a thread once and leaves it alone while it is unchanged', async () => {
+    routes = [PROFILE, PEOPLE_ME, listRoute(AT_V1), threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
     const provider = new GmailMailProvider();
 
-    await provider.sync(() => {});
+    await provider.listThreads('inbox');
     expect(fetchesFor('t1')).toBe(1);
-    expect(fetchesFor('t3')).toBe(1);
 
-    // "Start sync again" over the same three threads.
-    await provider.sync(() => {});
+    await provider.listThreads('inbox');
     expect(fetchesFor('t1')).toBe(1);
-    expect(fetchesFor('t3')).toBe(1);
   });
 
-  it('fetches only what is actually missing after a partial run', async () => {
-    // t2 fails the first time round, so only it should go back over the wire.
+  it('goes back for a thread whose historyId moved', async () => {
+    routes = [PROFILE, PEOPLE_ME, listRoute(AT_V1), threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+
+    // A new message arrived on t2, so Gmail hands back a different token for it.
     routes = [
       PROFILE,
       PEOPLE_ME,
-      LIST,
+      listRoute([{ id: 't1', historyId: '1' }, { id: 't2', historyId: '2' }, { id: 't3', historyId: '1' }]),
+      threadRoute('t1'),
+      threadRoute('t2', 'And a reply.'),
+      threadRoute('t3'),
+    ];
+    await provider.listThreads('inbox');
+
+    expect(fetchesFor('t2')).toBe(2);
+    expect(fetchesFor('t1')).toBe(1);
+    // Read from the cache rather than the list: §2.3 keeps unknown senders out
+    // of the inbox, and this stub's sender is not in the known set.
+    expect((await provider.getThread('t2')).messages[0].body).toBe('And a reply.');
+  });
+
+  it('fetches only what is actually missing after a partial run', async () => {
+    routes = [
+      PROFILE,
+      PEOPLE_ME,
+      listRoute(AT_V1),
       threadRoute('t1'),
       { match: /threads\/t2\?/, status: 500 },
       threadRoute('t3'),
@@ -324,32 +351,15 @@ describe('sync resumes where it stopped (§3.1 3b)', () => {
     await provider.sync(() => {});
     expect(fetchesFor('t2')).toBe(1);
 
-    routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
+    routes = [PROFILE, PEOPLE_ME, listRoute(AT_V1), threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
     await provider.sync(() => {});
 
     expect(fetchesFor('t2')).toBe(2);
     expect(fetchesFor('t1')).toBe(1);
-    expect(fetchesFor('t3')).toBe(1);
-  });
-
-  /**
-   * Resumption is a property of sync alone. If `listThreads` shared the cache,
-   * a new message on an already-hydrated thread — or an unread flag cleared on
-   * another device — would never arrive, and the mailbox would be frozen at
-   * whatever it looked like on first load.
-   */
-  it('still goes back to Gmail on an ordinary list', async () => {
-    routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
-    const provider = new GmailMailProvider();
-
-    await provider.listThreads('inbox');
-    await provider.listThreads('inbox');
-
-    expect(fetchesFor('t1')).toBe(2);
   });
 
   it('reports the threads it already had as progress, not as zero', async () => {
-    routes = [PROFILE, PEOPLE_ME, LIST, threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
+    routes = [PROFILE, PEOPLE_ME, listRoute(AT_V1), threadRoute('t1'), threadRoute('t2'), threadRoute('t3')];
     const provider = new GmailMailProvider();
     await provider.sync(() => {});
 
@@ -358,7 +368,38 @@ describe('sync resumes where it stopped (§3.1 3b)', () => {
       if (p.step === 'history') seen.push(p.done);
     });
 
-    // The first history tick already accounts for everything cached.
     expect(seen[0]).toBe(3);
+  });
+
+  /**
+   * The listing used to ask for one page and stop, so a real mailbox showed its
+   * most recent 100 threads and silently pretended that was all of them.
+   */
+  it('follows nextPageToken rather than stopping at the first page', async () => {
+    let served = 0;
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      const href = String(url);
+      requests.push({ url: href, init });
+      if (/users\/me\/profile/.test(href)) return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      if (/people\/me\?/.test(href)) return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      if (/threads\?/.test(href)) {
+        served += 1;
+        const page = served === 1
+          ? { threads: [{ id: 'p1', historyId: '1' }], nextPageToken: 'more' }
+          : { threads: [{ id: 'p2', historyId: '1' }] };
+        return new Response(JSON.stringify(page), { status: 200 });
+      }
+      const id = href.match(/threads\/([^?]+)/)?.[1] ?? 'x';
+      return new Response(JSON.stringify(threadRoute(id).body), { status: 200 });
+    });
+
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+
+    expect(served).toBe(2);
+    // Both pages were walked and both threads hydrated — §2.3's filter is what
+    // decides whether they reach the inbox, and that is tested elsewhere.
+    expect(fetchesFor('p1')).toBe(1);
+    expect(fetchesFor('p2')).toBe(1);
   });
 });
