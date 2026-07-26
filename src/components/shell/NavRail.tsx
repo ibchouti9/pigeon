@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { SyncProgress } from '../../types';
 import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMail, useHeldCount, useUnreadCount } from '../../store/mail';
 import { useCompose } from '../../store/compose';
@@ -38,6 +39,20 @@ interface Item {
  * §5.0 — the rail never changes contents. The same four items and the search
  * field are present on every screen of the app shell.
  */
+/*
+ * The rail's sync bar runs on the steps, not on a thread count. `total` is the
+ * size of the mailbox — every conversation in the inbox, which the engine counts
+ * in full — while setting up lists one window of it, so `done / total` would sit
+ * near zero through a sync that is nearly finished.
+ */
+const SYNC_STEPS: SyncProgress['step'][] = [
+  'connect',
+  'contacts',
+  'history',
+  'senders',
+  'complete',
+];
+
 export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -71,7 +86,7 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
   const [sync, setSync] = useState(getSyncProgress);
   useEffect(() => subscribeSync(setSync), []);
   const syncing = sync.step !== 'complete' && !sync.error && sync.total !== null;
-  const syncPct = sync.total ? Math.round((sync.done / sync.total) * 100) : 0;
+  const syncPct = Math.round(((SYNC_STEPS.indexOf(sync.step) + 1) / SYNC_STEPS.length) * 100);
   const localRef = useRef<HTMLInputElement>(null);
   const inputRef = searchRef ?? localRef;
 
@@ -102,9 +117,9 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
               {account?.email ?? ''}
             </span>
             {/*
-              §3.1 3a — a user who hits Continue at 20% leaves sync running.
-              Without this the rest of it finished invisibly, and a half-loaded
-              inbox looked like the whole of their mail.
+              §3.1 3a — a user who leaves O3 early leaves sync running. Without
+              this the rest of it finished invisibly, and a half-loaded inbox
+              looked like the whole of their mail.
             */}
             {syncing && (
               <span

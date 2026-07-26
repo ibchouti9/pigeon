@@ -69,6 +69,75 @@ const T_DECLINE = '2024-02-01T00:00:00.000Z';
 const T_APPROVE = '2024-04-01T00:00:00.000Z';
 const T_DECLINE_2 = '2024-06-01T00:00:00.000Z';
 
+/**
+ * A listing row: one synthetic message dated to the newest, with the
+ * conversation's real span carried alongside it. This is what the real provider
+ * lists — bodies are fetched when a conversation is opened, not to draw a list.
+ */
+function previewRow(id: string, started: string, last: string): Thread {
+  const row = thread(id, started, last);
+  return {
+    ...row,
+    preview: true,
+    firstMessageAt: started,
+    messageCount: 2,
+    messages: [{ ...row.messages[row.messages.length - 1], body: 'a preview line' }],
+  };
+}
+
+describe('when a conversation started', () => {
+  /**
+   * Every §2.3 rule is about the conversation, so a decline reaches a thread by
+   * its *start*. A listing row holds one message dated to the newest, and
+   * reducing those would date a conversation from before the decline to after
+   * it — which un-hides mail the user has already declined.
+   */
+  it('reads a listing row by its span, not by its one message', () => {
+    const decisions = SenderDecisions.load('marc@ferrum.dev');
+    at(T_DECLINE, () => decisions.decide(SENDER, 'declined'));
+    at(T_APPROVE, () => decisions.decide(SENDER, 'approved'));
+
+    // Started while the sender stood declined; last reply after the approval.
+    const row = previewRow('mid', '2024-03-10T00:00:00.000Z', '2024-05-10T00:00:00.000Z');
+    expect(decisions.hidden(row, SENDER)).toBe(true);
+
+    // The same conversation, fully fetched, has to agree.
+    expect(decisions.hidden(thread('mid', '2024-03-10T00:00:00.000Z', '2024-05-10T00:00:00.000Z'), SENDER)).toBe(true);
+  });
+});
+
+describe('the screening cutoff', () => {
+  it('screens what starts after setup and leaves the rest alone', () => {
+    const decisions = SenderDecisions.load('marc@ferrum.dev');
+    decisions.beginScreening('2024-04-01T00:00:00.000Z');
+
+    expect(decisions.screens(thread('before', '2024-01-10T00:00:00.000Z'))).toBe(false);
+    expect(decisions.screens(thread('after', '2024-07-10T00:00:00.000Z'))).toBe(true);
+    // An old conversation with a new reply is still an old conversation.
+    expect(
+      decisions.screens(thread('long', '2024-01-10T00:00:00.000Z', '2024-07-10T00:00:00.000Z')),
+    ).toBe(false);
+  });
+
+  /**
+   * The line is a fact about when the user set Pigeon up. A line that moved
+   * would take senders out of the Screener without anyone deciding anything.
+   */
+  it('never moves once it is set', () => {
+    const decisions = SenderDecisions.load('marc@ferrum.dev');
+    decisions.beginScreening('2024-04-01T00:00:00.000Z');
+    decisions.beginScreening('2024-09-01T00:00:00.000Z');
+    expect(decisions.screenFrom()).toBe('2024-04-01T00:00:00.000Z');
+  });
+
+  /** With no line recorded, everything is screened — how it behaved before. */
+  it('screens everything until a line is recorded', () => {
+    const decisions = SenderDecisions.load('nobody@ferrum.dev');
+    expect(decisions.screenFrom()).toBeNull();
+    expect(decisions.screens(thread('old', '2001-01-01T00:00:00.000Z'))).toBe(true);
+  });
+});
+
 describe('§2.3 sender decisions', () => {
   let decisions: SenderDecisions;
 

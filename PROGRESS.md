@@ -43,7 +43,7 @@ Every screen in §5 is built and runs against the demo account.
 | Design tokens (§4.3), base styles, focus (§8.2) | done |
 | Domain types + `MailProvider` | done |
 | Mock provider + demo seed | done, tested |
-| Real-mail provider (IMAP/SMTP, app password) | done, 14 Rust + contract tests; **never run against a real account** |
+| Real-mail provider (IMAP/SMTP, app password) | done, 31 Rust + contract tests; listing rewritten for large mailboxes; **the rewrite is unverified against a real account** |
 | macOS app shell (Tauri 2) | builds; `.app` + `.dmg`, unsigned |
 | Onboarding: email + app password, one Google page | done |
 | Stores | done, tested |
@@ -638,11 +638,93 @@ New, from the IMAP refactor — all **unverified against a real account**:
    LOGIN, SPECIAL-USE discovery, X-GM-RAW searches, STOREs and SMTP send are
    exercised only in stubs. The first paste of a real app password is the
    test.
-7. **`sent_recipients` fetches ENVELOPEs one FETCH per 500 UIDs** with no
-   ceiling on mailbox size beyond the 500 cap — fine — but the *thread* walk
-   has no ceiling at all: a 50k-message All Mail means 50k meta lines per
-   listing. Cheap in bytes, unmeasured in wall-clock.
+7. ~~The thread walk has no ceiling at all~~ — this was much worse than
+   "unmeasured in wall-clock", and it is the subject of the July 26 listing
+   rewrite below. Fixed.
 8. **`unsend` is still a no-op** — SMTP cannot recall a message, same as REST.
+9. **"Show older" re-counts the place to fetch the next window.** The engine's
+   `list_threads` runs its SEARCH and metadata pass over the whole place on
+   every call, so asking for older mail costs that pass again — a few seconds on
+   a very large account, for a button pressed rarely. A stub cache in Rust,
+   keyed by place and invalidated on write, is the fix if it ever matters.
+10. **A listed row cannot show a paperclip.** `hasAttachment` comes from the
+    messages, and a row has none; the engine sees 2 KB of one body and cannot
+    tell. Claiming an attachment that isn't there is worse than omitting one
+    that is, so rows omit it and the reader shows the truth. Fixing it properly
+    means FETCHing BODYSTRUCTURE in the enrichment pass.
+
+## The 40,000-thread mailbox, and the listing rewrite (July 26)
+
+The first real account made onboarding unusable, and not by a little. Listing
+the inbox meant listing stubs and then calling `mail_get_thread` on **every one
+of them** — a SEARCH for the thread id, a metadata FETCH, two more SEARCHes for
+`in:inbox` and `in:sent`, then `BODY.PEEK[]` for each message. Five round trips
+and every byte of every message, attachments included, to end up rendering a
+name and a subject line. `HYDRATE_BATCH = 5` bought nothing, because every call
+serialises on the one IMAP connection behind `LIVE.lock()`. At 40,000 threads
+that is ~200,000 sequential round trips: hours, and gigabytes.
+
+Underneath the cost sat a product problem no amount of speed would fix. §2.3
+would have offered the user *every unknown sender in a decade of mail* — several
+hundred strangers to judge before reaching any inbox at all.
+
+Both are fixed, and the two fixes are one story.
+
+**The engine answers rows.** `ThreadStub` now carries what a row renders —
+sender, subject, preview line, the conversation's first and last dates, its
+message count, its place. The counting pass still covers the whole place, so
+D34's totals are honest; only the requested window is enriched, in bulk, by one
+FETCH per 200 threads. Bodies are read when a conversation is opened.
+
+Two details worth keeping:
+
+- The enrichment FETCH asks for `BODY.PEEK[HEADER]` and
+  `BODY.PEEK[TEXT]<0.2048>` and hands the pair to `parse_message` as the
+  *truncated message* it is — so mail-parser does the MIME tree, the charset and
+  the transfer encoding, and no base64 or quoted-printable decoder was written
+  here. `HEADER.FIELDS (FROM SUBJECT)` would be cheaper and is unavailable:
+  imap-proto 0.16's FETCH grammar has no such section, and a line its grammar
+  rejects fails the whole command — the same trap that once broke every listing.
+- mail-parser decodes a part only once the part is **closed**, so a body cut at
+  2 KB comes back as literal `Caf=C3=A9 at ten`. `close_open_parts` appends the
+  delimiters the cut swallowed, innermost first. Four tests pin it: quoted
+  printable, base64, two levels of nesting, and a `-- ` signature line that is
+  not a boundary.
+
+**Screening starts the day Pigeon is set up.** `SenderDecisions.beginScreening`
+records the line once, at first connect, and never moves it. Mail already in the
+mailbox is history: it stays where Gmail put it, nothing is held and nothing is
+hidden, so the Screener starts empty and fills with what actually arrives. The
+sender stays unknown, so their *next* conversation is screened.
+
+A fixed line rather than a rolling "last 90 days" on purpose. A window would let
+an undecided sender leave the Screener as their mail aged — and §2.3 knows
+undecided, approved and declined, of which "aged out" is none. Judged on when the
+conversation *started*, like every other §2.3 rule, so one new reply cannot drag
+a decade-old thread in front of the user.
+
+That cutoff is also what keeps the Screener affordable: held conversations are
+the one thing a listing hydrates (the card shows a preview, §7.9's AI read
+summarises it), and after the line there are normally a handful.
+
+The rest of it:
+
+- `SENT_SCAN` 500 → 4,000. ENVELOPE only, 500 UIDs per FETCH, so eight round
+  trips — and it is what makes the cutoff safe, because the people the user
+  actually corresponds with are known before their first inbox loads.
+- Search stopped hydrating its results. Five hundred matches were five hundred
+  `mail_get_thread` calls; they are rows now, like everywhere else.
+- A place lists `PAGE_SIZE = 200` rows with "Show older" beyond, restoring the
+  ceiling the REST provider had and the IMAP rewrite dropped.
+- Listings are reused for 30s and patched in place on write. A sender decision
+  needs no refetch at all: approving or declining changes only which of the same
+  rows §2.3 shows.
+- `Thread.firstMessageAt` fixed a latent bug in `startedAt`, which reduced over
+  the messages — right for a fetched conversation, wrong for a row.
+
+Cost on a 40,000-thread account: one SEARCH, two membership SEARCHes, ~70
+metadata FETCHes and one enrichment FETCH. Seconds. **Still unverified against a
+real account** — see item 6.
 
 ## Deliberate deviations from the spec
 
@@ -713,6 +795,22 @@ Each is a considered call, not an oversight.
    expanded message, leaving one collapsed row visible so the history above
    doesn't disappear. A short thread is untouched and still opens on the summary
    block. Found by driving `?scenario=crowded`.
+16. **O3 measures steps, not threads, and Continue opens at the mail step** —
+   §5.2b specifies a thread counter and "Continue at 20%". Both described a walk
+   that fetched every conversation in the mailbox; that walk is gone (see the
+   listing rewrite above), and setting up is now a bounded sample of sent mail
+   plus one window of rows — seconds, with no position inside it that means
+   anything. The counter reports what the engine genuinely counts, the size of
+   the inbox ("11,908 conversations in your inbox"), and the bar tracks the four
+   steps. Continue opens once the mail step is under way, which is what the 20%
+   gate was for: never trapping someone on this screen. §3.1 3b's "pick up where
+   it stopped" went with it — retrying starts again, because nothing is
+   part-done — and the error copy says so.
+17. **The screening cutoff itself** — the spec has no notion of one; §2.3 reads
+   as though every unknown sender is screened whenever their mail arrived. On a
+   mailbox with years of history that is a Screener stack nobody will ever
+   finish, so screening starts at setup. Reasoned through in the listing-rewrite
+   section above.
 
 ## Where to look next
 

@@ -42,12 +42,21 @@ export function SyncRoute() {
   }, []);
 
   const total = progress.total;
-  const done = progress.done;
-  const pct = total ? done / total : 0;
   const complete = progress.step === 'complete';
-  const canContinue = !progress.error && (complete || pct >= 0.2);
-
   const currentIdx = STEP_ORDER.indexOf(progress.step);
+
+  /*
+   * §5.2b's progress is the steps, not a thread count.
+   *
+   * It used to be `done / total` over a walk that fetched every conversation in
+   * the mailbox — which is where "Continue at 20%" came from, because on a real
+   * account the other 80% took long enough to need an escape hatch. Setting up
+   * now reads a sample of sent mail and lists one window of rows: bounded work,
+   * a few seconds, and no position inside it that means anything to anybody. The
+   * escape hatch survives as "you may leave once the mail step has started",
+   * which is what it was for.
+   */
+  const canContinue = !progress.error && (complete || currentIdx >= 2);
   const steps: Step[] = [
     {
       key: 'connect',
@@ -59,8 +68,16 @@ export function SyncRoute() {
     { key: 'senders', label: 'Working out who you know', state: stepState(3, currentIdx) },
   ];
 
+  /*
+   * D34 wants the real size of the mailbox on this screen, and the real size is
+   * what the engine counts in full — not the window it listed. Saying "200 of
+   * 40,000 threads" would report the window as progress through the mailbox and
+   * then declare the mail ready at half a percent.
+   */
   const counterText =
-    total === null ? 'Counting your threads' : `${formatCount(done)} of ${formatCount(total)} threads`;
+    total === null
+      ? 'Reading your mail'
+      : `${formatCount(total)} ${total === 1 ? 'conversation' : 'conversations'} in your inbox`;
 
   // §8.4 — "Progress updates are announced at most once every 10 seconds via a
   // role="status" region". The counter itself ticks several times a second;
@@ -144,7 +161,8 @@ export function SyncRoute() {
       {progress.error ? (
         <div className={styles.errorBlock} role="alert">
           <p className="t-sm">
-            {`Sync stopped at ${formatCount(done)} of ${formatCount(total ?? 0)} threads. Gmail returned an error. Start sync again — Pigeon will pick up where it stopped.`}
+            Pigeon couldn't finish setting up. Gmail returned an error. Nothing has
+            been changed in your mailbox — start again.
           </p>
           <div className={styles.errorActions}>
             <Button variant="primary" onClick={retrySync}>
@@ -158,8 +176,8 @@ export function SyncRoute() {
       ) : (
         <>
           <ProgressBar
-            value={total === null ? null : done}
-            max={total}
+            value={currentIdx < 0 ? null : currentIdx + 1}
+            max={STEP_ORDER.length}
             valueText={counterText}
             className={styles.progress}
           />

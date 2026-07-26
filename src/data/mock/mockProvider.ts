@@ -212,6 +212,18 @@ export class MockMailProvider implements MailProvider {
     return all;
   }
 
+  /**
+   * The demo account is a seeded handful, all of it in memory: its first window
+   * is everything, so there is never anything older to ask for.
+   */
+  hasOlder(): boolean {
+    return false;
+  }
+
+  listOlder(place: 'inbox' | 'archive'): Promise<Thread[]> {
+    return this.listThreads(place);
+  }
+
   async getThread(threadId: string): Promise<Thread> {
     const t = this.state.threads.find((x) => x.id === threadId);
     if (!t) throw new MailError("This thread didn't load. It's still in Gmail.", 'not-found');

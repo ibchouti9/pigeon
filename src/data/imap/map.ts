@@ -1,6 +1,6 @@
 import type { Message, Thread } from '../../types';
 import { htmlToText, splitQuoted } from '../mime';
-import type { BridgeMessage, BridgeThread } from './bridge';
+import type { BridgeMessage, BridgeStub, BridgeThread } from './bridge';
 
 /**
  * Bridge JSON → Pigeon's domain. Rust hands over what the wire said — text
@@ -55,5 +55,61 @@ export function mapThread(raw: BridgeThread, userEmail: string): Thread {
     unread: raw.unread,
     messages,
     lastMessageAt: raw.lastMessageAt,
+    firstMessageAt: messages.reduce(
+      (earliest, m) => (m.date && m.date < earliest ? m.date : earliest),
+      raw.lastMessageAt,
+    ),
+  };
+}
+
+/**
+ * One listing row as a `Thread`, out of the engine's cheap pass.
+ *
+ * The row is a whole conversation's worth of what a list shows — who, what,
+ * when, how many, and a preview line — and none of its bodies. It is modelled
+ * as a `Thread` holding one synthetic message rather than as a separate type,
+ * because §2.3's rules, the list, the row and the sorting are all written
+ * against `Thread` and they are all still exactly right here: the one thing
+ * that changes is that the bodies aren't there yet.
+ *
+ * `preview: true` is how a caller knows. `getThread` replaces the whole object
+ * the moment someone opens it.
+ */
+export function mapStub(raw: BridgeStub): Thread {
+  const place = raw.inInbox ? 'inbox' : 'archive';
+  const flat = raw.snippetText ?? (raw.snippetHtml ? htmlToText(raw.snippetHtml) : '');
+  // The same quoted-history split a real body gets (§5.6) — a preview line
+  // should not open with "On Monday, Dana wrote:" either.
+  const { body } = splitQuoted(flat);
+  const subject = raw.subject || '(no subject)';
+
+  return {
+    id: raw.id,
+    subject,
+    place,
+    unread: raw.unread,
+    lastMessageAt: raw.lastMessageAt,
+    firstMessageAt: raw.firstMessageAt || raw.lastMessageAt,
+    messageCount: raw.messageCount,
+    preview: true,
+    messages: [
+      {
+        // Not the real message's id: the engine hands over a UID for the
+        // *preview*, and minting an id that looks like a message's invites
+        // something to act on it. Anything that acts works on the thread.
+        id: `preview-${raw.id}`,
+        threadId: raw.id,
+        subject,
+        from: raw.from ?? { name: '', email: '' },
+        to: [],
+        cc: [],
+        body,
+        date: raw.lastMessageAt,
+        // A stub's 2 KB says nothing reliable about attachments, and claiming
+        // a paperclip that isn't there is worse than omitting one that is.
+        attachments: [],
+        isFromUser: raw.fromUser,
+      },
+    ],
   };
 }

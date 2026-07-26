@@ -155,6 +155,19 @@ class ScenarioProvider implements MailProvider {
     return crowd;
   }
 
+  /**
+   * The demo's places are in-memory lists, so a scenario's first window is all
+   * of it — `crowded` included, which exists to drive the *renderer* at scale
+   * rather than the paging the real provider does.
+   */
+  hasOlder(): boolean {
+    return false;
+  }
+
+  listOlder(place: 'inbox' | 'archive'): Promise<Thread[]> {
+    return this.listThreads(place);
+  }
+
   private readonly crowdThreads = new Map<string, Thread[]>();
 
   /**

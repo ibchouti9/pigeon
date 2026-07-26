@@ -73,16 +73,36 @@ function storageKey(accountEmail: string): string {
   return `pigeon.decisions.${accountEmail.toLowerCase()}`;
 }
 
+function cutoffKey(accountEmail: string): string {
+  return `pigeon.screenFrom.${accountEmail.toLowerCase()}`;
+}
+
 /**
  * When a thread started. A thread is one unit, so every §2.3 rule is about the
  * conversation rather than its latest message — asking about `lastMessageAt`
  * let a single reply drag an entire history across a cutoff.
  */
 function startedAt(thread: Thread): string {
+  // The engine reports this per thread, from the metadata of every message in
+  // it. A listing row (`preview: true`) holds one synthetic message dated to
+  // the newest, so reducing the messages there would date a decade-old
+  // conversation to this morning — and every §2.3 interval would be measured
+  // against the wrong end of it.
+  if (thread.firstMessageAt) return thread.firstMessageAt;
   return thread.messages.reduce(
     (earliest, m) => (m.date < earliest ? m.date : earliest),
     thread.lastMessageAt,
   );
+}
+
+/** An unreadable or absent cutoff means "screen everything", as it did before. */
+function readCutoff(key: string): string | null {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored && !Number.isNaN(Date.parse(stored)) ? stored : null;
+  } catch {
+    return null;
+  }
 }
 
 function snapshot(record: SenderRecord): SenderSnapshot {
@@ -92,15 +112,26 @@ function snapshot(record: SenderRecord): SenderSnapshot {
 
 export class SenderDecisions {
   private readonly key: string;
+  private readonly cutoff: string;
   private records: Record<string, SenderRecord>;
+  private screenFromAt: string | null;
 
-  private constructor(key: string, records: Record<string, SenderRecord>) {
+  private constructor(
+    key: string,
+    cutoff: string,
+    records: Record<string, SenderRecord>,
+    screenFrom: string | null,
+  ) {
     this.key = key;
+    this.cutoff = cutoff;
     this.records = records;
+    this.screenFromAt = screenFrom;
   }
 
   static load(accountEmail: string): SenderDecisions {
     const key = storageKey(accountEmail);
+    const cutoff = cutoffKey(accountEmail);
+    const screenFrom = readCutoff(cutoff);
     try {
       const parsed = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<
         string,
@@ -114,9 +145,9 @@ export class SenderDecisions {
           delete parsed[email];
         }
       }
-      return new SenderDecisions(key, parsed);
+      return new SenderDecisions(key, cutoff, parsed, screenFrom);
     } catch {
-      return new SenderDecisions(key, {});
+      return new SenderDecisions(key, cutoff, {}, screenFrom);
     }
   }
 
@@ -126,6 +157,51 @@ export class SenderDecisions {
     } catch {
       // Decisions still apply for this page load.
     }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* The screening cutoff                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Marks where screening starts, once, when the account is first connected.
+   *
+   * Later calls are ignored on purpose: the line is a fact about when the user
+   * set Pigeon up, and a line that moved would take senders out of the Screener
+   * without anyone deciding anything — §2.3 knows undecided, approved and
+   * declined, and "aged out" is none of them. That is also why this is a fixed
+   * date rather than a rolling window over the last N months.
+   */
+  beginScreening(at: string): void {
+    if (this.screenFromAt) return;
+    this.screenFromAt = at;
+    try {
+      localStorage.setItem(this.cutoff, at);
+    } catch {
+      // The line still holds for this page load.
+    }
+  }
+
+  screenFrom(): string | null {
+    return this.screenFromAt;
+  }
+
+  /**
+   * Whether the Screener has any business with this conversation.
+   *
+   * Mail that was already in the mailbox when Pigeon arrived stays exactly
+   * where Gmail put it: nothing is held, nothing is hidden, and the inbox on day
+   * one looks like the inbox the user already had. A 40,000-thread account would
+   * otherwise open onto a stack of several hundred strangers to judge before
+   * reaching any mail — and the promise is that Pigeon screens what arrives, not
+   * that it audits what arrived.
+   *
+   * Judged on when the conversation *started*, like every other §2.3 rule, so a
+   * single new reply cannot drag a decade-old thread in front of the user.
+   */
+  screens(thread: Thread): boolean {
+    if (!this.screenFromAt) return true;
+    return startedAt(thread) >= this.screenFromAt;
   }
 
   has(email: string): boolean {

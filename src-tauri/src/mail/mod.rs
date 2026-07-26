@@ -61,14 +61,17 @@ pub async fn mail_disconnect() {
     .await;
 }
 
+/// `offset`/`limit` window what the listing *renders*; `ListPage::total` still
+/// reports the whole place. A mailbox with 40,000 conversations is listed, not
+/// walked — see `ThreadStub`.
 #[tauri::command]
-pub async fn mail_list_threads(place: String) -> Result<ListPage, String> {
-    blocking(move || fetch::list_threads(place)).await
+pub async fn mail_list_threads(place: String, offset: u32, limit: u32) -> Result<ListPage, String> {
+    blocking(move || fetch::list_threads(place, offset, limit)).await
 }
 
 #[tauri::command]
-pub async fn mail_search(query: String) -> Result<ListPage, String> {
-    blocking(move || fetch::search_threads(query)).await
+pub async fn mail_search(query: String, limit: u32) -> Result<ListPage, String> {
+    blocking(move || fetch::search_threads(query, limit)).await
 }
 
 #[tauri::command]

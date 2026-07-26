@@ -39,6 +39,12 @@ class StubSyncProvider implements MailProvider {
   async listThreads(_place: 'inbox' | 'archive'): Promise<Thread[]> {
     return [];
   }
+  hasOlder(_place: 'inbox' | 'archive'): boolean {
+    return false;
+  }
+  async listOlder(_place: 'inbox' | 'archive'): Promise<Thread[]> {
+    return [];
+  }
   async getThread(_id: string): Promise<Thread> {
     throw new Error('not implemented');
   }
@@ -86,7 +92,15 @@ describe('O3 sync progress (§5.2b)', () => {
     vi.restoreAllMocks();
   });
 
-  it('reads "Counting your threads" before the total is known, then real counts', async () => {
+  /**
+   * D34 wants the mailbox's real size on this screen, and `total` is now exactly
+   * that — the engine counts every conversation in the place even though it
+   * lists a window of them. The old line read "2,000 of 11,908 threads", which
+   * measured a walk that fetched every message in the mailbox; that walk is
+   * gone, and reporting the window against the total would announce the mail
+   * ready at half a percent.
+   */
+  it('names the size of the mailbox once the engine has counted it', async () => {
     const provider = new StubSyncProvider();
     useMail.setState({
       provider,
@@ -97,13 +111,19 @@ describe('O3 sync progress (§5.2b)', () => {
     renderRoute();
     await waitFor(() => expect(provider.onProgress).not.toBeNull());
 
-    expect(screen.getByText('Counting your threads')).toBeInTheDocument();
+    expect(screen.getByText('Reading your mail')).toBeInTheDocument();
 
-    act(() => provider.onProgress!({ total: 11_908, done: 2_000, step: 'history' }));
-    expect(await screen.findByText('2,000 of 11,908 threads')).toBeInTheDocument();
+    act(() => provider.onProgress!({ total: 11_908, done: 200, step: 'history' }));
+    expect(await screen.findByText('11,908 conversations in your inbox')).toBeInTheDocument();
   });
 
-  it('enables Continue only once progress reaches 20%', async () => {
+  /**
+   * §5.2b's escape hatch, on the steps rather than on a percentage. "Continue at
+   * 20%" existed because the other 80% was a walk over the whole mailbox; what
+   * it was *for* — never trapping someone on this screen — is kept by opening
+   * Continue as soon as the mail step is under way.
+   */
+  it('opens Continue once the mail step has started, and not before', async () => {
     const provider = new StubSyncProvider();
     useMail.setState({
       provider,
@@ -114,14 +134,11 @@ describe('O3 sync progress (§5.2b)', () => {
     renderRoute();
     await waitFor(() => expect(provider.onProgress).not.toBeNull());
 
-    // 2,000 / 11,908 ≈ 16.8% — below the threshold.
-    act(() => provider.onProgress!({ total: 11_908, done: 2_000, step: 'history' }));
-    await screen.findByText('2,000 of 11,908 threads');
+    act(() => provider.onProgress!({ total: null, done: 0, step: 'contacts' }));
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
 
-    // 2,500 / 11,908 ≈ 21% — at or above the threshold.
-    act(() => provider.onProgress!({ total: 11_908, done: 2_500, step: 'history' }));
-    await screen.findByText('2,500 of 11,908 threads');
+    act(() => provider.onProgress!({ total: 11_908, done: 0, step: 'history' }));
+    await screen.findByText('11,908 conversations in your inbox');
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 

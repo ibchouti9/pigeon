@@ -45,14 +45,17 @@ export function subscribeSync(listener: Listener): () => void {
 }
 
 /**
- * §3.1 3b's "Start sync again". The copy says Pigeon "will pick up where it
- * stopped", so the counter keeps the position it reached — resetting it to zero
- * made a resumed run look like a restarted one even though the provider skips
- * what it already has.
+ * §3.1 3b's "Start sync again", which now genuinely starts again.
+ *
+ * It used to preserve the counter's position, because the copy promised Pigeon
+ * would "pick up where it stopped" and a walk over the whole mailbox had a
+ * position worth keeping. Setting up is a sample of sent mail and one window of
+ * rows — seconds of bounded work with nothing part-done inside it — so the
+ * honest retry is from the top, and the copy no longer claims otherwise.
  */
 export function retrySync(): void {
   started = false;
-  latest = { total: latest.total, done: latest.done, step: latest.step };
+  latest = { total: null, done: 0, step: 'connect' };
   startSync();
 }
 

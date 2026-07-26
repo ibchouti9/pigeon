@@ -41,6 +41,24 @@ export interface MailProvider {
     place: 'inbox' | 'archive',
     onPage?: (threads: Thread[]) => void,
   ): Promise<Thread[]>;
+
+  /**
+   * Whether the place holds conversations older than the ones already listed.
+   *
+   * A listing is a window, not a mailbox. A real account can hold tens of
+   * thousands of threads, and fetching all of them to draw the first screen is
+   * how the Gmail path once spent hours before showing a single row.
+   */
+  hasOlder(place: 'inbox' | 'archive'): boolean;
+
+  /** The next window of older conversations, appended to what is listed. */
+  listOlder(place: 'inbox' | 'archive'): Promise<Thread[]>;
+
+  /**
+   * A conversation with its bodies. `listThreads` may return rows that carry a
+   * preview line instead (`Thread.preview`), so anything that needs the real
+   * messages — the reader, a reply, the AI summary — asks for it here.
+   */
   getThread(threadId: string): Promise<Thread>;
   markRead(threadId: string, read: boolean): Promise<void>;
 

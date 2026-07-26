@@ -31,6 +31,18 @@ function stubImapBridge() {
     { id: `${h.id}-b`, from: `${h.id}@example.com`, date: h.newest },
   ]);
 
+  /*
+   * Pigeon was set up before any of this arrived.
+   *
+   * The real provider screens only what came in after setup (see
+   * `SenderDecisions.screens`), which on a live account is the difference
+   * between an empty Screener and several hundred strangers to judge on day
+   * one. The demo account has no setup moment at all. So the shared contract
+   * below — which is about §2.3's rules, not about the cutoff — is run with the
+   * line at the beginning of time, and the cutoff has its own tests.
+   */
+  localStorage.setItem('pigeon.screenFrom.marc@ferrum.dev', '1970-01-01T00:00:00.000Z');
+
   bridge.handler = (command, args) => {
     const visible = threads.filter((t) => !archived.has(t.id));
     switch (command) {
@@ -46,9 +58,17 @@ function stubImapBridge() {
           threads: listed.map((t, i) => ({
             id: t.id,
             lastMessageAt: t.date,
+            firstMessageAt: t.date,
             unread: false,
             messageCount: 1,
+            inInbox: inInbox,
             lastUid: i + 1,
+            previewUid: i + 1,
+            fromUser: false,
+            from: { name: '', email: t.from },
+            subject: 'Hello',
+            snippetText: 'Body text.',
+            snippetHtml: null,
           })),
         };
       }

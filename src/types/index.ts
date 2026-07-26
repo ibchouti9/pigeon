@@ -60,6 +60,31 @@ export interface Thread {
   messages: Message[];
   /** ISO 8601 of the newest message. */
   lastMessageAt: string;
+  /**
+   * ISO 8601 of the oldest message. §2.3's rules are about the conversation
+   * rather than its latest reply, so "when did this start" is a question the
+   * decision machine asks — and a `preview` thread does not hold the messages
+   * to derive it from. Absent on threads built before this existed, where
+   * `startedAt` falls back to reducing the messages.
+   */
+  firstMessageAt?: string;
+  /**
+   * How many messages the conversation holds. Carried separately because a
+   * `preview` row holds one synthetic message and would otherwise report every
+   * conversation as one message long. Absent means `messages.length` is the
+   * count, which is true of every fully fetched thread.
+   */
+  messageCount?: number;
+  /**
+   * A listing's row, not a conversation: sender, subject and a preview line
+   * from the engine's cheap pass, carried as one synthetic message. Opening the
+   * thread replaces it with the real one.
+   *
+   * Every screen that shows a body has to tolerate this. A 40,000-thread
+   * mailbox is why: hydrating every conversation to render a list of names cost
+   * five round trips and every byte of every message, per row.
+   */
+  preview?: boolean;
   /** Set when this is the first thread since the sender was approved (§4.2 #4). */
   approvedAt?: string;
 }

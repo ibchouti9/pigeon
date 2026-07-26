@@ -12,7 +12,7 @@ import { MailError, type MailProvider, type SearchResults } from '../provider';
 import { SenderDecisions } from '../decisions';
 import { buildRawMessage } from '../mime';
 import { invoke } from '../../lib/desktop';
-import { mapThread } from './map';
+import { mapStub, mapThread } from './map';
 import type {
   BridgeListPage,
   BridgeMailStatus,
@@ -38,18 +38,81 @@ import type {
  * where it stopped" true.
  */
 
-/** Sent-mail sample for D10's "people you have written to". */
-const SENT_SCAN = 500;
+/**
+ * Sent-mail sample for D10's "people you have written to".
+ *
+ * This is the one thing that reads the past deeply, and it is the cheapest
+ * thing here: ENVELOPE only, 500 UIDs per FETCH, so four thousand messages is
+ * eight round trips and no bodies. It is also what makes the screening cutoff
+ * safe — everyone the user actually corresponds with is already known on day
+ * one, so their mail goes to the inbox rather than to a stack of strangers.
+ */
+const SENT_SCAN = 4000;
 
 /** Concurrent body fetches. IMAP is one connection; modest keeps it honest. */
 const HYDRATE_BATCH = 5;
 
+/**
+ * How many rows a place lists at a time.
+ *
+ * The engine still counts the whole place — D34's totals are honest — but only
+ * this many rows are fetched and rendered, and "Show older" asks for the next
+ * window. The REST provider capped at 2,000 for the same reason and the IMAP
+ * rewrite dropped the cap; a 40,000-thread account is what noticed.
+ */
+const PAGE_SIZE = 200;
+
 const SEARCH_CAP = 500;
+
+/**
+ * The most conversations `listHeld` will open bodies for in one pass. Held
+ * threads are the one place a body is genuinely needed before anyone clicks —
+ * the Screener card shows a preview and the AI read summarises it — and after
+ * the cutoff there are normally a handful. This is the guard for a first run
+ * that inherits more than a handful.
+ */
+const HELD_HYDRATE_CAP = 60;
 
 interface Hydration {
   promise: Promise<Thread[]>;
   listeners: Set<(done: number, listed?: number) => void>;
   pageListeners: Set<(threads: Thread[]) => void>;
+}
+
+/**
+ * How long a listing is reused before it is asked for again.
+ *
+ * Every load used to re-list from the server, which was affordable only because
+ * nobody had run it on a real mailbox: on a large account a listing is a SEARCH
+ * and a metadata pass over every message in the place. The window is reused
+ * instead — and, crucially, a sender decision does not need a fresh one, because
+ * approving or declining changes only which of the *same* rows §2.3 shows.
+ *
+ * The ceiling keeps mail that arrived meanwhile from staying invisible for a
+ * whole session, since Pigeon does not hold an IDLE connection.
+ */
+const WINDOW_TTL_MS = 30_000;
+
+/** One place's listed rows, what it holds in total, and when it was fetched. */
+interface Window {
+  threads: Thread[];
+  total: number;
+  at: number;
+}
+
+/**
+ * A conversation's body-cache key: its highest UID and its message count.
+ * Either half changes whenever the conversation does, which is what makes a
+ * cached body safe to reuse — and it is derivable from a listing row *and* from
+ * a fetched conversation, so the two agree about what is fresh.
+ */
+function cacheKey(stub: BridgeStub): string {
+  return `${stub.lastUid}:${stub.messageCount}`;
+}
+
+function fetchedKey(raw: BridgeThread): string {
+  const lastUid = raw.messages.reduce((high, m) => (m.uid > high ? m.uid : high), 0);
+  return `${lastUid}:${raw.messages.length}`;
 }
 
 export class ImapMailProvider implements MailProvider {
@@ -67,6 +130,8 @@ export class ImapMailProvider implements MailProvider {
   private threads = new Map<string, Thread>();
   private cacheKeys = new Map<string, string>();
   private hydrating = new Map<string, Hydration>();
+  /** Each place's listed rows and how many the place actually holds. */
+  private windows = new Map<string, Window>();
 
   private async call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
     try {
@@ -111,6 +176,10 @@ export class ImapMailProvider implements MailProvider {
       connectedAt: new Date().toISOString(),
     };
     this.decisions = SenderDecisions.load(status.email);
+    // Screening starts the first time this account is seen and never moves
+    // afterwards — see `beginScreening`. Everything already in the mailbox is
+    // history: it stays where Gmail put it and no one is asked to judge it.
+    this.decisions.beginScreening(new Date().toISOString());
     return this.account;
   }
 
@@ -177,8 +246,18 @@ export class ImapMailProvider implements MailProvider {
     return this.decisions.status(email) === 'declined';
   }
 
-  private heldInScreener(email: string): boolean {
-    return !this.decisions.has(email) && !this.known.has(email.toLowerCase());
+  /**
+   * Whether this conversation waits in the Screener.
+   *
+   * Takes the thread, not just the address, because the cutoff is part of the
+   * answer: an unknown sender whose conversation predates the setup is not held
+   * — that mail was already in the inbox before Pigeon existed and stays there.
+   * Their *next* conversation is screened, because they are still unknown.
+   */
+  private heldInScreener(email: string, thread: Thread): boolean {
+    if (this.decisions.has(email)) return false;
+    if (this.known.has(email.toLowerCase())) return false;
+    return this.decisions.screens(thread);
   }
 
   private threadSender(thread: Thread): Address | null {
@@ -192,34 +271,37 @@ export class ImapMailProvider implements MailProvider {
       const sender = this.threadSender(thread);
       if (!sender) return true; // A thread the user started stays visible.
       if (this.decisions.hidden(thread, sender.email)) return false;
-      return place === 'archive' || !this.heldInScreener(sender.email);
+      return place === 'archive' || !this.heldInScreener(sender.email, thread);
     });
   }
 
-  private async fetchThread(stub: BridgeStub): Promise<Thread> {
-    const key = `${stub.lastUid}:${stub.messageCount}`;
-    const cached = this.threads.get(stub.id);
-    if (cached && this.cacheKeys.get(stub.id) === key) return cached;
-
-    const raw = await this.call<BridgeThread>('mail_get_thread', { threadId: stub.id });
-    const thread = mapThread(raw, this.userEmail());
-    this.threads.set(thread.id, thread);
-    this.cacheKeys.set(thread.id, key);
-    return thread;
-  }
 
   /**
-   * The walk: one cheap stub listing, then bodies a few at a time, streaming
-   * pages as they land. Shared per place, and every caller's callbacks are
-   * added to the one in flight — the shell fires loadThreads, loadHeld and
-   * loadSenders together on mount, and three walks at once is exactly what a
-   * first run cannot afford.
+   * The listing: one window of rows, out of the engine's cheap pass, with no
+   * bodies at all.
+   *
+   * This used to be a walk — list the stubs, then `mail_get_thread` every one of
+   * them to find out who it was from. That is five round trips and every byte of
+   * every message per row, serialised on the one IMAP connection, and on a
+   * 40,000-thread account it is a first run measured in hours. A row needs a
+   * name, a subject, a date and a preview line, and the engine now answers all
+   * four in bulk.
+   *
+   * Shared per place, and every caller's callbacks join the one in flight — the
+   * shell fires loadThreads, loadHeld and loadSenders together on mount.
    */
   private hydrate(
     place: 'inbox' | 'archive',
     onProgress?: (done: number, listed?: number) => void,
     onPage?: (threads: Thread[]) => void,
   ): Promise<Thread[]> {
+    const cached = this.windows.get(place);
+    if (cached && Date.now() - cached.at < WINDOW_TTL_MS) {
+      onProgress?.(cached.threads.length, cached.total);
+      onPage?.(cached.threads);
+      return Promise.resolve(cached.threads);
+    }
+
     const existing = this.hydrating.get(place);
     if (existing) {
       if (onProgress) existing.listeners.add(onProgress);
@@ -232,71 +314,112 @@ export class ImapMailProvider implements MailProvider {
     const pageListeners = new Set<(threads: Thread[]) => void>();
     if (onPage) pageListeners.add(onPage);
 
-    const promise = this.walk(
-      place,
-      (done, listed) => listeners.forEach((l) => l(done, listed)),
-      (partial) => pageListeners.forEach((l) => l(partial)),
-    ).finally(() => this.hydrating.delete(place));
+    // A refresh re-lists however deep the user had already paged, or one page
+    // if they hadn't — "Show older" is not undone by the list going stale.
+    const depth = Math.max(PAGE_SIZE, cached?.threads.length ?? 0);
+    const promise = this.listWindow(place, 0, depth)
+      .then((window) => {
+        listeners.forEach((l) => l(window.threads.length, window.total));
+        pageListeners.forEach((l) => l(window.threads));
+        return window.threads;
+      })
+      .finally(() => this.hydrating.delete(place));
 
     this.hydrating.set(place, { promise, listeners, pageListeners });
     return promise;
   }
 
-  private async walk(
+  /**
+   * Fetches one window. An offset of zero replaces the place's rows; anything
+   * else appends, which is what "Show older" does.
+   */
+  private async listWindow(
     place: 'inbox' | 'archive',
-    onProgress?: (done: number, listed?: number) => void,
-    onPage?: (threads: Thread[]) => void,
-  ): Promise<Thread[]> {
+    offset: number,
+    limit: number = PAGE_SIZE,
+  ): Promise<Window> {
     await this.getAccount();
 
-    const page = await this.call<BridgeListPage>('mail_list_threads', { place });
-    const out: Thread[] = [];
-    let done = 0;
+    const page = await this.call<BridgeListPage>('mail_list_threads', {
+      place,
+      offset,
+      limit,
+    });
+    const rows = page.threads.map((stub) => {
+      // A conversation already opened has real bodies; a listing must not
+      // replace those with a preview line.
+      const hydrated = this.threads.get(stub.id);
+      const fresh = this.cacheKeys.get(stub.id) === cacheKey(stub);
+      return hydrated && fresh ? hydrated : mapStub(stub);
+    });
 
-    // An empty place still publishes once: a caller that passed onPage is
-    // owed the final state however short the walk was, or its screen keeps
-    // whatever it was showing before.
-    if (page.threads.length === 0) {
-      onProgress?.(0, 0);
-      onPage?.([]);
-    }
-
-    for (let i = 0; i < page.threads.length; i += HYDRATE_BATCH) {
-      const batch = page.threads.slice(i, i + HYDRATE_BATCH);
-      const threads = await Promise.all(
-        batch.map((stub) => this.fetchThread(stub).catch(() => null)),
-      );
-      out.push(...threads.filter((t): t is Thread => t !== null));
-
-      done += batch.length;
-      onProgress?.(done, page.total);
-      // Newest first, same as the finished list, so the screen never reorders
-      // under the reader as later pages land.
-      onPage?.([...out].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt)));
-    }
-
-    return out.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
+    const before = offset === 0 ? [] : (this.windows.get(place)?.threads ?? []);
+    const seen = new Set(before.map((t) => t.id));
+    const window: Window = {
+      threads: [...before, ...rows.filter((t) => !seen.has(t.id))].sort((a, b) =>
+        b.lastMessageAt.localeCompare(a.lastMessageAt),
+      ),
+      total: page.total,
+      at: Date.now(),
+    };
+    this.windows.set(place, window);
+    return window;
   }
 
+  /** Drops rows from a place's listing without re-fetching it. */
+  private dropRows(place: 'inbox' | 'archive', threadIds: string[]): void {
+    const window = this.windows.get(place);
+    if (!window) return;
+    const gone = new Set(threadIds);
+    const threads = window.threads.filter((t) => !gone.has(t.id));
+    this.windows.set(place, {
+      ...window,
+      threads,
+      total: Math.max(0, window.total - (window.threads.length - threads.length)),
+    });
+  }
+
+  /**
+   * Rewrites a listed row wherever it is listed, so the next load reads the
+   * change instead of re-fetching the place to find out about it.
+   */
+  private updateRow(threadId: string, next: (row: Thread) => Thread): void {
+    for (const [place, window] of this.windows) {
+      const index = window.threads.findIndex((t) => t.id === threadId);
+      if (index === -1) continue;
+      const threads = [...window.threads];
+      threads[index] = next(threads[index]);
+      this.windows.set(place, { ...window, threads });
+    }
+  }
+
+  /**
+   * §5.2b, and it no longer walks anything.
+   *
+   * What setup actually does is read the sent-mail sample — which is what makes
+   * the user's real correspondents known before their first inbox — and list the
+   * first window of rows. Both are bounded and both are fast, so the counter
+   * reports the rows it listed rather than a total in the tens of thousands it
+   * used to spend an hour reaching.
+   */
   async sync(onProgress: (p: SyncProgress) => void): Promise<void> {
-    await this.getAccount();
     onProgress({ total: null, done: 0, step: 'connect' });
+    await this.getAccount();
 
     onProgress({ total: null, done: 0, step: 'contacts' });
     await this.buildKnownSet();
 
-    const alreadyHeld = [...this.threads.values()].filter((t) => t.place === 'inbox').length;
-    onProgress({ total: null, done: alreadyHeld, step: 'history' });
+    onProgress({ total: null, done: 0, step: 'history' });
+    const threads = await this.hydrate('inbox');
 
-    let total: number | null = null;
-    const threads = await this.hydrate('inbox', (done, listed) => {
-      if (listed !== undefined) total = listed;
-      onProgress({ total, done, step: 'history' });
-    });
-    total = threads.length;
+    // D34's counter reports the *mailbox*, which the engine counts in full, not
+    // the window that was listed — the two are 40,000 and 200 on a large
+    // account, and the honest number is the one the user recognises.
+    const total = this.windows.get('inbox')?.total ?? threads.length;
+    const listed = threads.length;
 
-    onProgress({ total, done: total, step: 'senders' });
-    onProgress({ total, done: total, step: 'complete' });
+    onProgress({ total, done: listed, step: 'senders' });
+    onProgress({ total, done: listed, step: 'complete' });
   }
 
   async listThreads(
@@ -311,6 +434,20 @@ export class ImapMailProvider implements MailProvider {
     return this.visible(all, place);
   }
 
+  hasOlder(place: 'inbox' | 'archive'): boolean {
+    const window = this.windows.get(place);
+    return window ? window.threads.length < window.total : false;
+  }
+
+  async listOlder(place: 'inbox' | 'archive'): Promise<Thread[]> {
+    const window = this.windows.get(place);
+    if (!window || window.threads.length >= window.total) {
+      return this.visible(window?.threads ?? [], place);
+    }
+    const next = await this.listWindow(place, window.threads.length);
+    return this.visible(next.threads, place);
+  }
+
   async getThread(threadId: string): Promise<Thread> {
     const cached = this.threads.get(threadId);
     if (cached) return cached;
@@ -318,16 +455,46 @@ export class ImapMailProvider implements MailProvider {
     const raw = await this.call<BridgeThread>('mail_get_thread', { threadId });
     const thread = mapThread(raw, this.userEmail());
     this.threads.set(thread.id, thread);
+    this.cacheKeys.set(thread.id, fetchedKey(raw));
+    // The listed row for this thread was a preview; now that the real
+    // conversation is here, the row becomes it — the reader and the list show
+    // the same object, and the snippet stops being an approximation.
+    this.updateRow(thread.id, () => thread);
     return thread;
   }
 
+  /**
+   * The Screener's stack. Bodies matter here — the card shows a preview and
+   * §7.9's AI read summarises it — so held conversations are the one thing a
+   * listing hydrates, and the cutoff is what keeps that affordable: after setup
+   * this is the mail that has arrived since, not the mailbox.
+   */
   async listHeld(): Promise<HeldSender[]> {
     const inbox = await this.hydrate('inbox');
-    const bySender = new Map<string, HeldSender>();
-
-    for (const thread of inbox) {
+    const held = inbox.filter((thread) => {
       const sender = this.threadSender(thread);
-      if (!sender || this.isKnown(sender.email) || this.isDeclined(sender.email)) continue;
+      return sender !== null && this.heldInScreener(sender.email, thread);
+    });
+
+    const hydrated: Thread[] = [];
+    const wanted = held.slice(0, HELD_HYDRATE_CAP);
+    for (let i = 0; i < wanted.length; i += HYDRATE_BATCH) {
+      const batch = await Promise.all(
+        wanted.slice(i, i + HYDRATE_BATCH).map(async (thread) => {
+          if (!thread.preview) return thread;
+          return this.getThread(thread.id).catch(() => thread);
+        }),
+      );
+      hydrated.push(...batch);
+    }
+    // Past the cap the card still exists, with the preview line as its body —
+    // a sender you cannot read is worse than a sender summarised in one line.
+    hydrated.push(...held.slice(HELD_HYDRATE_CAP));
+
+    const bySender = new Map<string, HeldSender>();
+    for (const thread of hydrated) {
+      const sender = this.threadSender(thread);
+      if (!sender) continue;
 
       const key = sender.email.toLowerCase();
       const messages = thread.messages.filter((m) => !m.isFromUser);
@@ -362,12 +529,30 @@ export class ImapMailProvider implements MailProvider {
     await this.call('mail_mark_read', { threadId, read });
     const cached = this.threads.get(threadId);
     if (cached) cached.unread = !read;
+    this.updateRow(threadId, (row) => ({ ...row, unread: !read }));
   }
 
   async setPlace(threadId: string, place: 'inbox' | 'archive'): Promise<void> {
     await this.call('mail_set_place', { threadId, place });
     const cached = this.threads.get(threadId);
     if (cached) cached.place = place;
+
+    // The thread has left one place for the other (§2.1: exactly one place).
+    // Moving the row rather than re-listing both is what keeps archiving from
+    // costing a listing of the whole mailbox.
+    const from = place === 'inbox' ? 'archive' : 'inbox';
+    const row = this.windows.get(from)?.threads.find((t) => t.id === threadId);
+    this.dropRows(from, [threadId]);
+    const target = this.windows.get(place);
+    if (target && row) {
+      this.windows.set(place, {
+        ...target,
+        threads: [{ ...row, place }, ...target.threads].sort((a, b) =>
+          b.lastMessageAt.localeCompare(a.lastMessageAt),
+        ),
+        total: target.total + 1,
+      });
+    }
   }
 
   async decideSender(senderId: string, decision: 'approved' | 'declined'): Promise<void> {
@@ -379,9 +564,13 @@ export class ImapMailProvider implements MailProvider {
      * D7 — a Screener decline archives what was waiting, in Gmail itself,
      * under Pigeon/Declined — the user's real mailbox honours the decision
      * too, not just Pigeon's view of it.
+     *
+     * "What was waiting" is the listed inbox, not the body cache: a decline
+     * follows a Screener card, and a Screener card is now built from rows that
+     * may never have had their bodies fetched at all.
      */
-    const held = [...this.threads.values()].filter(
-      (t) => t.place === 'inbox' && this.threadSender(t)?.email.toLowerCase() === email,
+    const held = (this.windows.get('inbox')?.threads ?? []).filter(
+      (t) => this.threadSender(t)?.email.toLowerCase() === email,
     );
     const silenced: string[] = [];
     for (const thread of held) {
@@ -392,6 +581,7 @@ export class ImapMailProvider implements MailProvider {
       this.threads.delete(thread.id);
       this.cacheKeys.delete(thread.id);
     }
+    this.dropRows('inbox', silenced);
     this.decisions.addSilenced(email, silenced);
   }
 
@@ -402,6 +592,9 @@ export class ImapMailProvider implements MailProvider {
     for (const threadId of restore) {
       await this.call('mail_silence', { threadId, silence: false }).catch(() => undefined);
     }
+    // The decline dropped these rows from the listing; putting them back in
+    // Gmail is only half of "and its mail with it".
+    if (restore.length > 0) this.windows.delete('inbox');
   }
 
   async listSenders(status: 'approved' | 'declined'): Promise<Sender[]> {
@@ -534,17 +727,21 @@ export class ImapMailProvider implements MailProvider {
 
     // Gmail's own query language, straight through X-GM-RAW. Same semantics
     // the REST provider's `q` parameter had, because they are the same engine.
-    const page = await this.call<BridgeListPage>('mail_search', { query: q });
-    const stubs = page.threads.slice(0, SEARCH_CAP);
+    const page = await this.call<BridgeListPage>('mail_search', {
+      query: q,
+      limit: SEARCH_CAP,
+    });
 
-    const threads: (Thread | null)[] = [];
-    for (let i = 0; i < stubs.length; i += HYDRATE_BATCH) {
-      threads.push(
-        ...(await Promise.all(
-          stubs.slice(i, i + HYDRATE_BATCH).map((s) => this.fetchThread(s).catch(() => null)),
-        )),
-      );
-    }
+    // Rows, not conversations. Five hundred results used to be five hundred
+    // `mail_get_thread` calls — 2,500 round trips and every byte of every
+    // matching message — to draw a list that shows a name, a subject and a
+    // line of preview. Opening a result fetches its bodies, like anywhere else.
+    const threads: (Thread | null)[] = page.threads.map((stub) => {
+      const hydrated = this.threads.get(stub.id);
+      return hydrated && this.cacheKeys.get(stub.id) === cacheKey(stub)
+        ? hydrated
+        : mapStub(stub);
+    });
 
     const inbox: Thread[] = [];
     const archive: Thread[] = [];

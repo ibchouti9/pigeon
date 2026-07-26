@@ -469,7 +469,7 @@ export function SearchRoute() {
                       timestamp={formatListTimestamp(t.lastMessageAt)}
                       timestampSpoken={relativeTime(t.lastMessageAt)}
                       unread={t.unread}
-                      messageCount={t.messages.length}
+                      messageCount={t.messageCount ?? t.messages.length}
                       hasAttachment={t.messages.some((m) => m.attachments.length > 0)}
                       isNewlyApproved={false}
                       checked={false}

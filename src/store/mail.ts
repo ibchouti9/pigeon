@@ -30,9 +30,19 @@ interface MailState {
   /** Set when Google revoked access — locks the shell (§5.5). */
   revoked: boolean;
 
+  /**
+   * Whether each place holds older conversations than the ones listed, and
+   * whether a request for them is in flight. A listing is a window: a real
+   * mailbox can hold tens of thousands of threads and drawing the first screen
+   * must not depend on reaching the last one.
+   */
+  hasOlder: Record<'inbox' | 'archive', boolean>;
+  loadingOlder: Record<'inbox' | 'archive', boolean>;
+
   setProvider: (p: MailProvider) => void;
   loadAccount: () => Promise<void>;
   loadThreads: (place: 'inbox' | 'archive') => Promise<void>;
+  loadOlder: (place: 'inbox' | 'archive') => Promise<void>;
   loadHeld: () => Promise<void>;
   loadSenders: () => Promise<void>;
   loadContacts: () => Promise<void>;
@@ -126,6 +136,8 @@ export const useMail = create<MailState>((set, get) => ({
     held: 'idle',
     senders: 'idle',
   },
+  hasOlder: { inbox: false, archive: false },
+  loadingOlder: { inbox: false, archive: false },
   revoked: false,
   providerEpoch: 0,
   deciding: 0,
@@ -149,6 +161,8 @@ export const useMail = create<MailState>((set, get) => ({
         held: 'idle',
         senders: 'idle',
       },
+      hasOlder: { inbox: false, archive: false },
+      loadingOlder: { inbox: false, archive: false },
       revoked: false,
     })),
 
@@ -197,12 +211,43 @@ export const useMail = create<MailState>((set, get) => ({
       );
       if (get().providerEpoch !== epoch) return;
       publish(threads, true);
+      set((s) => ({
+        hasOlder: { ...s.hasOlder, [place]: get().provider.hasOlder(place) },
+      }));
     } catch (error) {
       if (get().providerEpoch !== epoch) return;
       set((s) => ({
         status: { ...s.status, [place]: 'error' },
         revoked: s.revoked || isRevoked(error),
       }));
+    }
+  },
+
+  loadOlder: async (place) => {
+    const epoch = get().providerEpoch;
+    if (get().loadingOlder[place]) return;
+    set((s) => ({ loadingOlder: { ...s.loadingOlder, [place]: true } }));
+    try {
+      const threads = await get().provider.listOlder(place);
+      if (get().providerEpoch !== epoch) return;
+      set((s) => ({
+        [place]: threads,
+        hasOlder: { ...s.hasOlder, [place]: get().provider.hasOlder(place) },
+      }) as Partial<MailState>);
+    } catch (error) {
+      if (get().providerEpoch !== epoch) return;
+      // The rows already listed are still good — this is one page failing, not
+      // the place, so the list keeps what it has and the button can be used
+      // again rather than the screen dropping to §7.6's error state.
+      set((s) => ({ revoked: s.revoked || isRevoked(error) }));
+      toast.error("Couldn't load older mail. Check your connection and try again.", {
+        label: 'Try again',
+        run: () => void get().loadOlder(place),
+      });
+    } finally {
+      if (get().providerEpoch === epoch) {
+        set((s) => ({ loadingOlder: { ...s.loadingOlder, [place]: false } }));
+      }
     }
   },
 

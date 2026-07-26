@@ -78,6 +78,16 @@
 }
 
 /* ---------- states ---------- */
+/*
+ * The end of the window, not the end of the mailbox. Inside `.scroll`, below the
+ * list, so it arrives when the user reaches the last listed row.
+ */
+.olderRow {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
 .stateBlock {
   flex: 1;
   display: flex;

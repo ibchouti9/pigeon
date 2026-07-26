@@ -48,13 +48,31 @@ export interface BridgeThread {
 export interface BridgeStub {
   id: string;
   lastMessageAt: string;
+  /** When the conversation started — the date §2.3's rules are about. */
+  firstMessageAt: string;
   unread: boolean;
   messageCount: number;
+  /** §2.1's one place, decided the same way `BridgeThread.inInbox` decides it. */
+  inInbox: boolean;
   lastUid: number;
+  /** The newest message that isn't the user's own send. */
+  previewUid: number;
+  /** True when the thread holds nothing incoming at all. */
+  fromUser: boolean;
+  /**
+   * Everything below is filled by the engine's enrichment pass, for the window
+   * being listed. Absent means "not asked for yet", not "empty".
+   */
+  from: BridgeAddress | null;
+  subject: string | null;
+  snippetText: string | null;
+  snippetHtml: string | null;
 }
 
 export interface BridgeListPage {
+  /** The requested window, newest first. */
   threads: BridgeStub[];
+  /** Every thread the query matches, not the size of this page. */
   total: number;
 }
 

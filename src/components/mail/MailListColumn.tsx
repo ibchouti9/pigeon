@@ -57,6 +57,14 @@ export interface MailListColumnProps {
   onSendTest: () => void;
   onRetry: () => void;
   onConnectGmail: () => void;
+  /**
+   * §2.1's counts stay honest while the list stays a window: a real mailbox can
+   * hold tens of thousands of conversations, and the first screen must not wait
+   * on the last one. Absent (the demo) means the list is already everything.
+   */
+  hasOlder?: boolean;
+  loadingOlder?: boolean;
+  onLoadOlder?: () => void;
   /** Narrow tablet (720–879px) — the list is the whole single column. */
   fullWidth?: boolean;
 }
@@ -103,6 +111,9 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
       onSendTest,
       onRetry,
       onConnectGmail,
+      hasOlder,
+      loadingOlder,
+      onLoadOlder,
       fullWidth,
     },
     ref,
@@ -464,7 +475,7 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
                           timestamp={formatListTimestamp(t.lastMessageAt)}
                           timestampSpoken={relativeTime(t.lastMessageAt)}
                           unread={t.unread}
-                          messageCount={t.messages.length}
+                          messageCount={t.messageCount ?? t.messages.length}
                           hasAttachment={t.messages.some((m) => m.attachments.length > 0)}
                           isNewlyApproved={isNewlyApproved(t.approvedAt)}
                           checked={checked.has(t.id)}
@@ -493,6 +504,18 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
               })()}
               <div style={{ height: windowed.bottomPad }} aria-hidden="true" />
             </div>
+            {hasOlder && onLoadOlder && (
+              <div className={styles.olderRow}>
+                <Button
+                  variant="secondary"
+                  onClick={onLoadOlder}
+                  aria-disabled={!online || loadingOlder || undefined}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  {loadingOlder ? 'Loading older mail…' : 'Show older mail'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

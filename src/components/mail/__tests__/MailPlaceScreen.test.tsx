@@ -30,6 +30,12 @@ class StubProvider implements MailProvider {
   async listThreads(_place: 'inbox' | 'archive'): Promise<Thread[]> {
     return [];
   }
+  hasOlder(_place: 'inbox' | 'archive'): boolean {
+    return false;
+  }
+  async listOlder(_place: 'inbox' | 'archive'): Promise<Thread[]> {
+    return [];
+  }
   async getThread(_id: string): Promise<Thread> {
     throw new Error('not implemented');
   }

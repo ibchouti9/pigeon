@@ -33,6 +33,9 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const revoked = useMail((s) => s.revoked);
   const account = useMail((s) => s.account);
   const loadThreads = useMail((s) => s.loadThreads);
+  const loadOlder = useMail((s) => s.loadOlder);
+  const hasOlder = useMail((s) => s.hasOlder[place]);
+  const loadingOlder = useMail((s) => s.loadingOlder[place]);
   const markRead = useMail((s) => s.markRead);
   const setPlace = useMail((s) => s.setPlace);
   const setPlaceMany = useMail((s) => s.setPlaceMany);
@@ -53,15 +56,25 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const listed = threadId ? threads.find((t) => t.id === threadId) : undefined;
 
   /*
-   * A reader URL for a thread the loaded list doesn't hold — a bookmark, a
-   * link someone was sent, or on a real Gmail account anything past the walk's
-   * 2,000-thread ceiling. §5.6's error state offers "Try again", which reloads
-   * the same list and still won't contain it: a dead end that looks like a
-   * failure. `getThread` exists on both providers for exactly this.
+   * Two reasons the open thread has to come from the provider rather than the
+   * list.
+   *
+   * A URL for a thread the loaded list doesn't hold — a bookmark, a link
+   * someone was sent, or anything past the listing's window on a real account.
+   * §5.6's error state offers "Try again", which reloads the same list and
+   * still won't contain it: a dead end that looks like a failure.
+   *
+   * And a listed row that is only a *row*: the real provider lists
+   * `Thread.preview` rows, which carry a sender, a subject and a preview line
+   * and no bodies, because hydrating a whole mailbox to draw a list of names is
+   * what made a 40,000-thread account unopenable. Reading needs the messages.
+   *
+   * `getThread` answers both, on both providers.
    */
   const [fetched, setFetched] = useState<Thread | null>(null);
   const [fetchFailed, setFetchFailed] = useState(false);
   const missing = Boolean(threadId) && !listed && status === 'ready';
+  const unhydrated = Boolean(threadId) && Boolean(listed?.preview);
 
   useEffect(() => {
     setFetched(null);
@@ -69,7 +82,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   }, [threadId]);
 
   useEffect(() => {
-    if (!missing || !threadId) return;
+    if ((!missing && !unhydrated) || !threadId) return;
     const { provider } = useMail.getState();
 
     /*
@@ -92,9 +105,15 @@ export function MailPlaceScreen({ place }: { place: Place }) {
     return () => {
       live = false;
     };
-  }, [missing, threadId]);
+  }, [missing, unhydrated, threadId]);
 
-  const openThread = listed ?? fetched ?? undefined;
+  /*
+   * The fetched conversation wins. A listed row for the same thread may be a
+   * preview, and showing that in the reader is showing one synthetic message
+   * where a conversation belongs — the row's own preview line dressed up as the
+   * whole of what someone wrote.
+   */
+  const openThread = fetched ?? (unhydrated ? undefined : listed) ?? undefined;
 
   // D14 — the reply composer lives in the reading pane, not the dock.
   const reply = useThreadReply(openThread, online);
@@ -280,6 +299,9 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           }
           onRetry={() => void loadThreads(place)}
           onConnectGmail={() => navigate('/settings/account')}
+          hasOlder={hasOlder}
+          loadingOlder={loadingOlder}
+          onLoadOlder={() => void loadOlder(place)}
         />
       )}
       {showReader && (

@@ -62,13 +62,20 @@ describe('the rail sync line (§3.1 3a)', () => {
     expect(bar()).toBeNull();
   });
 
+  /**
+   * The step the sync reached, not a fraction of the mailbox. `total` is the
+   * size of the inbox — the engine counts every conversation in it — while
+   * setting up lists one window, so `done / total` reported 2% for a sync one
+   * step from finished.
+   */
   it('reports progress while sync is still running', () => {
     renderRail();
-    act(() => sync.emit({ total: 11_908, done: 2_977, step: 'history' }));
+    act(() => sync.emit({ total: 11_908, done: 200, step: 'history' }));
 
     const line = bar();
     expect(line).toBeInTheDocument();
-    expect(line).toHaveAttribute('aria-valuenow', '25');
+    // 'history' is the third of five steps.
+    expect(line).toHaveAttribute('aria-valuenow', '60');
   });
 
   it('disappears once sync completes', () => {
