@@ -92,7 +92,8 @@
   color: var(--color-text-primary);
 }
 
-.modelSelect:disabled {
+.modelSelect:disabled,
+.modelSelect[aria-disabled='true'] {
   color: var(--color-text-disabled);
   background: var(--color-surface-sunken);
   border-color: var(--color-border-subtle);

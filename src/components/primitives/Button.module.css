@@ -13,7 +13,14 @@
     color var(--duration-fast) var(--ease-standard);
 }
 
-.button:disabled {
+/*
+ * Offline controls are marked with aria-disabled, not the disabled attribute,
+ * so they keep their tab stop (§5.4, §5.6). Every disabled rule below has to
+ * match both — otherwise those buttons render as fully live and the only
+ * feedback for a click is nothing happening.
+ */
+.button:disabled,
+.button[aria-disabled='true'] {
   cursor: not-allowed;
 }
 
@@ -49,15 +56,16 @@
   color: var(--color-text-inverse);
 }
 
-.primary:hover:not(:disabled) {
+.primary:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-accent-hover);
 }
 
-.primary:active:not(:disabled) {
+.primary:active:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-accent-active);
 }
 
-.primary:disabled {
+.primary:disabled,
+.primary[aria-disabled='true'] {
   background: var(--color-surface-sunken);
   color: var(--color-text-disabled);
 }
@@ -69,15 +77,16 @@
   color: var(--color-text-primary);
 }
 
-.secondary:hover:not(:disabled) {
+.secondary:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-surface-hover);
 }
 
-.secondary:active:not(:disabled) {
+.secondary:active:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-surface-active);
 }
 
-.secondary:disabled {
+.secondary:disabled,
+.secondary[aria-disabled='true'] {
   border-color: var(--color-border-subtle);
   color: var(--color-text-disabled);
 }
@@ -89,17 +98,18 @@
   color: var(--color-text-destructive);
 }
 
-.secondaryDestructive:hover:not(:disabled) {
+.secondaryDestructive:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-destructive-subtle);
   border-color: var(--color-destructive);
 }
 
-.secondaryDestructive:active:not(:disabled) {
+.secondaryDestructive:active:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-destructive-subtle);
   border-color: var(--color-destructive-hover);
 }
 
-.secondaryDestructive:disabled {
+.secondaryDestructive:disabled,
+.secondaryDestructive[aria-disabled='true'] {
   border-color: var(--color-border-subtle);
   color: var(--color-text-disabled);
 }
@@ -113,15 +123,16 @@
   padding-right: 0;
 }
 
-.tertiary:hover:not(:disabled) {
+.tertiary:hover:not(:disabled):not([aria-disabled="true"]) {
   text-decoration: underline;
 }
 
-.tertiary:active:not(:disabled) {
+.tertiary:active:not(:disabled):not([aria-disabled="true"]) {
   color: var(--color-accent-active);
 }
 
-.tertiary:disabled {
+.tertiary:disabled,
+.tertiary[aria-disabled='true'] {
   color: var(--color-text-disabled);
 }
 
@@ -148,16 +159,17 @@
   height: 28px;
 }
 
-.icon:hover:not(:disabled) {
+.icon:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
 
-.icon:active:not(:disabled) {
+.icon:active:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-surface-active);
 }
 
-.icon:disabled {
+.icon:disabled,
+.icon[aria-disabled='true'] {
   color: var(--color-text-disabled);
 }
 

@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useMail, useHeldCount, useUnreadCount } from '../../store/mail';
 import { useCompose } from '../../store/compose';
+import { useOnline } from '../../hooks/useOnline';
 import { Button } from '../primitives/Button';
 import { Icon, type IconName } from '../primitives/Icon';
 import { Monogram } from '../primitives/Monogram';
@@ -35,6 +36,7 @@ export function NavRail({ compact, searchRef }: NavRailProps) {
   const unread = useUnreadCount();
   const heldCount = useHeldCount();
   const openCompose = useCompose((s) => s.open);
+  const online = useOnline();
   const localRef = useRef<HTMLInputElement>(null);
   const inputRef = searchRef ?? localRef;
 
@@ -132,6 +134,11 @@ export function NavRail({ compact, searchRef }: NavRailProps) {
         ))}
       </div>
 
+      {/*
+        §5.4 — offline disables the archive and compose controls. aria-disabled
+        rather than `disabled` so the control keeps its place in the tab order
+        and a screen reader can still find and explain it.
+      */}
       {compact ? (
         <Button
           variant="primary"
@@ -139,12 +146,23 @@ export function NavRail({ compact, searchRef }: NavRailProps) {
           className={styles.compose}
           aria-label="Compose"
           title="Compose"
-          onClick={() => openCompose()}
+          aria-disabled={!online || undefined}
+          onClick={() => {
+            if (online) openCompose();
+          }}
         >
           <Icon name="compose" size={20} />
         </Button>
       ) : (
-        <Button variant="primary" fullWidth className={styles.compose} onClick={() => openCompose()}>
+        <Button
+          variant="primary"
+          fullWidth
+          className={styles.compose}
+          aria-disabled={!online || undefined}
+          onClick={() => {
+            if (online) openCompose();
+          }}
+        >
           Compose
         </Button>
       )}

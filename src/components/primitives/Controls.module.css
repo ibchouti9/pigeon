@@ -74,8 +74,8 @@
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
-.chipFilter:hover:not(:disabled),
-.chipTone:hover:not(:disabled) {
+.chipFilter:hover:not(:disabled):not([aria-disabled="true"]),
+.chipTone:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-surface-hover);
 }
 

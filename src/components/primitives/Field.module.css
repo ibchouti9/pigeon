@@ -30,7 +30,7 @@
   color: var(--color-text-tertiary);
 }
 
-.input:hover:not(:disabled) {
+.input:hover:not(:disabled):not([aria-disabled="true"]) {
   border-color: var(--color-text-tertiary);
 }
 
@@ -42,7 +42,8 @@
   border-color: var(--color-destructive);
 }
 
-.input:disabled {
+.input:disabled,
+.input[aria-disabled='true'] {
   background: var(--color-surface-sunken);
   color: var(--color-text-disabled);
   border-color: var(--color-border-subtle);
@@ -85,7 +86,7 @@
     border-color var(--duration-fast) var(--ease-standard);
 }
 
-.checkbox:hover:not(:disabled) {
+.checkbox:hover:not(:disabled):not([aria-disabled="true"]) {
   border-color: var(--color-text-primary);
 }
 
@@ -115,7 +116,8 @@
   clip-path: none;
 }
 
-.checkbox:disabled {
+.checkbox:disabled,
+.checkbox[aria-disabled='true'] {
   border-color: var(--color-border-subtle);
   background: var(--color-surface-sunken);
   cursor: not-allowed;
@@ -144,7 +146,7 @@
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.switch:hover:not(:disabled) {
+.switch:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--color-text-tertiary);
 }
 
@@ -157,11 +159,13 @@
   background: var(--color-text-inverse);
 }
 
-.switch:disabled {
+.switch:disabled,
+.switch[aria-disabled='true'] {
   background: var(--color-border-subtle);
   cursor: not-allowed;
 }
 
-.switch:disabled::after {
+.switch:disabled::after,
+.switch[aria-disabled='true']::after {
   background: var(--color-text-disabled);
 }
