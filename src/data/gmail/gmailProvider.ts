@@ -43,6 +43,14 @@ const MAX_THREADS = 2000;
  */
 const MAX_SEARCH_RESULTS = 200;
 
+/**
+ * How much of D10's 24-month sent window is actually read. Every message costs
+ * a metadata request, and this runs during onboarding while the user watches a
+ * progress bar — the point is to recognise the people someone writes to, and
+ * the most recent couple of hundred conversations carry almost all of them.
+ */
+const MAX_SENT_SCAN = PAGE_SIZE * 2;
+
 interface Decisions {
   /** Lowercased email → decision + ISO date. */
   [email: string]: { status: 'approved' | 'declined'; at: string; name?: string };
@@ -227,13 +235,21 @@ export class GmailMailProvider implements MailProvider {
       }>(`${GMAIL}/messages?${params}`);
 
       const ids = (page.messages ?? []).map((m) => m.id);
-      const metadata = await Promise.all(
-        ids.map((id) =>
-          this.call<GmailMessage>(
-            `${GMAIL}/messages/${id}?format=metadata&metadataHeaders=To&metadataHeaders=Cc`,
-          ).catch(() => null),
-        ),
-      );
+      // Ten at a time, like every other fan-out here. This fired one request
+      // per message in the page — up to a hundred at once, during onboarding,
+      // which is exactly when a first run is most likely to meet a 429.
+      const metadata: (GmailMessage | null)[] = [];
+      for (let i = 0; i < ids.length; i += 10) {
+        metadata.push(
+          ...(await Promise.all(
+            ids.slice(i, i + 10).map((id) =>
+              this.call<GmailMessage>(
+                `${GMAIL}/messages/${id}?format=metadata&metadataHeaders=To&metadataHeaders=Cc`,
+              ).catch(() => null),
+            ),
+          )),
+        );
+      }
 
       for (const message of metadata) {
         for (const h of message?.payload?.headers ?? []) {
@@ -249,7 +265,7 @@ export class GmailMailProvider implements MailProvider {
       pageToken = page.nextPageToken;
       // Two pages of sent mail is enough signal for day one without making the
       // user wait on a full history walk.
-    } while (pageToken && scanned < PAGE_SIZE * 2);
+    } while (pageToken && scanned < MAX_SENT_SCAN);
   }
 
   async sync(onProgress: (p: SyncProgress) => void): Promise<void> {

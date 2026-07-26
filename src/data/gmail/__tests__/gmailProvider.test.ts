@@ -556,3 +556,46 @@ describe('concurrent walks of the same place', () => {
     expect(listings).toBe(2);
   });
 });
+
+/**
+ * D10 builds the known-sender set from contacts plus a sent-mail window. The
+ * window's metadata fetches went out one per message in the page — up to a
+ * hundred at once, during onboarding, which is exactly when a first run is
+ * most likely to meet a 429.
+ */
+describe('the sent-mail scan (D10)', () => {
+  it('batches its metadata fetches like every other fan-out', async () => {
+    const inFlight = { now: 0, peak: 0 };
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\//.test(href)) {
+        return new Response(JSON.stringify({ names: [{ displayName: 'Marc' }] }), { status: 200 });
+      }
+      if (/messages\?/.test(href)) {
+        return new Response(
+          JSON.stringify({ messages: Array.from({ length: 100 }, (_, i) => ({ id: `m${i}` })) }),
+          { status: 200 },
+        );
+      }
+      if (/messages\//.test(href)) {
+        inFlight.now += 1;
+        inFlight.peak = Math.max(inFlight.peak, inFlight.now);
+        await new Promise((r) => setTimeout(r, 1));
+        inFlight.now -= 1;
+        return new Response(
+          JSON.stringify({ payload: { headers: [{ name: 'To', value: 'dana@lumen.com' }] } }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ threads: [] }), { status: 200 });
+    });
+
+    await new GmailMailProvider().getKnownSenders();
+
+    expect(inFlight.peak).toBeGreaterThan(0);
+    expect(inFlight.peak).toBeLessThanOrEqual(10);
+  });
+});
