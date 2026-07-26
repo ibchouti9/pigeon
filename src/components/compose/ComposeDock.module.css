@@ -127,3 +127,21 @@
     border-radius: 0;
   }
 }
+
+/* §5.12 — below 880px the dock is a full-screen sheet with a Cancel/Send header. */
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 52px;
+  padding: 0 var(--space-3);
+  border-bottom: var(--border-hairline);
+  background: var(--color-surface);
+}
+
+.sheetTitle {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+}

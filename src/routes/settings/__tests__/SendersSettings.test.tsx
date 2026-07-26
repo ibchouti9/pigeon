@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { SendersSettings } from '../SendersSettings';
@@ -83,7 +83,8 @@ describe('SendersSettings', () => {
     const row = screen.getByTestId('sender-row-a1');
     await userEvent.click(within(row).getByRole('button', { name: 'Decline' }));
 
-    expect(reverse).toHaveBeenCalledWith('a1', 'declined');
+    // §3.6 restamps the row and collapses it before the call goes out.
+    await waitFor(() => expect(reverse).toHaveBeenCalledWith('a1', 'declined'));
   });
 
   it('calls reverse with the sender id and the opposite status on Approve', async () => {
@@ -96,6 +97,6 @@ describe('SendersSettings', () => {
     const row = screen.getByTestId('sender-row-d1');
     await userEvent.click(within(row).getByRole('button', { name: 'Approve' }));
 
-    expect(reverse).toHaveBeenCalledWith('d1', 'approved');
+    await waitFor(() => expect(reverse).toHaveBeenCalledWith('d1', 'approved'));
   });
 });

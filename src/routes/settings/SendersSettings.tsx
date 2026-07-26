@@ -18,6 +18,9 @@ type Tab = 'approved' | 'declined';
 
 /** §5.13b row height. */
 const ROW_HEIGHT = 56;
+
+/** §3.6 — the row collapses over --duration-base before the list drops it. */
+const LEAVE_MS = 180;
 const PANEL_ID = 'senders-panel';
 
 function sortByDecidedDesc(list: Sender[]): Sender[] {
@@ -64,6 +67,36 @@ export function SendersSettings() {
   // tabbable, so nothing was unreachable — but tabbing to row 300 of an
   // approved list is not a way anyone would choose to get there.
   const [cursor, setCursor] = useState(0);
+
+  /**
+   * §3.6 step 3 — "the row's postmark restamps to 'DECLINED · JUL 25' and the
+   * row animates out of the Approved list (180ms collapse)". The store removes
+   * the row the moment `reverse` is called, so the reversal has to be shown
+   * before the call, not after it. 3b's destructive outline goes here too.
+   */
+  const [leaving, setLeaving] = useState<Record<string, 'approved' | 'declined'>>({});
+  const [failedId, setFailedId] = useState<string | null>(null);
+
+  async function handleReverse(senderId: string) {
+    const to = tab === 'approved' ? 'declined' : 'approved';
+    setLeaving((prev) => ({ ...prev, [senderId]: to }));
+    setFailedId(null);
+
+    await new Promise((r) => setTimeout(r, LEAVE_MS));
+    const ok = await reverse(senderId, to);
+
+    setLeaving((prev) => {
+      const next = { ...prev };
+      delete next[senderId];
+      return next;
+    });
+
+    if (!ok) {
+      // §3.6 3b — back in its list, outlined for three seconds.
+      setFailedId(senderId);
+      setTimeout(() => setFailedId((id) => (id === senderId ? null : id)), 3000);
+    }
+  }
 
   useEffect(() => {
     setCursor(0);
@@ -186,7 +219,12 @@ export function SendersSettings() {
                 key={sender.id}
                 data-testid={`sender-row-${sender.id}`}
                 data-sender-row={index}
-                className={cn(styles.row, index === cursor && styles.cursor)}
+                className={cn(
+                  styles.row,
+                  index === cursor && styles.cursor,
+                  leaving[sender.id] && styles.leaving,
+                  failedId === sender.id && styles.failed,
+                )}
                 style={{ height: ROW_HEIGHT }}
               >
                 <Monogram name={sender.name} email={sender.email} size={24} />
@@ -196,8 +234,20 @@ export function SendersSettings() {
                     <span className={cn('t-sm', 'truncate', styles.address)}>{sender.email}</span>
                   </div>
                   <Postmark
-                    verb={tab === 'approved' ? 'Approved' : 'Declined'}
-                    date={sender.decidedAt ?? new Date().toISOString()}
+                    verb={
+                      leaving[sender.id]
+                        ? leaving[sender.id] === 'approved'
+                          ? 'Approved'
+                          : 'Declined'
+                        : tab === 'approved'
+                          ? 'Approved'
+                          : 'Declined'
+                    }
+                    date={
+                      leaving[sender.id]
+                        ? new Date().toISOString()
+                        : (sender.decidedAt ?? new Date().toISOString())
+                    }
                     textOnly
                   />
                 </div>
@@ -205,9 +255,10 @@ export function SendersSettings() {
                   variant="secondary"
                   size="sm"
                   className={styles.actionButton}
-                  onClick={() =>
-                    void reverse(sender.id, tab === 'approved' ? 'declined' : 'approved')
-                  }
+                  aria-disabled={leaving[sender.id] ? 'true' : undefined}
+                  onClick={() => {
+                    if (!leaving[sender.id]) void handleReverse(sender.id);
+                  }}
                 >
                   {tab === 'approved' ? 'Decline' : 'Approve'}
                 </Button>

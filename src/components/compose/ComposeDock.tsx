@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useCompose } from '../../store/compose';
 import { useMail } from '../../store/mail';
 import { useOnline } from '../../hooks/useOnline';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { toast } from '../../store/toast';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
@@ -30,6 +31,10 @@ export function ComposeDock() {
   const provider = useMail((s) => s.provider);
   const loadThreads = useMail((s) => s.loadThreads);
   const online = useOnline();
+  // §5.12's full-screen sheet starts below 880px, which is the 'narrow'
+  // breakpoint the rest of the shell already uses.
+  const isSheet = useBreakpoint() === 'narrow';
+  const [sending, setSending] = useState(false);
 
   const [sendError, setSendError] = useState<string | null>(null);
   const [pulsing, setPulsing] = useState(false);
@@ -55,6 +60,7 @@ export function ComposeDock() {
   async function send() {
     if (!draft) return;
     setSendError(null);
+    setSending(true);
     try {
       const message = await provider.send({
         to: draft.to,
@@ -77,6 +83,8 @@ export function ComposeDock() {
       setSendError(
         "Gmail didn't accept this message. Check the recipient addresses and send again.",
       );
+    } finally {
+      setSending(false);
     }
   }
 
@@ -123,6 +131,30 @@ export function ComposeDock() {
     />
   );
 
+  /*
+   * §5.12 — "below 880px the dock becomes a full-screen sheet with the same
+   * internals and a 'Cancel'/'Send' header". The CSS went full-screen but the
+   * header stayed the dock's: a truncated subject and three icon buttons whose
+   * expand and minimize mean nothing when the sheet already fills the screen.
+   */
+  const sheetHeader = (
+    <div className={styles.sheetHeader}>
+      <Button variant="tertiary" size="sm" onClick={discard}>
+        Cancel
+      </Button>
+      <span className={cn('t-base', 'truncate', styles.sheetTitle)}>{title}</span>
+      <Button
+        variant="primary"
+        size="sm"
+        loading={sending}
+        disabled={!draft.to.length}
+        onClick={() => void send()}
+      >
+        Send
+      </Button>
+    </div>
+  );
+
   const titleBar = (
     <div className={styles.titleBar}>
       <span className={cn('t-base', 'truncate', styles.title)}>{title}</span>
@@ -162,7 +194,7 @@ export function ComposeDock() {
       aria-label="New message"
       className={cn(styles.dock, pulsing && styles.pulse)}
     >
-      {titleBar}
+      {isSheet ? sheetHeader : titleBar}
       {composer}
     </div>
   );

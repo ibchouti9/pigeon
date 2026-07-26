@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { useMail } from '../store/mail';
@@ -10,6 +10,9 @@ import { SearchRoute } from '../routes/SearchRoute';
 import { AppShell } from '../components/shell/AppShell';
 import { MailListColumn } from '../components/mail/MailListColumn';
 import { ThreadReader } from '../components/mail/ThreadReader';
+import { ComposeDock } from '../components/compose/ComposeDock';
+import { useCompose } from '../store/compose';
+import { SendersSettings } from '../routes/settings/SendersSettings';
 
 function resetStores() {
   localStorage.clear();
@@ -244,5 +247,108 @@ describe('a revoked token locks the shell (§5.5)', () => {
 
     expect(await screen.findByText('inbox contents')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^Inbox/ })).not.toHaveAttribute('aria-disabled');
+  });
+});
+
+/**
+ * §5.12 — "below 880px the dock becomes a full-screen sheet with the same
+ * internals and a 'Cancel'/'Send' header". Only the CSS changed: the header
+ * stayed the dock's truncated subject plus expand and minimize, neither of
+ * which means anything on a sheet that already fills the screen.
+ */
+describe('the compose sheet below 880px (§5.12)', () => {
+  beforeEach(resetStores);
+  afterEach(() => {
+    cleanup();
+    useCompose.getState().close();
+    setWidth(1280);
+  });
+
+  function setWidth(width: number) {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    window.dispatchEvent(new Event('resize'));
+  }
+
+  function renderDock() {
+    render(
+      <MemoryRouter>
+        <ComposeDock />
+      </MemoryRouter>,
+    );
+  }
+
+  it('shows Cancel and Send instead of the dock chrome', async () => {
+    setWidth(800);
+    useCompose.getState().open();
+    renderDock();
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Expand' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Minimize' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the dock chrome above 880px', async () => {
+    setWidth(1280);
+    useCompose.getState().open();
+    renderDock();
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * §3.6 step 3 — "the row's postmark restamps to 'DECLINED · JUL 25' and the row
+ * animates out of the Approved list (180ms collapse)", and 3b returns a failed
+ * row "with a destructive 1px outline for 3s". The row was simply moved between
+ * lists with no stamp, no animation and no outline.
+ */
+describe('reversing a decision in Settings (§3.6)', () => {
+  beforeEach(resetStores);
+  afterEach(cleanup);
+
+  async function renderSenders() {
+    render(
+      <MemoryRouter>
+        <SendersSettings />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(document.querySelectorAll('[data-sender-row]').length).toBeGreaterThan(0), {
+      timeout: 3000,
+    });
+  }
+
+  it('restamps the row and collapses it before the call goes out', async () => {
+    const user = userEvent.setup();
+    const reverse = vi.fn<(id: string, to: 'approved' | 'declined') => Promise<boolean>>(
+      () => new Promise(() => {}),
+    );
+    useMail.setState({ reverse });
+    await renderSenders();
+
+    const row = document.querySelector<HTMLElement>('[data-sender-row="0"]')!;
+    await user.click(within(row).getByRole('button', { name: 'Decline' }));
+
+    // The stamp flips first, and the row is on its way out — all before the
+    // store is asked to do anything.
+    expect(row.className).toMatch(/_leaving_/);
+    expect(row.textContent).toMatch(/DECLINED/i);
+    expect(reverse).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(reverse).toHaveBeenCalled());
+  });
+
+  it('outlines the row when the reversal fails (§3.6 3b)', async () => {
+    const user = userEvent.setup();
+    useMail.setState({ reverse: vi.fn().mockResolvedValue(false) });
+    await renderSenders();
+
+    const row = document.querySelector<HTMLElement>('[data-sender-row="0"]')!;
+    await user.click(within(row).getByRole('button', { name: 'Decline' }));
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-sender-row="0"]')?.className).toMatch(/_failed_/);
+    });
   });
 });
