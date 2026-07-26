@@ -97,7 +97,8 @@ export function dateGroupLabel(
 
 /** "Connected 2 days ago" / "2 minutes ago". */
 export function relativeTime(iso: string, now = new Date()): string {
-  const seconds = Math.round((now.getTime() - new Date(iso).getTime()) / 1000);
+  // A clock skew or a future-dated message reads as "just now", not "in -3 days".
+  const seconds = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 1000));
   if (seconds < 60) return 'just now';
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;

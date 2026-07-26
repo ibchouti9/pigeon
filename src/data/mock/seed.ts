@@ -16,9 +16,18 @@ export const DEMO_ACCOUNT = {
 const USER: Address = { name: 'Marc Ferrum', email: 'marc@ferrum.dev' };
 
 function at(daysAgo: number, hour: number, minute = 0): string {
+  const now = new Date();
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
   d.setHours(hour, minute, 0, 0);
+
+  // Run the demo at 9am and a message seeded for 2pm today would be dated in
+  // the future, which reads as "just now" everywhere. Pull anything ahead of
+  // now back into the last half hour, keeping the seeded order intact.
+  if (d.getTime() > now.getTime()) {
+    d.setTime(now.getTime() - (24 - hour) * 60_000);
+  }
+
   return d.toISOString();
 }
 
