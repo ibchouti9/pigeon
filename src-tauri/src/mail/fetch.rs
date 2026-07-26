@@ -6,15 +6,25 @@
 //! against All Mail, because a conversation is one unit wherever its messages
 //! sit — the inbox is a *view* (`in:inbox`), not a place messages live.
 //!
-//! The `imap` crate parses standard FETCH items and knows nothing of the
-//! X-GM-* ones, so metadata comes from one raw FETCH kept deliberately
-//! single-line — no ENVELOPE, no bodies — and parsed by `parse_meta_line`,
-//! which has its own tests. Bodies go through the crate's typed FETCH.
+//! Metadata comes from one raw FETCH kept deliberately single-line — no
+//! ENVELOPE, no bodies — and parsed by `parse_meta_line`, which has its own
+//! tests. Bodies go through the crate's typed FETCH.
+//!
+//! "Raw" is only about which items we read out of the answer, and it was once
+//! believed to mean the crate never looked at it. It does look:
+//! `run_command_and_read_response` parses every untagged line just to find the
+//! tagged terminator, so a line its grammar rejects fails the whole command —
+//! not the line. On imap-proto 0.10 the X-GM-* items had no grammar, and every
+//! listing on every real Gmail account failed as
+//! "Couldn't reach Gmail … (Unable to parse status response)": a request that
+//! reached Gmail and came back, blamed on the network. The imap 3 / imap-proto
+//! 0.16 upgrade is what made this file work at all; the pin in Cargo.toml and
+//! `gmails_own_metadata_answer_survives_the_response_reader` both guard it.
 
 use std::collections::HashMap;
 
 use super::parse::parse_message;
-use super::session::{with_mailbox, ImapSession, Special};
+use super::session::{refused, with_mailbox, ImapSession, Special, WorkError};
 use super::types::{ListPage, MessageJson, ThreadJson, ThreadStub};
 
 /// One message's cheap metadata, from the single-line pass.
@@ -190,9 +200,7 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
             u
         };
         if uids.is_empty() {
-            return Err(imap::Error::Bad(
-                "This thread didn't load. It's still in Gmail.".into(),
-            ));
+            return Err(refused("This thread didn't load. It's still in Gmail."));
         }
 
         let metas: HashMap<u32, Meta> = run_meta_fetch(session, &uids)?
@@ -251,10 +259,10 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
 }
 
 /// The UIDs of one conversation, for the action layer.
-pub fn thread_uids(session: &mut ImapSession, thread_id: &str) -> Result<Vec<u32>, imap::Error> {
+pub fn thread_uids(session: &mut ImapSession, thread_id: &str) -> Result<Vec<u32>, WorkError> {
     let thrid: u64 = thread_id
         .parse()
-        .map_err(|_| imap::Error::Bad(format!("Not a thread id: {thread_id}")))?;
+        .map_err(|_| refused(format!("Not a thread id: {thread_id}")))?;
     let mut uids: Vec<u32> = session
         .uid_search(format!("X-GM-THRID {thrid}"))?
         .into_iter()
@@ -272,9 +280,9 @@ pub fn attachment(uid: u32, index: usize) -> Result<String, String> {
             .iter()
             .find(|f| f.uid == Some(uid))
             .and_then(|f| f.body())
-            .ok_or_else(|| imap::Error::Bad("This attachment didn't load.".into()))?;
+            .ok_or_else(|| refused("This attachment didn't load."))?;
         let bytes = super::parse::attachment_bytes(raw, index)
-            .ok_or_else(|| imap::Error::Bad("This attachment didn't load.".into()))?;
+            .ok_or_else(|| refused("This attachment didn't load."))?;
         use base64::Engine;
         Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
     })
@@ -283,8 +291,84 @@ pub fn attachment(uid: u32, index: usize) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Cursor, Read, Write};
 
     const LINE: &str = r#"* 5 FETCH (UID 123 X-GM-THRID 1751234567890 X-GM-MSGID 1751234567999 FLAGS (\Seen \Flagged) INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
+
+    /// A socket that replays one canned server response.
+    struct Canned {
+        reads: Cursor<Vec<u8>>,
+        wrote: Vec<u8>,
+    }
+
+    impl Read for Canned {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            self.reads.read(buf)
+        }
+    }
+
+    impl Write for Canned {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.wrote.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// Runs the metadata FETCH against a canned response, exactly as
+    /// `run_meta_fetch` does.
+    fn meta_fetch_against(response: &str) -> Result<Vec<u8>, imap::Error> {
+        // a1 is the LOGIN that gets us a Session; a2 is the fetch under test.
+        let script = format!("a1 OK Logged in\r\n{response}");
+        let stream = Canned {
+            reads: Cursor::new(script.into_bytes()),
+            wrote: Vec::new(),
+        };
+        let mut session = imap::Client::new(stream)
+            .login("user", "pass")
+            .map_err(|(e, _)| e)
+            .expect("canned login");
+        session.run_command_and_read_response(
+            "UID FETCH 123 (UID X-GM-THRID X-GM-MSGID FLAGS INTERNALDATE)",
+        )
+    }
+
+    /// The first-run failure, pinned offline. `run_command_and_read_response`
+    /// parses every line it reads just to find the tagged terminator, so a line
+    /// it cannot parse fails the whole command — and on imap-proto 0.10 the
+    /// X-GM-* items have no grammar at all. Every thread listing died here, as
+    /// "Couldn't reach Gmail … (Unable to parse status response)", which named
+    /// the network for a request the network had already delivered.
+    ///
+    /// This is the response Gmail actually sends. If the dependency ever slips
+    /// back below imap-proto 0.16, this test fails before a real account has to.
+    #[test]
+    fn gmails_own_metadata_answer_survives_the_response_reader() {
+        let gmail = format!("{LINE}\r\na2 OK Success\r\n");
+        let response = meta_fetch_against(&gmail).expect("Gmail's own answer did not parse");
+
+        // Read back the way `run_meta_fetch` reads it, so the test covers the
+        // whole path and not just the crate's tolerance of the line.
+        let metas: Vec<Meta> = String::from_utf8_lossy(&response)
+            .lines()
+            .filter_map(parse_meta_line)
+            .collect();
+        assert_eq!(metas.len(), 1);
+        assert_eq!(metas[0].uid, 123);
+        assert_eq!(metas[0].thrid, 1751234567890);
+    }
+
+    /// The control: standard items only, which never depended on the upgrade.
+    #[test]
+    fn the_same_response_without_the_gmail_items_reads_fine() {
+        let plain = concat!(
+            r#"* 5 FETCH (UID 123 FLAGS (\Seen \Flagged) INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#,
+            "\r\na2 OK Success\r\n"
+        );
+        assert!(meta_fetch_against(plain).is_ok());
+    }
 
     #[test]
     fn reads_a_gmail_fetch_line() {

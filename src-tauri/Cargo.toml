@@ -25,8 +25,18 @@ tauri-plugin-http = "2"
 
 # The mail engine: IMAP for reading and acting, SMTP for sending, mail-parser
 # for RFC 2822 → structure. Everything speaks to Gmail's own servers directly.
-imap = "2"
-native-tls = "0.2.13"
+#
+# imap 3's alpha, deliberately, and pinned: it is the first release built on
+# imap-proto 0.16, which is the first version whose FETCH grammar knows the
+# X-GM-* items. imap 2 rides imap-proto 0.10, which does not — and because the
+# crate parses every untagged line it reads just to find the tagged
+# terminator, an unparseable line fails the whole command. That made *every*
+# thread listing impossible on a real Gmail account; see `run_meta_fetch`.
+imap = "=3.0.0-alpha.15"
+# `imap` does not re-export imap-proto's types, and SPECIAL-USE discovery needs
+# `NameAttribute` by name — see `find_special`. Cargo unifies this with the
+# copy `imap` itself depends on.
+imap-proto = "0.16"
 mail-parser = "0.11.5"
 lettre = "0.11.19"
 chrono = "0.4.45"

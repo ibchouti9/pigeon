@@ -7,8 +7,6 @@
 //! the user, like their mail breaking at random.
 
 use keyring::Entry;
-use native_tls::{TlsConnector, TlsStream};
-use std::net::TcpStream;
 use std::sync::Mutex;
 
 use super::types::Credentials;
@@ -19,7 +17,33 @@ const PORT: u16 = 993;
 const KEYCHAIN_SERVICE: &str = "com.pigeonmail.pigeon";
 const ACCOUNT_ENTRY: &str = "gmail-app-password";
 
-pub type ImapSession = imap::Session<TlsStream<TcpStream>>;
+pub type ImapSession = imap::Session<imap::Connection>;
+
+/// What a unit of mailbox work can fail with.
+///
+/// The two cases have to stay apart because `with_mailbox` reconnects and
+/// tries again on anything that smells like a dropped connection: `Refused` is
+/// Pigeon's own words about a request that will fail again just as fast, and
+/// `Imap` is whatever the wire did. These used to be one type, with our own
+/// refusals dressed up as server BAD responses — imap 3 marks `Bad` and `No`
+/// `#[non_exhaustive]` so only a real server answer can produce one, which is
+/// the right rule and is why our refusals now say what they are.
+#[derive(Debug)]
+pub enum WorkError {
+    Refused(String),
+    Imap(imap::Error),
+}
+
+impl From<imap::Error> for WorkError {
+    fn from(error: imap::Error) -> Self {
+        WorkError::Imap(error)
+    }
+}
+
+/// Pigeon's own refusal, in words meant for the person reading them.
+pub fn refused(information: impl Into<String>) -> WorkError {
+    WorkError::Refused(information.into())
+}
 
 struct Live {
     session: ImapSession,
@@ -99,10 +123,9 @@ fn connection_error(e: impl std::fmt::Display) -> String {
 /* -------------------------------------------------------------------------- */
 
 fn open(creds: &Credentials) -> Result<ImapSession, String> {
-    let tls = TlsConnector::builder()
-        .build()
+    let client = imap::ClientBuilder::new(HOST, PORT)
+        .connect()
         .map_err(|e| connection_error(e))?;
-    let client = imap::connect((HOST, PORT), HOST, &tls).map_err(|e| connection_error(e))?;
     client
         .login(&creds.email, &creds.password)
         .map_err(|(e, _client)| explain_login(&e.to_string()))
@@ -159,24 +182,33 @@ pub enum Special {
     Inbox,
 }
 
+/// Whether a LIST entry's attributes mark it as the mailbox we want.
+///
+/// Matched on the parsed attribute, not on its `Debug` rendering. The rendering
+/// worked by accident under imap-proto 0.10, where `\All` was an unrecognised
+/// extension carried around as a string; 0.16 gives these their own variants,
+/// whose Debug output has neither backslash nor quotes — so a substring test
+/// silently stopped matching anything and every account looked like it had no
+/// Sent folder. `NameAttribute` is `#[non_exhaustive]`, hence `matches!`.
+fn is_special(which: Special, attributes: &[imap_proto::NameAttribute]) -> bool {
+    attributes.iter().any(|attribute| {
+        matches!(
+            (which, attribute),
+            (Special::AllMail, imap_proto::NameAttribute::All)
+                | (Special::Sent, imap_proto::NameAttribute::Sent)
+        )
+    })
+}
+
 fn find_special(session: &mut ImapSession, which: Special) -> Result<String, String> {
     if let Special::Inbox = which {
         return Ok("INBOX".into());
     }
-    let attribute = match which {
-        Special::AllMail => "\\All",
-        Special::Sent => "\\Sent",
-        Special::Inbox => unreachable!(),
-    };
     let names = session
         .list(None, Some("*"))
         .map_err(|e| connection_error(e))?;
     for name in names.iter() {
-        let has = name
-            .attributes()
-            .iter()
-            .any(|a| format!("{a:?}").contains(attribute));
-        if has {
+        if is_special(which, name.attributes()) {
             return Ok(name.name().to_string());
         }
     }
@@ -192,7 +224,7 @@ fn find_special(session: &mut ImapSession, which: Special) -> Result<String, Str
 /// has gone stale underneath us.
 pub fn with_mailbox<T>(
     which: Special,
-    work: impl Fn(&mut ImapSession) -> Result<T, imap::Error>,
+    work: impl Fn(&mut ImapSession) -> Result<T, WorkError>,
 ) -> Result<T, String> {
     let mut guard = LIVE.lock().unwrap();
 
@@ -209,7 +241,7 @@ pub fn with_mailbox<T>(
         }
         let live = guard.as_mut().unwrap();
 
-        let outcome = (|| -> Result<T, imap::Error> {
+        let outcome = (|| -> Result<T, WorkError> {
             let name = match which {
                 Special::Inbox => "INBOX".to_string(),
                 Special::AllMail | Special::Sent => {
@@ -220,8 +252,7 @@ pub fn with_mailbox<T>(
                     match cached {
                         Some(name) => name.clone(),
                         None => {
-                            let found = find_special(&mut live.session, which)
-                                .map_err(imap::Error::Bad)?;
+                            let found = find_special(&mut live.session, which).map_err(refused)?;
                             match which {
                                 Special::AllMail => live.all_mail = Some(found.clone()),
                                 _ => live.sent = Some(found.clone()),
@@ -240,8 +271,11 @@ pub fn with_mailbox<T>(
 
         match outcome {
             Ok(value) => return Ok(value),
-            Err(imap::Error::Bad(message)) => return Err(message),
-            Err(error) => {
+            Err(WorkError::Refused(message)) => return Err(message),
+            // A server BAD is an answer, not a broken pipe — report its words
+            // rather than reconnecting to hear them again.
+            Err(WorkError::Imap(imap::Error::Bad(refusal))) => return Err(refusal.information),
+            Err(WorkError::Imap(error)) => {
                 // An IO or parse error means the connection is suspect; drop it
                 // and go around once more with a fresh one.
                 *guard = None;
@@ -252,4 +286,44 @@ pub fn with_mailbox<T>(
         }
     }
     unreachable!()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Gmail's real LIST answer, attributes and all.
+    const ALL_MAIL: &[u8] =
+        b"* LIST (\\HasNoChildren \\All) \"/\" \"[Gmail]/All Mail\"\r\n";
+    const SENT: &[u8] = b"* LIST (\\HasNoChildren \\Sent) \"/\" \"[Gmail]/Sent Mail\"\r\n";
+    const ORDINARY: &[u8] = b"* LIST (\\HasNoChildren) \"/\" \"INBOX\"\r\n";
+
+    fn attributes(line: &[u8]) -> Vec<imap_proto::NameAttribute<'_>> {
+        match imap_proto::parser::parse_response(line) {
+            Ok((_, imap_proto::Response::MailboxData(imap_proto::MailboxDatum::List {
+                name_attributes,
+                ..
+            }))) => name_attributes,
+            other => panic!("not a LIST response: {other:?}"),
+        }
+    }
+
+    /// SPECIAL-USE discovery, from Gmail's bytes rather than from a hand-built
+    /// attribute. The pairing of the two halves is the part that broke once:
+    /// the parse said one thing and the match looked for another, and the only
+    /// symptom was "Couldn't find the Sent folder over IMAP" on an account
+    /// that plainly had one.
+    #[test]
+    fn gmails_own_list_answer_names_the_special_mailboxes() {
+        assert!(is_special(Special::AllMail, &attributes(ALL_MAIL)));
+        assert!(is_special(Special::Sent, &attributes(SENT)));
+    }
+
+    #[test]
+    fn one_special_mailbox_is_not_another() {
+        assert!(!is_special(Special::Sent, &attributes(ALL_MAIL)));
+        assert!(!is_special(Special::AllMail, &attributes(SENT)));
+        assert!(!is_special(Special::AllMail, &attributes(ORDINARY)));
+        assert!(!is_special(Special::Sent, &attributes(ORDINARY)));
+    }
 }

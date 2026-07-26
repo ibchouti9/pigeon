@@ -7,7 +7,7 @@
 //! raw commands whose only interesting answer is OK.
 
 use super::fetch::thread_uids;
-use super::session::{with_mailbox, ImapSession, Special};
+use super::session::{with_mailbox, ImapSession, Special, WorkError};
 
 const DECLINED_LABEL: &str = "Pigeon/Declined";
 
@@ -15,7 +15,7 @@ fn store(
     session: &mut ImapSession,
     uids: &[u32],
     change: &str,
-) -> Result<(), imap::Error> {
+) -> Result<(), WorkError> {
     if uids.is_empty() {
         return Ok(());
     }
@@ -26,6 +26,7 @@ fn store(
         .join(",");
     session
         .run_command_and_check_ok(&format!("UID STORE {set} {change}"))
+        .map_err(WorkError::from)
 }
 
 /// §2.1 — exactly one place. Inbox is the \Inbox label; archive is its absence.
@@ -57,9 +58,9 @@ pub fn silence(thread_id: String, silence: bool) -> Result<(), String> {
         // Gmail refuses to STORE a label that doesn't exist; CREATE is
         // idempotent enough once "already exists" is not an error.
         if silence {
-            if let Err(imap::Error::No(message)) = session.create(DECLINED_LABEL) {
-                if !message.to_lowercase().contains("already") {
-                    return Err(imap::Error::No(message));
+            if let Err(imap::Error::No(refusal)) = session.create(DECLINED_LABEL) {
+                if !refusal.information.to_lowercase().contains("already") {
+                    return Err(imap::Error::No(refusal).into());
                 }
             }
         }
