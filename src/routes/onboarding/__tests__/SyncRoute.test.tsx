@@ -72,6 +72,8 @@ function renderRoute() {
     <MemoryRouter initialEntries={['/setup/sync']}>
       <Routes>
         <Route path="/setup/sync" element={<SyncRoute />} />
+        <Route path="/setup/senders" element={<p>O4 known senders</p>} />
+        <Route path="/setup/screener" element={<p>O5 screener intro</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -159,6 +161,40 @@ describe('O3 sync progress (§5.2b)', () => {
       button.click();
 
       await waitFor(() => expect(provider.approved).toEqual(['dana', 'sana']));
+      expect(await screen.findByText('O5 screener intro')).toBeInTheDocument();
+    });
+
+    /**
+     * §3.1 3c is about the account's *total* threads, which is what sync
+     * counted — not what Pigeon has walked. The walk stops at 2,000 a place,
+     * and the demo account reports a sync of 11,908 while its seed holds 22,
+     * so measuring the walked lists made every demo run look quiet: O4 was
+     * skipped and its 342 known senders were never offered.
+     */
+    it('shows O4 for a busy account even when few threads have been walked', async () => {
+      const provider = quietProvider();
+      // The stub's listThreads returns nothing, standing in for a walk that has
+      // not caught up with the count.
+      renderRoute();
+      await waitFor(() => expect(provider.onProgress).not.toBeNull());
+
+      act(() => provider.onProgress!({ total: 11_908, done: 11_908, step: 'complete' }));
+      (await screen.findByRole('button', { name: 'Continue' })).click();
+
+      expect(await screen.findByText('O4 known senders')).toBeInTheDocument();
+      // O4 is where the user approves; nothing is approved on their behalf.
+      expect(provider.approved).toEqual([]);
+    });
+
+    it('still skips O4 when the account really is that small', async () => {
+      const provider = quietProvider();
+      renderRoute();
+      await waitFor(() => expect(provider.onProgress).not.toBeNull());
+
+      act(() => provider.onProgress!({ total: 49, done: 49, step: 'complete' }));
+      (await screen.findByRole('button', { name: 'Continue' })).click();
+
+      expect(await screen.findByText('O5 screener intro')).toBeInTheDocument();
     });
   });
 });

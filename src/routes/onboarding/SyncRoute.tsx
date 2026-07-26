@@ -26,6 +26,9 @@ function stepState(index: number, currentIdx: number): StepState {
   return 'pending';
 }
 
+/** §3.1 3c — below this, onboarding skips O4 entirely. */
+const QUIET_ACCOUNT_THREADS = 50;
+
 export function SyncRoute() {
   const navigate = useNavigate();
   const account = useMail((s) => s.account);
@@ -77,11 +80,22 @@ export function SyncRoute() {
     setChecking(true);
     try {
       const provider = useMail.getState().provider;
-      const [inbox, archive] = await Promise.all([
-        provider.listThreads('inbox'),
-        provider.listThreads('archive'),
-      ]);
-      const quiet = inbox.length + archive.length < 50;
+
+      /*
+       * §3.1 3c — "the account has fewer than 50 *total* threads". That is what
+       * sync counted, not what Pigeon has walked: the thread walk stops at
+       * 2,000 a place, and on the demo account the seed holds 22 threads while
+       * the sync it reports is 11,908. Measuring the walked lists made every
+       * demo run look like a quiet account, so O4 was skipped and 342 known
+       * senders were never offered — a whole screen the demo could not reach.
+       * Falls back to the lists only while the count is still unknown.
+       */
+      const quiet =
+        total !== null
+          ? total < QUIET_ACCOUNT_THREADS
+          : (
+              await Promise.all([provider.listThreads('inbox'), provider.listThreads('archive')])
+            ).reduce((n, list) => n + list.length, 0) < QUIET_ACCOUNT_THREADS;
 
       // §3.1 3c — a quiet account skips O4, but the branch still says "known
       // senders are seeded from Contacts only". Skipping the screen used to
