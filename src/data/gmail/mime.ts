@@ -188,7 +188,17 @@ export function toMessage(raw: GmailMessage, userEmail: string): Message {
     date: new Date(Number(raw.internalDate ?? Date.now())).toISOString(),
     messageId: header(headers, 'Message-ID') || undefined,
     attachments: collectAttachments(raw.payload),
-    isFromUser: from.email.toLowerCase() === userEmail.toLowerCase(),
+    /*
+     * Gmail's own SENT label first, the address only as a fallback. Real
+     * accounts send from aliases, `+` addressing and Workspace "send mail as"
+     * identities, and `users/me/profile` only ever reports the primary — so
+     * matching on the address alone read the user's own alias-sent mail as
+     * incoming. That put *the user* in their own Screener as an unknown sender,
+     * and hid the threads they had started from their inbox.
+     */
+    isFromUser:
+      raw.labelIds?.includes('SENT') === true ||
+      from.email.toLowerCase() === userEmail.toLowerCase(),
   };
 }
 

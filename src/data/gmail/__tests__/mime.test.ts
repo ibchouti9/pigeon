@@ -349,3 +349,44 @@ describe('threading headers', () => {
     expect(decoded).not.toContain('References:');
   });
 });
+
+/**
+ * Real accounts send from aliases, `+` addressing and Workspace "send mail as"
+ * identities, and users/me/profile only ever reports the primary. Matching on
+ * the address alone read the user's own alias-sent mail as incoming — which put
+ * *them* in their own Screener as an unknown sender, and hid the threads they
+ * had started from their inbox.
+ */
+describe('recognising the user\'s own messages', () => {
+  function raw(from: string, labelIds?: string[]) {
+    return {
+      id: 'm1',
+      threadId: 't1',
+      labelIds,
+      internalDate: '1750000000000',
+      payload: {
+        headers: [
+          { name: 'From', value: from },
+          { name: 'To', value: 'dana@lumen.com' },
+          { name: 'Subject', value: 'Hello' },
+        ],
+        mimeType: 'text/plain',
+        body: { data: encodeBase64Url('Body.') },
+      },
+    };
+  }
+
+  it('trusts Gmail\'s SENT label over the address', () => {
+    const message = toMessage(raw('marc+work@ferrum.dev', ['SENT']), 'marc@ferrum.dev');
+    expect(message.isFromUser).toBe(true);
+  });
+
+  it('still matches on the primary address when there is no label', () => {
+    expect(toMessage(raw('marc@ferrum.dev'), 'marc@ferrum.dev').isFromUser).toBe(true);
+  });
+
+  it('does not claim someone else\'s mail', () => {
+    const message = toMessage(raw('dana@lumen.com', ['INBOX']), 'marc@ferrum.dev');
+    expect(message.isFromUser).toBe(false);
+  });
+});

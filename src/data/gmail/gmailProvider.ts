@@ -169,6 +169,15 @@ export class GmailMailProvider implements MailProvider {
       if (response.status === 404) {
         throw new MailError("This thread didn't load. It's still in Gmail.", 'not-found');
       }
+      if (response.status === 400) {
+        // Gmail rejected the request itself — a malformed address, a message
+        // over the size limit. Distinct from "can't reach Gmail", which is what
+        // every non-2xx used to collapse into.
+        throw new MailError(
+          "Gmail didn't accept this message. Check the recipient addresses and send again.",
+          'send-rejected',
+        );
+      }
 
       if (response.ok) {
         // A 204 carries no body, and `response.json()` throws on an empty one.
@@ -350,14 +359,28 @@ export class GmailMailProvider implements MailProvider {
     onProgress({ total: null, done: 0, step: 'contacts' });
     await this.buildKnownSet();
 
-    // Not zero: on a resumed run (§3.1 3b) the count starts at what is already
-    // held, or the step tick alone would make it look like a fresh start.
+    /*
+     * The denominator is what this walk will actually fetch, not
+     * `profile.threadsTotal` — which is every thread in the mailbox, Sent and
+     * Spam and Trash included. On a 40,000-thread account with a 300-thread
+     * inbox, §5.2b read "300 of 40,000" and the bar sat near one per cent for
+     * the whole sync before jumping to full. D34 asks for real counts.
+     *
+     * Until the first listing page comes back there is no honest number, and
+     * `total: null` is what renders §7.3's "Counting your threads".
+     */
     const alreadyHeld = [...this.threads.values()].filter((t) => t.place === 'inbox').length;
     onProgress({ total: null, done: alreadyHeld, step: 'history' });
-    const profile = await this.call<{ threadsTotal?: number }>(`${GMAIL}/profile`);
-    const total = profile.threadsTotal ?? 0;
 
-    await this.hydrate('inbox', (done) => onProgress({ total, done, step: 'history' }));
+    let total: number | null = null;
+    const threads = await this.hydrate(
+      'inbox',
+      (done, listed) => {
+        if (listed !== undefined) total = listed;
+        onProgress({ total, done, step: 'history' });
+      },
+    );
+    total = threads.length;
 
     onProgress({ total, done: total, step: 'senders' });
     onProgress({ total, done: total, step: 'complete' });
@@ -419,7 +442,7 @@ export class GmailMailProvider implements MailProvider {
    */
   private hydrate(
     place: 'inbox' | 'archive',
-    onProgress?: (done: number) => void,
+    onProgress?: (done: number, listed?: number) => void,
   ): Promise<Thread[]> {
     /*
      * The shell fires loadThreads, loadHeld and loadSenders together on mount,
@@ -437,7 +460,7 @@ export class GmailMailProvider implements MailProvider {
 
   private async walk(
     place: 'inbox' | 'archive',
-    onProgress?: (done: number) => void,
+    onProgress?: (done: number, listed?: number) => void,
   ): Promise<Thread[]> {
     await this.getAccount();
 
@@ -469,7 +492,7 @@ export class GmailMailProvider implements MailProvider {
       else pending.push(entry);
     }
     let done = out.length;
-    onProgress?.(done);
+    onProgress?.(done, listed.length);
 
     // Gmail rate-limits hard on parallel fetches; ten at a time is comfortable.
     for (let i = 0; i < pending.length; i += 10) {
@@ -503,7 +526,7 @@ export class GmailMailProvider implements MailProvider {
       }
 
       done += batch.length;
-      onProgress?.(done);
+      onProgress?.(done, listed.length);
     }
 
     return out.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
@@ -745,7 +768,12 @@ export class GmailMailProvider implements MailProvider {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(draft.threadId ? { raw, threadId: draft.threadId } : { raw }),
       });
-    } catch {
+    } catch (error) {
+      // §7.6 keeps its own line for a revoked token and for being offline. This
+      // used to rewrite every failure into "check the recipient addresses",
+      // which told a user with an expired token to check addresses that were
+      // perfectly good.
+      if (error instanceof MailError) throw error;
       throw new MailError(
         "Gmail didn't accept this message. Check the recipient addresses and send again.",
         'send-rejected',
@@ -807,13 +835,20 @@ export class GmailMailProvider implements MailProvider {
   }
 
   async unsend(messageId: string): Promise<void> {
-    // Gmail has no unsend after the fact, and D8 forbids trashing. The message
-    // is moved out of the inbox view instead; it stays in the user's Sent mail.
-    await this.call(`${GMAIL}/messages/${messageId}/modify`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ removeLabelIds: ['INBOX'] }),
-    }).catch(() => undefined);
+    /*
+     * Gmail cannot recall a sent message, and D8 forbids trashing it. This used
+     * to remove the INBOX label from something that only carries SENT — the
+     * request succeeded, changed nothing, and §3.4's undo reported success for
+     * a message already in the recipient's mailbox.
+     *
+     * Holding the send for the undo window instead would make the promise true,
+     * but it trades a lying button for something worse: close the tab inside
+     * those eight seconds and the mail silently never goes. Gmail's own undo
+     * works because Google's servers hold it, which a browser client cannot do.
+     * Recorded in PROGRESS as a limitation of the Gmail path rather than papered
+     * over here.
+     */
+    void messageId;
   }
 
   async search(query: string, includeHeld: boolean): Promise<SearchResults> {

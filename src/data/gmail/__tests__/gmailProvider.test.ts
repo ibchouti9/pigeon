@@ -153,18 +153,38 @@ describe('send', () => {
     await provider.getAccount();
 
     await expect(
-      provider.send({
-        to: [{ name: '', email: 'dana@lumenpartners.com' }],
-        cc: [],
-        bcc: [],
-        subject: 'x',
-        body: 'y',
-      }),
+      provider.send({ to: [], cc: [], bcc: [], subject: 'x', body: 'y' }),
     ).rejects.toSatisfy(
       (e: MailError) =>
+        e.code === 'send-rejected' &&
         e.message ===
-        "Gmail didn't accept this message. Check the recipient addresses and send again.",
+          "Gmail didn't accept this message. Check the recipient addresses and send again.",
     );
+  });
+
+  /**
+   * Every failure used to be rewritten into "check the recipient addresses" —
+   * so an expired token told the user to check addresses that were fine, and a
+   * connection problem said the same.
+   */
+  it('does not blame the recipients for a revoked token', async () => {
+    routes = [PROFILE, PEOPLE_ME, { match: /messages\/send/, status: 401 }];
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+
+    await expect(
+      provider.send({ to: [], cc: [], bcc: [], subject: 'x', body: 'y' }),
+    ).rejects.toSatisfy((e: MailError) => e.code === 'revoked');
+  });
+
+  it('does not blame the recipients for being unable to reach Gmail', async () => {
+    routes = [PROFILE, PEOPLE_ME, { match: /messages\/send/, networkError: true }];
+    const provider = new GmailMailProvider();
+    await provider.getAccount();
+
+    await expect(
+      provider.send({ to: [], cc: [], bcc: [], subject: 'x', body: 'y' }),
+    ).rejects.toSatisfy((e: MailError) => e.code === 'unreachable');
   });
 });
 
