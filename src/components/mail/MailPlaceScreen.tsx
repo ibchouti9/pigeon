@@ -6,6 +6,8 @@ import { useCompose } from '../../store/compose';
 import { useHeldCount, useMail, useUnreadCount } from '../../store/mail';
 import { isTypingTarget } from '../../store/ui';
 import type { Place } from '../../types';
+import { useAssistant } from '../../ai/useAssistant';
+import { useThreadSummary } from '../../ai/useThreadSummary';
 import { InlineReply } from './InlineReply';
 import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
 import { ThreadReader, type ReplyMode, type ThreadReaderStatus } from './ThreadReader';
@@ -39,6 +41,8 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   // D14 — the reply composer lives in the reading pane, not the dock.
   const [replyMode, setReplyMode] = useState<ReplyMode | null>(null);
 
+  const { connected } = useAssistant();
+
   const listRef = useRef<MailListColumnHandle>(null);
   const cursorThreadIdRef = useRef<string | null>(null);
 
@@ -47,6 +51,9 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const selfEmail = account?.email ?? '';
 
   const openThread = threadId ? threads.find((t) => t.id === threadId) : undefined;
+
+  // D5 — automatic above the threshold, a button below it.
+  const summary = useThreadSummary(openThread ?? null);
 
   const readerStatus: ThreadReaderStatus = !threadId
     ? 'none'
@@ -207,6 +214,11 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           onRetryLoad={() => void loadThreads(place)}
           onArchive={() => threadId && archiveOne(threadId)}
           onReply={reply}
+          summary={summary.hidden ? undefined : summary.bullets}
+          summaryState={summary.state === 'idle' ? undefined : summary.state}
+          onRetrySummary={summary.summarize}
+          onSummarize={summary.summarize}
+          hasProvider={connected}
           replySlot={
             openThread && replyMode ? (
               <InlineReply

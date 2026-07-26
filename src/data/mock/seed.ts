@@ -180,16 +180,6 @@ Happy to take 750 as a middle if 1M is a hard no for them.`,
       },
     ]),
 
-    thread('Intro to the Atlas team', 'inbox', true, [
-      {
-        from: sana,
-        date: at(0, 11, 2),
-        body: `Marc — Dana suggested I reach out. We're standing up an integration between Atlas and our billing side and I think it's squarely the sort of thing you do.
-
-Would a 30-minute call next week be useful? I can work around you.`,
-      },
-    ], { approvedAt: at(0, 10, 55) }),
-
     thread('Re: Q3 invoice', 'inbox', false, [
       {
         from: USER,
@@ -241,6 +231,9 @@ View the full log in Atlas CI.`,
       },
     ]),
 
+    // Carries the arrival ring (§4.2 #4): the first message since this sender
+    // was approved. Sana Sethi is deliberately not pre-seeded here — she waits
+    // in the Screener so approving her demonstrates the actual arrival.
     thread('Reconcile window change — my fault', 'inbox', true, [
       {
         from: priya,
@@ -254,7 +247,7 @@ Fixing the fixtures rather than widening the window back, since the narrow windo
         date: at(0, 10, 9),
         body: `Green. Also added a case that would have caught this.`,
       },
-    ]),
+    ], { approvedAt: at(0, 8, 30) }),
 
     thread('Keelworks — scope for the second phase', 'inbox', false, [
       {
