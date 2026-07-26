@@ -312,10 +312,16 @@ export function SearchRoute() {
       {status !== 'empty' && (
         <div className={styles.meta}>
           <span className={cn('t-sm', styles.metaCount)}>
+            {/*
+              §5.11 gives the meta line a count and the places searched, and
+              gives the error its own block below. Putting "Search didn't run."
+              in both said the same sentence to the user twice, and a count
+              nobody has is not a count.
+            */}
             {status === 'loading'
               ? 'Searching…'
               : status === 'error'
-                ? "Search didn't run."
+                ? metaPlaces
                 : `${formatCount(total)} ${total === 1 ? 'result' : 'results'} · ${metaPlaces}`}
           </span>
           <label className={cn('t-sm', styles.heldToggle)}>

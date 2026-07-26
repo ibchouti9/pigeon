@@ -468,3 +468,63 @@ describe('the search retry (§7.6)', () => {
     });
   });
 });
+
+/**
+ * A count nobody has is not a count, and an error stated twice is worse than
+ * once. Both turned up walking the dev harness's full scenario matrix.
+ */
+describe('screens do not state what they do not know', () => {
+  // The store is a module singleton, so a stubbed loader has to be put back or
+  // it silently breaks the next test.
+  const realLoadSenders = useMail.getState().loadSenders;
+
+  beforeEach(resetStores);
+  afterEach(() => {
+    useMail.setState({ loadSenders: realLoadSenders });
+    cleanup();
+  });
+
+  it('shows no sender counts until the list has loaded', async () => {
+    useMail.setState((s) => ({
+      approved: [],
+      declined: [],
+      status: { ...s.status, senders: 'error' },
+      loadSenders: vi.fn(),
+    }));
+
+    render(
+      <MemoryRouter>
+        <SendersSettings />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Approved' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Approved (0)' })).not.toBeInTheDocument();
+  });
+
+  it('shows them once it has', async () => {
+    render(
+      <MemoryRouter>
+        <SendersSettings />
+      </MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /^Approved \(\d+\)$/ })).toBeInTheDocument(),
+    );
+  });
+
+  it('states a failed search once, not twice', async () => {
+    vi.spyOn(useMail.getState().provider, 'search').mockRejectedValue(new Error('down'));
+
+    render(
+      <MemoryRouter initialEntries={['/search?q=window']}>
+        <Routes>
+          <Route path="/search" element={<SearchRoute />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Search didn't run. Try again.", undefined, { timeout: 3000 });
+    expect(screen.queryAllByText(/Search didn't run/)).toHaveLength(1);
+  });
+});

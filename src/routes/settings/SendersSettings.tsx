@@ -68,6 +68,7 @@ export function SendersSettings() {
   // tabbable, so nothing was unreachable — but tabbing to row 300 of an
   // approved list is not a way anyone would choose to get there.
   const [cursor, setCursor] = useState(0);
+  const counted = (n: number) => (status === 'ready' ? ` (${n})` : '');
   // C-21 — 200ms minimum on the skeleton.
   const showSkeleton = useMinimumVisible(status === 'loading');
 
@@ -164,8 +165,12 @@ export function SendersSettings() {
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: 'approved', label: `Approved (${approved.length})`, panelId: PANEL_ID },
-            { value: 'declined', label: `Declined (${declined.length})`, panelId: PANEL_ID },
+            // §5.13b's tabs are "Approved ({n})", but while the list is
+            // loading or after it failed there is no n — and rendering (0)
+            // told the user they had no approved senders when Pigeon simply
+            // didn't know.
+            { value: 'approved', label: `Approved${counted(approved.length)}`, panelId: PANEL_ID },
+            { value: 'declined', label: `Declined${counted(declined.length)}`, panelId: PANEL_ID },
           ]}
         />
         <div className={styles.filter}>
