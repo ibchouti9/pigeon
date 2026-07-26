@@ -94,8 +94,13 @@ export function Composer({
   // without this, `r` opened the composer and left focus on the thread row,
   // and typing went nowhere.
   useEffect(() => {
-    if (variant !== 'inline') return;
-    bodyRef.current?.focus();
+    // A docked composer that arrives with its recipient already filled in —
+    // "Send yourself a test" (§5.5), or a forward — wants the body too. Only
+    // an empty To field is worth focusing, and that one is handled by the
+    // field's own autoFocus.
+    if (variant === 'inline' || draft.to.length > 0) bodyRef.current?.focus();
+    // Mount only: refocusing on every keystroke would fight the user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variant]);
 
   useEffect(() => {

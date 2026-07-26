@@ -352,3 +352,54 @@ describe('reversing a decision in Settings (§3.6)', () => {
     });
   });
 });
+
+/** One Esc closes one layer (§8.1), and an untouched composer is not a draft. */
+describe('composer edges', () => {
+  beforeEach(resetStores);
+  afterEach(() => {
+    cleanup();
+    useCompose.getState().close();
+  });
+
+  it('closing an untouched New message does not claim a draft was discarded', async () => {
+    const user = userEvent.setup();
+    useCompose.getState().open();
+    render(
+      <MemoryRouter>
+        <ComposeDock />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(useCompose.getState().draft).toBeNull();
+    expect(useToasts.getState().toasts).toHaveLength(0);
+  });
+
+  it('still offers to undo a discard that had content', async () => {
+    const user = userEvent.setup();
+    useCompose.getState().open({ body: 'Half a thought.' });
+    render(
+      <MemoryRouter>
+        <ComposeDock />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(useToasts.getState().toasts[0]?.message).toBe('Draft discarded.');
+  });
+
+  it('lands in the body when the recipient is already filled in', async () => {
+    useCompose.getState().open({ to: [{ name: '', email: 'marc@ferrum.dev' }] });
+    render(
+      <MemoryRouter>
+        <ComposeDock />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Message body' })).toHaveFocus(),
+    );
+  });
+});

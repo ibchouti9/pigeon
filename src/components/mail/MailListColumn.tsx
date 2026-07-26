@@ -206,6 +206,12 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
             break;
           case 'Escape': {
             if (checked.size === 0) return;
+            // §8.1's Esc is a layer stack — one press closes one layer. The
+            // global handler runs first and preventDefaults when it minimizes
+            // the composer; without this check the list then saw an
+            // already-minimized composer and cleared the selection as well, so
+            // one Esc closed two layers.
+            if (e.defaultPrevented) return;
             const ui = useUi.getState();
             const compose = useCompose.getState();
             if (

@@ -81,6 +81,7 @@ export function InlineReply({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
+      if (e.defaultPrevented) return;
       if (draft.body.trim() || draft.attachments.length) return;
       const ui = useUi.getState();
       if (ui.dialog || ui.shortcutsOpen || ui.heldSheetSenderId) return;

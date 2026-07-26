@@ -91,6 +91,20 @@ export function ComposeDock() {
   function discard() {
     const snapshot = draft ? { ...draft } : null;
     close();
+
+    // Closing an untouched "New message" is not discarding a draft. Offering to
+    // undo one made the ✕ on an empty composer produce a toast about work the
+    // user had not done.
+    const hasContent =
+      snapshot &&
+      (snapshot.to.length > 0 ||
+        snapshot.cc.length > 0 ||
+        snapshot.bcc.length > 0 ||
+        snapshot.subject.trim() !== '' ||
+        snapshot.body.trim() !== '' ||
+        snapshot.attachments.length > 0);
+    if (!hasContent) return;
+
     toast.undo('Draft discarded.', 'Undo', () => {
       if (snapshot) useCompose.getState().open(snapshot);
     });
