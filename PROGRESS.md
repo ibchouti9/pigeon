@@ -712,6 +712,22 @@ user-visible. Worth doing deliberately rather than at the end of a long session.
   follows §5.8. §3.2 step 4's empty state does not crossfade, because the
   280ms `view-in` wraps the stack and list rather than the empty block; the
   content and copy are right.
+- **§2.3's "with today's date" is not implemented, and needs a decision.**
+  Approving a held sender moves their mail to the Inbox marked unread (verified)
+  and §4.2's 24-hour arrival ring marks the row, but the thread keeps its
+  original `lastMessageAt`, so it sorts by when it was *sent* rather than when
+  it landed. For a day-old held message that is position 4; for a three-week-old
+  one it buries itself, and the arrival ring — "the approval you made in the
+  Screener is visible when the mail lands" — is attached to a row nobody
+  scrolls to.
+
+  Left alone deliberately, because every fix trades something. Restamping the
+  date puts the row at the top and makes the list say "today" for a message
+  dated three weeks ago. Sorting by the approval while displaying the true date
+  puts a "Jul 3" row above a "Jul 25" one, which reads as broken. And on Gmail
+  the mail already sits in the real inbox with its real date, so either fix is
+  a Pigeon-side override the demo would not share. Worth deciding rather than
+  guessing at.
 - Four places where the spec contradicts itself, resolved and recorded rather
   than silently picked: the minimized dock's height (§3.5 says 40px, §5.12 says
   44px — 44 wins, it is the later and more detailed passage); list section and
