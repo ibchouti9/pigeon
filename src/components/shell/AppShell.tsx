@@ -11,6 +11,7 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 import { useRouteFocus } from '../../hooks/useRouteFocus';
+import { useComposeParam } from '../../hooks/useComposeParam';
 import { toast } from '../../store/toast';
 import { cn } from '../../lib/cn';
 import styles from './AppShell.module.css';
@@ -28,6 +29,7 @@ export function AppShell() {
   const inSettings = useLocation().pathname.startsWith('/settings');
   const regionRef = useRef<HTMLDivElement>(null);
   useRouteFocus(regionRef);
+  useComposeParam();
   const searchRef = useRef<HTMLInputElement>(null);
   const wasOffline = useRef(false);
 

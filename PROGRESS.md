@@ -229,6 +229,11 @@ found by driving the running app, not by reading the code.
   iteration, so a swap mid-batch would split the decisions across two accounts.
 - **A search at 720px scrolled the page sideways by 537px**, and at exactly
   880px the reader's 480px floor overflowed the remainder by 37px.
+- **Two screens stated what they didn't know**: Settings → Senders rendered
+  "Approved (0)" while the list was loading or after it failed, and Search put
+  "Search didn't run." in the meta line as well as the error block.
+- **Two of §2.2's URL parameters weren't implemented** — the senders tab and
+  `?compose=1` — so a reload or a shared link always landed somewhere else.
 
 ## Deliberate deviations from the spec
 
@@ -315,6 +320,9 @@ In rough order of expected value:
   out only the summaries one. So are the bulk-archive and appearance toasts —
   §7.5 has no row for either, and both follow the shape of the bulk sender lines
   beside them.
+- `?held=0` is deleted from the search URL rather than written as `0`. §2.2
+  spells the parameter `held=0|1`; the two are equivalent to read and the
+  shorter URL is the one worth sharing.
 - Four places where the spec contradicts itself, resolved and recorded rather
   than silently picked: the minimized dock's height (§3.5 says 40px, §5.12 says
   44px — 44 wins, it is the later and more detailed passage); list section and

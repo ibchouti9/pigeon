@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { useMail } from '../store/mail';
 import { useUi } from '../store/ui';
 import { useToasts } from '../store/toast';
@@ -13,6 +13,7 @@ import { ThreadReader } from '../components/mail/ThreadReader';
 import { ComposeDock } from '../components/compose/ComposeDock';
 import { useCompose } from '../store/compose';
 import { SendersSettings } from '../routes/settings/SendersSettings';
+import { useComposeParam } from '../hooks/useComposeParam';
 
 function resetStores() {
   localStorage.clear();
@@ -526,5 +527,86 @@ describe('screens do not state what they do not know', () => {
 
     await screen.findByText("Search didn't run. Try again.", undefined, { timeout: 3000 });
     expect(screen.queryAllByText(/Search didn't run/)).toHaveLength(1);
+  });
+});
+
+/**
+ * §2.2 puts three pieces of state in the URL. Two of them lived only in
+ * component state, so a reload or a shared link always landed somewhere else
+ * than where the user was.
+ */
+describe('§2.2 URL state', () => {
+  beforeEach(resetStores);
+  afterEach(() => {
+    cleanup();
+    useCompose.getState().close();
+  });
+
+  it('opens the senders tab the URL names', async () => {
+    render(
+      <MemoryRouter initialEntries={['/settings/senders?tab=declined']}>
+        <Routes>
+          <Route path="/settings/senders" element={<SendersSettings />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /^Declined/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+  });
+
+  it('writes the tab back so a reload lands on it', async () => {
+    const user = userEvent.setup();
+    let url = '';
+    function Spy() {
+      url = useLocation().pathname + useLocation().search;
+      return null;
+    }
+    render(
+      <MemoryRouter initialEntries={['/settings/senders']}>
+        <Routes>
+          <Route path="/settings/senders" element={<><SendersSettings /><Spy /></>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(await screen.findByRole('tab', { name: /^Declined/ }));
+    await waitFor(() => expect(url).toBe('/settings/senders?tab=declined'));
+  });
+
+  it('opens a composer for ?compose=1, and clears the parameter when it closes', async () => {
+    function Harness() {
+      useComposeParam();
+      return <span>{useLocation().search}</span>;
+    }
+    render(
+      <MemoryRouter initialEntries={['/inbox?compose=1']}>
+        <Harness />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(useCompose.getState().draft).not.toBeNull());
+
+    act(() => useCompose.getState().close());
+    await waitFor(() => expect(screen.queryByText('?compose=1')).not.toBeInTheDocument());
+  });
+
+  it('adds the parameter when a composer opens on its own', async () => {
+    function Harness() {
+      useComposeParam();
+      return <span data-testid="url">{useLocation().search}</span>;
+    }
+    render(
+      <MemoryRouter initialEntries={['/inbox']}>
+        <Harness />
+      </MemoryRouter>,
+    );
+
+    act(() => useCompose.getState().open());
+    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent('?compose=1'));
   });
 });

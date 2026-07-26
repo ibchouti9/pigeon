@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { shortcutsBlocked } from '../../store/ui';
 import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { useNavigate } from 'react-router-dom';
@@ -37,7 +38,25 @@ export function SendersSettings() {
   const reverse = useMail((s) => s.reverse);
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState<Tab>('approved');
+  /*
+   * §2.2 puts the tab in the URL: /settings/senders?tab=approved|declined.
+   * Holding it in component state alone meant a reload, a back button, or a
+   * shared link always landed on Approved, whichever tab you were reading.
+   */
+  const [params, setParams] = useSearchParams();
+  const tab: Tab = params.get('tab') === 'declined' ? 'declined' : 'approved';
+
+  function setTab(next: Tab) {
+    setParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        if (next === 'declined') updated.set('tab', 'declined');
+        else updated.delete('tab');
+        return updated;
+      },
+      { replace: true },
+    );
+  }
   const [query, setQuery] = useState('');
 
   useEffect(() => {
