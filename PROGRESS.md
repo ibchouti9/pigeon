@@ -420,6 +420,34 @@ found by driving the running app, not by reading the code.
   a confident false finding that a second look dissolved. Dispatching a real
   event from `document.activeElement` is the probe that behaves like a user;
   `window.dispatchEvent` never reaches a handler bound below it.
+- **An §8.4 ARIA audit of every rule in the section.** Most of it passes —
+  two permanently mounted toast regions with errors routed away from
+  confirmations, the undo as a real button next to its message, timers that
+  pause on hover and focus, dialogs and the held sheet trapping and restoring
+  focus, AI blocks carrying their hidden prefix, the thread list's roving
+  tabindex and `aria-current`. Three real gaps, each confirmed in the running
+  app first:
+  - **The Screener card never kept the focus §8.4 gives it.** React runs child
+    effects before parent ones, so the card focused itself and the shell's §8.2
+    route-focus took it straight back to the heading. `useRouteFocus` now looks
+    at what actually has focus instead of assuming who ran when — and the
+    comment in that hook had asserted the opposite ordering, which is why it
+    went unnoticed.
+  - **Three enabled buttons sat inside an `aria-hidden` card** for the length
+    of every `j`/`k` cycle — operable controls inside a subtree a screen reader
+    is told does not exist. One flag now carries the invariant for all three.
+  - **The bulk selection count announced from a region that didn't exist yet.**
+    It was an `aria-live` on the visible text in a bar that only appears once
+    something is selected, so region and content entered the DOM together —
+    the case screen readers skip, and precisely on the 0→1 change the rule
+    exists for.
+- **Mutation-testing caught two of its own checks lying.** A route-focus test
+  passed against both the fix and the bug because it put both hooks in one
+  component, where declaration order made the card win regardless of the
+  parent/child ordering that causes the bug. And two mutation anchors matched
+  an identically written `<span>` earlier in the same file, so they proved
+  nothing while appearing to. A mutation that does not fail is not a passing
+  grade — it is a finding about the test.
 
 ## Deliberate deviations from the spec
 
