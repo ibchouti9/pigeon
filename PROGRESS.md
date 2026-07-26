@@ -259,7 +259,10 @@ found by driving the running app, not by reading the code.
   also fired one thread fetch per result at once, which the main walk batches at
   ten specifically to avoid.
 - **The shell's three mount loads each started their own inbox walk**, tripling
-  the requests on a first run.
+  the requests on a first run — as did the known-sender build, which is the
+  most expensive thing the client does.
+- **The sent-mail scan fired a metadata request per message at once**, up to a
+  hundred concurrently, during onboarding.
 
 ## Deliberate deviations from the spec
 
