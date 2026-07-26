@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 import { displayName, joinNames, plural } from '../../lib/format';
 import type { Address, Message, Place, Thread } from '../../types';
@@ -26,8 +26,13 @@ export interface ThreadReaderProps {
   onBack?: () => void;
   onRetryLoad?: () => void;
   onArchive?: () => void;
-  /** Reply / reply all / forward — another agent wires the composer itself. */
+  /** Reply / reply all / forward. */
   onReply?: (mode: ReplyMode) => void;
+  /**
+   * The expanded inline composer, when a reply is open. Replaces the collapsed
+   * "Reply to {name}" affordance at the foot of the thread (D14).
+   */
+  replySlot?: ReactNode;
   /** Undefined summary + summaryState renders nothing — another agent wires the AI. */
   summary?: string[];
   summaryState?: AiBlockState;
@@ -85,6 +90,7 @@ export function ThreadReader({
   onRetryLoad,
   onArchive,
   onReply,
+  replySlot,
   summary,
   summaryState,
   onRetrySummary,
@@ -258,16 +264,21 @@ export function ThreadReader({
           );
         })}
 
-        <button
-          type="button"
-          className={cn('t-base', styles.replyAffordance)}
-          aria-disabled={!online || undefined}
-          onClick={() => {
-            if (online) onReply?.('reply');
-          }}
-        >
-          Reply to {replyToName}
-        </button>
+        {/* D14 — replies compose inline at the foot of the thread, so the
+            quoted context stays visible while writing. The dock is for new
+            mail only (D13). */}
+        {replySlot ?? (
+          <button
+            type="button"
+            className={cn('t-base', styles.replyAffordance)}
+            aria-disabled={!online || undefined}
+            onClick={() => {
+              if (online) onReply?.('reply');
+            }}
+          >
+            Reply to {replyToName}
+          </button>
+        )}
       </div>
     </div>
   );

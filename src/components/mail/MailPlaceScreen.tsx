@@ -1,38 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useCompose } from '../../store/compose';
 import { useHeldCount, useMail, useUnreadCount } from '../../store/mail';
 import { isTypingTarget } from '../../store/ui';
-import type { Address, Draft, Place, Thread } from '../../types';
+import type { Place } from '../../types';
+import { InlineReply } from './InlineReply';
 import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
 import { ThreadReader, type ReplyMode, type ThreadReaderStatus } from './ThreadReader';
 import styles from './MailPlaceScreen.module.css';
-
-/** Seeds a reply/reply-all/forward draft from the open thread's last message. */
-function buildReplySeed(thread: Thread, mode: ReplyMode, selfEmail: string): Partial<Draft> {
-  const messages = thread.messages;
-  const last = messages[messages.length - 1];
-  const bareSubject = thread.subject.replace(/^(re|fwd):\s*/i, '');
-  const subject = mode === 'forward' ? `Fwd: ${bareSubject}` : `Re: ${bareSubject}`;
-
-  let to: Address[] = [];
-  if (last) {
-    if (mode === 'reply') {
-      to = last.isFromUser ? [] : [last.from];
-    } else if (mode === 'reply-all') {
-      const seen = new Set<string>();
-      to = [last.from, ...last.to, ...last.cc].filter((a) => {
-        if (a.email === selfEmail || seen.has(a.email)) return false;
-        seen.add(a.email);
-        return true;
-      });
-    }
-  }
-
-  return { mode, threadId: thread.id, subject, to, cc: [], bcc: [], body: '' };
-}
 
 /**
  * §5.5 / §5.6 / §5.10 — the list column plus the reader for one place
@@ -58,6 +35,9 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const openCompose = useCompose((s) => s.open);
   const heldCount = useHeldCount();
   const unreadCount = useUnreadCount();
+
+  // D14 — the reply composer lives in the reading pane, not the dock.
+  const [replyMode, setReplyMode] = useState<ReplyMode | null>(null);
 
   const listRef = useRef<MailListColumnHandle>(null);
   const cursorThreadIdRef = useRef<string | null>(null);
@@ -119,8 +99,8 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   }
 
   function reply(mode: ReplyMode) {
-    if (!openThread) return;
-    openCompose(buildReplySeed(openThread, mode, selfEmail));
+    if (!openThread || !online) return;
+    setReplyMode(mode);
   }
 
   // §8.1 "In a thread list" / "In a thread" — e/r/a/f/u need to know whether
@@ -227,6 +207,16 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           onRetryLoad={() => void loadThreads(place)}
           onArchive={() => threadId && archiveOne(threadId)}
           onReply={reply}
+          replySlot={
+            openThread && replyMode ? (
+              <InlineReply
+                key={`${openThread.id}-${replyMode}`}
+                thread={openThread}
+                mode={replyMode}
+                onClose={() => setReplyMode(null)}
+              />
+            ) : undefined
+          }
         />
       )}
     </div>

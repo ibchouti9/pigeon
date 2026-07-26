@@ -4,12 +4,11 @@ import { PROVIDER_LABELS } from '../../store/settings';
 import styles from './ProviderCard.module.css';
 
 /**
- * The four cards O2 (§5.2) offers. Declared as its own literal union rather
- * than derived from the store's `ProviderId` — that type is shared and may
- * grow (e.g. the `demo` provider) without every one of those values being a
- * selectable card here.
+ * The cards O2 (§5.2) offers. `demo` is not in the spec: it returns canned
+ * assistant output so every AI surface can be run and reviewed without a key,
+ * and it says so on the card. Choosing nothing still exercises C-28.
  */
-export type SelectableProvider = 'anthropic' | 'openai' | 'google' | 'local';
+export type SelectableProvider = 'anthropic' | 'openai' | 'google' | 'local' | 'demo';
 
 interface ProviderOption {
   id: SelectableProvider;
@@ -23,6 +22,7 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
   { id: 'openai', sub: 'GPT', markTone: 'var(--monogram-4)' },
   { id: 'google', sub: 'Gemini', markTone: 'var(--monogram-5)' },
   { id: 'local', sub: 'Ollama · LM Studio', markTone: 'var(--monogram-6)' },
+  { id: 'demo', sub: 'Canned · no key', markTone: 'var(--monogram-2)' },
 ];
 
 /** C-27 provider row — `role="radiogroup"` with arrow-key roving focus. */
