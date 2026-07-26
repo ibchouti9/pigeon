@@ -353,6 +353,14 @@ found by driving the running app, not by reading the code.
   it through showed why: `setProvider` resets the place's status, which tears
   the effect down, so the epoch could never differ by the time the check ran.
   Removed rather than left as untested, unreachable code.
+- **Two more copies of a rule that had drifted, found the same way.** Sweeping
+  for exported symbols nothing references turned up C-4 Badge and
+  `sendBlockedReason`, both unused while a screen reimplemented them inline.
+  C-4 and the rail disagreed about truncating a count above 99; the store's send
+  rule and the Composer's disagreed about an empty To. In both cases the live
+  copy was the correct one, so C-4 was corrected and adopted, and the dead send
+  rule deleted. The lesson is the sweep itself: an unused export beside a live
+  inline copy of the same rule is where the two quietly stop agreeing.
 
 ## Deliberate deviations from the spec
 
@@ -502,6 +510,12 @@ user-visible. Worth doing deliberately rather than at the end of a long session.
 - `?held=0` is deleted from the search URL rather than written as `0`. §2.2
   spells the parameter `held=0|1`; the two are equivalent to read and the
   shorter URL is the one worth sharing.
+- **C-4's `99+` applies to the ring, not the plain count.** §6 puts "values above
+  99 render `99+`" at the end of the `ring` line, and the reason is geometric:
+  the ring is a fixed 24px circle. The plain variant is free-width text that §6
+  asks for *tabular figures* on, which only matters for lining up multi-digit
+  numbers. Read the other way, an inbox at 1,247 unread would say "99+" for no
+  reason.
 - Four places where the spec contradicts itself, resolved and recorded rather
   than silently picked: the minimized dock's height (§3.5 says 40px, §5.12 says
   44px — 44 wins, it is the later and more detailed passage); list section and
