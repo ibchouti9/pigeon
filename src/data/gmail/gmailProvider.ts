@@ -86,6 +86,7 @@ export class GmailMailProvider implements MailProvider {
   private threads = new Map<string, Thread>();
   /** Gmail's own change token per thread — the key to a cache that stays fresh. */
   private historyIds = new Map<string, string>();
+  private hydrating = new Map<string, Promise<Thread[]>>();
 
   private async call<T>(url: string, init: RequestInit = {}): Promise<T> {
     let token: string;
@@ -325,7 +326,25 @@ export class GmailMailProvider implements MailProvider {
    * gives §3.1 3b's "pick up where it stopped" for free, without the cache
    * freezing the mailbox at whatever it looked like on first load.
    */
-  private async hydrate(
+  private hydrate(
+    place: 'inbox' | 'archive',
+    onProgress?: (done: number) => void,
+  ): Promise<Thread[]> {
+    /*
+     * The shell fires loadThreads, loadHeld and loadSenders together on mount,
+     * and all three walk the inbox. Without this they each started their own
+     * pagination before any of them had populated the cache — three times the
+     * requests at exactly the moment a first run can least afford them.
+     */
+    const inFlight = this.hydrating.get(place);
+    if (inFlight) return inFlight;
+
+    const walk = this.walk(place, onProgress).finally(() => this.hydrating.delete(place));
+    this.hydrating.set(place, walk);
+    return walk;
+  }
+
+  private async walk(
     place: 'inbox' | 'archive',
     onProgress?: (done: number) => void,
   ): Promise<Thread[]> {

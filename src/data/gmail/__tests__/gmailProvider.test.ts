@@ -495,3 +495,64 @@ describe('search (§5.11)', () => {
     expect(results).toEqual({ inbox: [], archive: [], held: [] });
   });
 });
+
+/**
+ * The shell fires loadThreads, loadHeld and loadSenders together on mount, and
+ * all three walk the inbox. Each used to start its own pagination before any
+ * had populated the cache — three times the requests at exactly the moment a
+ * first run can least afford them.
+ */
+describe('concurrent walks of the same place', () => {
+  it('shares one walk rather than starting three', async () => {
+    let listings = 0;
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/threads\?/.test(href)) {
+        listings += 1;
+        await new Promise((r) => setTimeout(r, 5));
+        return new Response(JSON.stringify({ threads: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    const provider = new GmailMailProvider();
+    await Promise.all([
+      provider.listThreads('inbox'),
+      provider.listHeld(),
+      provider.listSenders('approved'),
+    ]);
+
+    expect(listings).toBe(1);
+  });
+
+  it('walks again once the first has finished', async () => {
+    let listings = 0;
+    vi.stubGlobal('fetch', async (url: string) => {
+      const href = String(url);
+      if (/users\/me\/profile/.test(href)) {
+        return new Response(JSON.stringify(PROFILE.body), { status: 200 });
+      }
+      if (/people\/me\?/.test(href)) {
+        return new Response(JSON.stringify(PEOPLE_ME.body), { status: 200 });
+      }
+      if (/threads\?/.test(href)) {
+        listings += 1;
+        return new Response(JSON.stringify({ threads: [] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    const provider = new GmailMailProvider();
+    await provider.listThreads('inbox');
+    await provider.listThreads('inbox');
+
+    // Not a permanent cache — new mail has to be able to arrive.
+    expect(listings).toBe(2);
+  });
+});
