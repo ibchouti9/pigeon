@@ -25,7 +25,15 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
   { id: 'demo', sub: 'Canned · no key', markTone: 'var(--monogram-2)' },
 ];
 
-/** C-27 provider row — `role="radiogroup"` with arrow-key roving focus. */
+/**
+ * C-27 provider choice — `role="radiogroup"` with arrow-key roving focus.
+ *
+ * Rows, not cards. Five options in a 640px column made a 4+1 mosaic of
+ * mismatched heights with a glyph and a radio circle crowding each corner;
+ * as rows, each option gets the full width, the glyph sits where a list's
+ * leading icon belongs, and the radio on the right is the only selection
+ * control in sight.
+ */
 export function ProviderRadioGroup({
   value,
   onChange,
@@ -36,10 +44,13 @@ export function ProviderRadioGroup({
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    // Both axes: visually this is a column, but §8.1 users arrive from either.
+    const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+    const backward = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+    if (!forward && !backward) return;
     const currentIndex = PROVIDER_OPTIONS.findIndex((o) => o.id === value);
     const base = currentIndex === -1 ? 0 : currentIndex;
-    const delta = e.key === 'ArrowRight' ? 1 : -1;
+    const delta = forward ? 1 : -1;
     const nextIndex = (base + delta + PROVIDER_OPTIONS.length) % PROVIDER_OPTIONS.length;
     const next = PROVIDER_OPTIONS[nextIndex];
     onChange(next.id);
@@ -51,7 +62,7 @@ export function ProviderRadioGroup({
     <div
       role="radiogroup"
       aria-label="AI provider"
-      className={styles.grid}
+      className={styles.list}
       onKeyDown={onKeyDown}
     >
       {PROVIDER_OPTIONS.map((opt, i) => {
@@ -66,28 +77,26 @@ export function ProviderRadioGroup({
             type="button"
             role="radio"
             aria-checked={selected}
-            // Without this the name is computed from contents and runs the two
-            // lines together — "AnthropicClaude".
+            // Without this the name is computed from contents and runs the
+            // pieces together — "AnthropicClaude".
             aria-label={`${PROVIDER_LABELS[opt.id]}, ${opt.sub}`}
             tabIndex={isTabbable ? 0 : -1}
-            className={cn(styles.card, selected && styles.cardSelected)}
+            className={cn(styles.row, selected && styles.rowSelected)}
             onClick={() => onChange(opt.id)}
           >
-            <span className={styles.cardTop}>
-              <span
-                className={styles.markTile}
-                style={{ '--mark-color': opt.markTone } as CSSProperties}
-                aria-hidden="true"
-              >
-                <span className={styles.markSquare} />
-              </span>
-              <span
-                className={cn(styles.radioDot, selected && styles.radioDotSelected)}
-                aria-hidden="true"
-              />
+            <span
+              className={styles.markTile}
+              style={{ '--mark-color': opt.markTone } as CSSProperties}
+              aria-hidden="true"
+            >
+              <span className={styles.markSquare} />
             </span>
-            <span className={cn('t-sm', styles.cardName)}>{PROVIDER_LABELS[opt.id]}</span>
-            <span className={cn('t-mono-sm', styles.cardSub)}>{opt.sub}</span>
+            <span className={cn('t-sm', styles.rowName)}>{PROVIDER_LABELS[opt.id]}</span>
+            <span className={cn('t-mono-sm', styles.rowSub)}>{opt.sub}</span>
+            <span
+              className={cn(styles.radioDot, selected && styles.radioDotSelected)}
+              aria-hidden="true"
+            />
           </button>
         );
       })}

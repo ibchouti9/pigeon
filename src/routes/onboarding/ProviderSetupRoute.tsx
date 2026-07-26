@@ -24,8 +24,8 @@ export function ProviderSetupRoute() {
       <h1 className={cn('t-display-md', styles.heading)}>Connect your AI provider</h1>
       <p className={cn('t-md', styles.body)}>
         Pigeon doesn&apos;t run models of its own. Bring a key from a provider you already pay,
-        or point Pigeon at a model running on your own machine. Your key is stored in this
-        browser and sent only to the provider you pick.
+        or point Pigeon at a model running on your own machine. Your key is stored on this
+        machine and sent only to the provider you pick.
       </p>
 
       <ProviderPanel

@@ -42,7 +42,7 @@ const MODEL_OPTIONS: Record<RemoteProvider, string[]> = {
 function statusMessage(status: Status, providerName: string, baseUrl: string, ms?: number): string {
   switch (status) {
     case 'empty':
-      return 'Your key is stored in this browser only.';
+      return 'Your key is stored on this machine only.';
     case 'entered':
       return 'Press Test connection to check it works.';
     case 'testing':
@@ -83,7 +83,7 @@ function provenanceNote(providerId: SelectableProvider): string {
   if (providerId === 'demo') {
     return 'Demo replies are canned, not generated — nothing is sent anywhere. Connect a real provider any time in Settings → Assistant.';
   }
-  return `Pigeon has no servers of its own — your key never leaves this browser except to reach ${PROVIDER_LABELS[providerId]}. Rotate or remove it any time in Settings → Assistant.`;
+  return `Pigeon has no servers of its own — your key never leaves this machine except to reach ${PROVIDER_LABELS[providerId]}. Rotate or remove it any time in Settings → Assistant.`;
 }
 
 export interface ProviderPanelProps {

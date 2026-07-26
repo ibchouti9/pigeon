@@ -44,7 +44,7 @@ describe('O2 provider status line (C-27)', () => {
     renderRoute();
 
     fireEvent.click(screen.getByRole('radio', { name: /Anthropic/ }));
-    expect(screen.getByText('Your key is stored in this browser only.')).toBeInTheDocument();
+    expect(screen.getByText('Your key is stored on this machine only.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText('API KEY'), { target: { value: 'sk-ant-abc123' } });

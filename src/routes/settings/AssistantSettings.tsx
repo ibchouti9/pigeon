@@ -236,7 +236,7 @@ export function AssistantSettings() {
               <Button variant="secondary-destructive" size="sm" onClick={handleRemoveKey}>
                 Remove key
               </Button>
-              <span className={cn('t-mono-sm', styles.note)}>Stored in this browser only</span>
+              <span className={cn('t-mono-sm', styles.note)}>Stored on this machine only</span>
             </div>
           </>
         )}

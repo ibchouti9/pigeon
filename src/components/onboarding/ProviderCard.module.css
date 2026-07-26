@@ -1,17 +1,17 @@
-/* Provider cards — C-27 provider row (§5.2). */
+/* Provider rows — C-27 provider choice (§5.2). */
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.list {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
 }
 
-.card {
+.row {
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 78px;
-  padding: var(--space-3);
+  align-items: center;
+  gap: var(--space-3);
+  height: 52px;
+  padding: 0 var(--space-4);
   background: var(--color-surface-sunken);
   border: var(--border-width-control) solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
@@ -20,28 +20,23 @@
     background-color var(--duration-fast) var(--ease-standard);
 }
 
-.card:hover {
+.row:hover {
   border-color: var(--color-border-control);
 }
 
-.cardSelected {
+.rowSelected {
   background: var(--color-surface);
   border-color: var(--color-accent);
 }
 
-.cardSelected:hover {
+.rowSelected:hover {
   border-color: var(--color-accent);
 }
 
-.cardTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
 .markTile {
-  width: 22px;
-  height: 22px;
+  flex: none;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--mark-color) 16%, transparent);
   border: 1px solid color-mix(in srgb, var(--mark-color) 40%, transparent);
@@ -56,11 +51,25 @@
   background: var(--mark-color);
 }
 
+.rowName {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.rowSub {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .radioDot {
   flex: none;
-  width: 14px;
-  height: 14px;
-  margin-top: 4px;
+  width: 16px;
+  height: 16px;
   border-radius: var(--radius-full);
   border: var(--border-width-control) solid var(--color-border-control);
   display: grid;
@@ -69,8 +78,8 @@
 
 .radioDot::after {
   content: '';
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: var(--radius-full);
   background: var(--color-accent);
   transform: scale(0);
@@ -83,53 +92,4 @@
 
 .radioDotSelected::after {
   transform: scale(1);
-}
-
-.cardName {
-  font-weight: 500;
-  color: var(--color-text-primary);
-  margin-top: var(--space-2);
-}
-
-.cardSub {
-  color: var(--color-text-tertiary);
-}
-
-@media (max-width: 1080px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 880px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .card {
-    height: 56px;
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .cardTop {
-    flex-direction: column-reverse;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  .cardName {
-    margin-top: 0;
-  }
-
-  .cardName,
-  .cardSub {
-    display: inline;
-  }
-
-  .cardName::after {
-    content: ' · ';
-    color: var(--color-text-tertiary);
-  }
 }
