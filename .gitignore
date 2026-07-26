@@ -26,3 +26,7 @@ dist-ssr
 # local npm cache (workaround for root-owned ~/.npm)
 .npmrc
 .npm-cache/
+
+# local env
+.env.local
+.env
