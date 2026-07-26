@@ -446,8 +446,10 @@ export class ImapMailProvider implements MailProvider {
       inReplyTo: parent?.messageId,
       references: parent?.references,
     });
-    // mime.ts speaks base64url (Gmail REST's dialect); the mailer wants plain.
-    const raw = rawUrl.replace(/-/g, '+').replace(/_/g, '/');
+    // mime.ts speaks base64url (Gmail REST's dialect, unpadded); the mailer
+    // decodes standard base64 and is strict about the padding.
+    const converted = rawUrl.replace(/-/g, '+').replace(/_/g, '/');
+    const raw = converted.padEnd(Math.ceil(converted.length / 4) * 4, '=');
 
     try {
       await this.call('mail_send', {

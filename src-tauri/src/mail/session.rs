@@ -25,6 +25,10 @@ struct Live {
     session: ImapSession,
     /// The mailbox currently SELECTed, to skip redundant round trips.
     selected: Option<String>,
+    /// SPECIAL-USE names, discovered once per connection. Localised, so they
+    /// cannot be hardcoded; stable, so they need not be re-LISTed per command.
+    all_mail: Option<String>,
+    sent: Option<String>,
 }
 
 static LIVE: Mutex<Option<Live>> = Mutex::new(None);
@@ -121,7 +125,12 @@ pub fn connect(email: &str, password: &str) -> Result<(), String> {
 
     let session = open(&creds)?;
     store_credentials(&creds)?;
-    *LIVE.lock().unwrap() = Some(Live { session, selected: None });
+    *LIVE.lock().unwrap() = Some(Live {
+        session,
+        selected: None,
+        all_mail: None,
+        sent: None,
+    });
     Ok(())
 }
 
@@ -191,14 +200,36 @@ pub fn with_mailbox<T>(
         if guard.is_none() {
             let creds = stored_credentials()
                 .ok_or_else(|| "Pigeon isn't connected to Gmail.".to_string())?;
-            *guard = Some(Live { session: open(&creds)?, selected: None });
+            *guard = Some(Live {
+                session: open(&creds)?,
+                selected: None,
+                all_mail: None,
+                sent: None,
+            });
         }
         let live = guard.as_mut().unwrap();
 
         let outcome = (|| -> Result<T, imap::Error> {
             let name = match which {
                 Special::Inbox => "INBOX".to_string(),
-                _ => find_special(&mut live.session, which).map_err(imap::Error::Bad)?,
+                Special::AllMail | Special::Sent => {
+                    let cached = match which {
+                        Special::AllMail => &live.all_mail,
+                        _ => &live.sent,
+                    };
+                    match cached {
+                        Some(name) => name.clone(),
+                        None => {
+                            let found = find_special(&mut live.session, which)
+                                .map_err(imap::Error::Bad)?;
+                            match which {
+                                Special::AllMail => live.all_mail = Some(found.clone()),
+                                _ => live.sent = Some(found.clone()),
+                            }
+                            found
+                        }
+                    }
+                }
             };
             if live.selected.as_deref() != Some(&name) {
                 live.session.select(&name)?;

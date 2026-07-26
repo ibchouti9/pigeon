@@ -37,7 +37,6 @@ vi.mock('../../../lib/desktop', () => ({
   openExternal: async (url: string) => {
     opened.urls.push(url);
   },
-  onFileDrop: () => () => undefined,
 }));
 
 /** Stands where the real provider does; nothing here reaches a wire. */

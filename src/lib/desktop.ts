@@ -38,29 +38,3 @@ export async function openExternal(url: string): Promise<void> {
   await openUrl(url);
 }
 
-/**
- * Fires `handler` with the paths of files dropped on the window.
- *
- * Returns an unsubscribe. On the web this is a no-op: the setup panel there
- * falls back to pasting, since a browser cannot hand a path to anyone.
- */
-export function onFileDrop(handler: (paths: string[]) => void): () => void {
-  if (!isDesktop()) return () => {};
-
-  let stop: (() => void) | null = null;
-  let cancelled = false;
-
-  void (async () => {
-    const { getCurrentWebview } = await import('@tauri-apps/api/webview');
-    const unlisten = await getCurrentWebview().onDragDropEvent((event) => {
-      if (event.payload.type === 'drop') handler(event.payload.paths);
-    });
-    if (cancelled) unlisten();
-    else stop = unlisten;
-  })();
-
-  return () => {
-    cancelled = true;
-    stop?.();
-  };
-}

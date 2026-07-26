@@ -21,7 +21,6 @@ vi.mock('../../lib/desktop', () => ({
     return bridge.handler(command, args);
   },
   openExternal: async () => undefined,
-  onFileDrop: () => () => undefined,
 }));
 
 /** An in-memory Gmail holding the two piles below, spoken in bridge JSON. */
