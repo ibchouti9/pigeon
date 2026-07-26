@@ -1,0 +1,70 @@
+/*
+ * The body editor is a real <textarea> with a mirrored highlight layer behind
+ * it, rather than a contenteditable. §5.12 asks for `[confirm: …]` to render as
+ * a filled chip inside the composer; this gets that without giving up native
+ * caret, IME, undo and paste behaviour. A <textarea> already carries
+ * role="textbox" and aria-multiline implicitly, which is what C-9 requires.
+ */
+
+.wrap {
+  position: relative;
+  display: grid;
+}
+
+.underlay,
+.input {
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: var(--space-4);
+  border: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-md-size);
+  line-height: var(--text-md-line);
+  letter-spacing: var(--text-md-track);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  max-width: var(--measure-read);
+}
+
+.underlay {
+  pointer-events: none;
+  user-select: none;
+  color: transparent;
+  overflow: hidden;
+}
+
+.input {
+  position: relative;
+  background: transparent;
+  color: var(--color-text-primary);
+  resize: none;
+  overflow-y: auto;
+  transition: color var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard);
+}
+
+.input:focus-visible {
+  outline-offset: -2px;
+}
+
+.input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* §4.7 — AI ink on the AI tint, until the user edits a character. */
+.drafted {
+  background: var(--color-surface-ai);
+}
+
+.drafted .input {
+  color: var(--color-text-ai);
+}
+
+/* D26 — an unresolved commitment reads as a chip and blocks send. */
+.placeholder {
+  background: var(--color-destructive-subtle);
+  color: transparent;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  box-shadow: 0 0 0 1px var(--color-destructive) inset;
+}
