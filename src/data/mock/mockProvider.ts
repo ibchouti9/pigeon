@@ -35,8 +35,11 @@ interface MockState {
 const STORAGE_KEY = 'pigeon.demo';
 const STATE_VERSION = 1;
 
-/** Latency that reads as "a real network" without slowing the app down. */
-const LATENCY_MS = 90;
+/**
+ * Latency that reads as "a real network" without slowing the app down. Tests
+ * run without it — they are asserting behaviour, not the feel of a fetch.
+ */
+const LATENCY_MS = import.meta.env.MODE === 'test' ? 0 : 90;
 
 function delay<T>(value: T, ms = LATENCY_MS): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
