@@ -392,6 +392,34 @@ found by driving the running app, not by reading the code.
   and silently do nothing, which is what made an earlier "Enter doesn't open a
   thread" look like a product bug. Check that an input actually changed
   something before recording what it cost.
+- **A §8.1 audit of all four keyboard tables against the code.** Six real
+  defects, each confirmed in the running app before anything was touched:
+  - **Search `e` archived every result**, ignoring the row's place, so an
+    ARCHIVE result was re-archived where §8.1 says it should come back.
+  - **Clicking a search result left the cursor behind**, so `e` archived a
+    thread that wasn't on screen and `j`/`k` jumped somewhere else.
+  - **A search result could not be replied to at all.** §5.6's reader rendered
+    Reply, Reply all, Forward, the "Reply to {name}" affordance and `r`/`a`/`f`
+    with nothing behind any of them, and `u` was missing outright. The reply
+    state now lives in `useThreadReply` and both readers hold the same one.
+  - **`j` then Enter in Settings → Senders declined a sender.** The cursor
+    landed on the row's action button, which §5.13b makes "Decline" on the
+    Approved tab — 15 approved down to 14 with one keystroke. The cursor takes
+    the row now; the button is one Tab away.
+  - **One Esc from the rail's search field closed two layers**, leaving the
+    field and minimizing the composer together. The list columns already guard
+    exactly this; the rail did not.
+  - **⌘Enter only sent from the message body.** §8.1 exempts it from the
+    text-field rule, so it belongs to the whole composer — it did nothing from
+    the Subject line or the recipient field.
+- **Three probes in a row measured the wrong thing**, and each looked like a
+  product bug first: `Return`, `Down` and `/` arrive from the browser harness
+  as keys the page never sees; `g`-then-key can't survive a tool round-trip
+  inside its own 1,200ms window; and the composer is itself `role="dialog"`, so
+  a probe watching for "a dialog" was watching the composer. Every one produced
+  a confident false finding that a second look dissolved. Dispatching a real
+  event from `document.activeElement` is the probe that behaves like a user;
+  `window.dispatchEvent` never reaches a handler bound below it.
 
 ## Deliberate deviations from the spec
 
@@ -560,6 +588,21 @@ user-visible. Worth doing deliberately rather than at the end of a long session.
   asks for *tabular figures* on, which only matters for lining up multi-digit
   numbers. Read the other way, an inbox at 1,247 unread would say "99+" for no
   reason.
+- **§8.1 gaps left open, deliberately.** From the same audit, each judged and
+  left rather than missed:
+  - `u` with the list scrolled far from the open thread lands focus on the
+    Inbox heading rather than the row §8.1 names. The row is unmounted by the
+    windowing, and §8.2's route-change rule already puts focus on the region's
+    heading, so it degrades to a sensible announced target. Scrolling the row
+    back would honour §8.1 exactly; `rowOffset` is there when it is worth it.
+  - `e` with a thread open archives the open thread, not the list cursor. §8.1
+    describes both scopes and they overlap here; the open thread is the one the
+    user is looking at.
+  - Search has no `x` or `Shift+J`/`Shift+K`, and sender lists have no `x`
+    either. §5.11 and §5.13b give neither screen a selection model, so there is
+    nothing for those keys to toggle.
+  - `j`/`k` in Search walk the thread results only, not the HELD group, whose
+    rows are sender rows reachable by Tab.
 - Four places where the spec contradicts itself, resolved and recorded rather
   than silently picked: the minimized dock's height (§3.5 says 40px, §5.12 says
   44px — 44 wins, it is the later and more detailed passage); list section and
