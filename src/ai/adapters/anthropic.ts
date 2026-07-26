@@ -70,6 +70,17 @@ function classify(status: number, body: AnthropicResponse | null): AiError {
       'rate-limited',
     );
   }
+  /*
+   * An answer we don't recognise is still an answer. This used to fall through
+   * to "check your connection" for any unclassified status — so a 400 or 404,
+   * which can only arrive *after* auth succeeded, told the user their network
+   * was down. Diagnosed the long way: a working key "couldn't reach" Anthropic
+   * while a garbage key was cleanly "rejected". When the API says what was
+   * wrong, its own words beat any guess of ours.
+   */
+  if (message) {
+    return new AiError(`Anthropic didn't accept the request. It said: ${message}`, 'rejected');
+  }
   return new AiError('Couldn\'t reach Anthropic. Check your connection and test again.', 'offline');
 }
 

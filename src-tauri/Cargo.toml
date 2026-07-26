@@ -39,3 +39,8 @@ keyring = { version = "3", features = ["apple-native"] }
 # Used for production builds, where the frontend is served from the bundle
 # rather than from `devUrl`.
 custom-protocol = ["tauri/custom-protocol"]
+
+[dev-dependencies]
+regex = "1"
+url = "2"
+urlpattern = "0.3"

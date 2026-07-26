@@ -2846,6 +2846,7 @@ dependencies = [
  "log",
  "mail-parser",
  "native-tls",
+ "regex",
  "serde",
  "serde_json",
  "tauri",
@@ -2853,6 +2854,8 @@ dependencies = [
  "tauri-plugin-http",
  "tauri-plugin-log",
  "tauri-plugin-opener",
+ "url",
+ "urlpattern",
 ]
 
 [[package]]
