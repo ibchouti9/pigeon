@@ -37,7 +37,7 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
 
   const [topId, setTopId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<Overlay | null>(null);
-  const [enter, setEnter] = useState<'rise' | 'fromRight' | 'fromLeft' | null>(null);
+  const [enter, setEnter] = useState<'rise' | 'fromRight' | 'fromLeft' | 'restore' | null>(null);
   const [announce, setAnnounce] = useState('');
   const [errorId, setErrorId] = useState<string | null>(null);
 
@@ -45,6 +45,20 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
   const hasFocused = useRef(false);
   const wasSheetOpen = useRef(false);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // §3.2 3c — an undone decision returns its card to the top of the stack.
+  // `listHeld` sorts by date, so the restored sender otherwise came back
+  // wherever its newest message fell and the undo looked like it had failed.
+  const restoredSenderId = useMail((s) => s.restoredSenderId);
+  useEffect(() => {
+    if (!restoredSenderId) return;
+    if (!held.some((h) => h.sender.id === restoredSenderId)) return;
+    setTopId(restoredSenderId);
+    setEnter('restore');
+    useMail.setState({ restoredSenderId: null });
+    const timer = setTimeout(() => setEnter(null), MOTION.base());
+    return () => clearTimeout(timer);
+  }, [restoredSenderId, held]);
 
   const ordered = rotateFrom(held, topId);
   const top = ordered[0] as HeldSender | undefined;

@@ -199,3 +199,20 @@
   border-radius: var(--radius-full);
   background: var(--color-text-tertiary);
 }
+
+/* §3.1 3a — a thin progress line under the account name while sync finishes. */
+.syncLine {
+  display: block;
+  height: 2px;
+  margin-top: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+
+.syncFill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--duration-base) var(--ease-standard);
+}

@@ -54,6 +54,13 @@ interface MailState {
    * to reach zero, or it tears the list down mid-action.
    */
   deciding: number;
+
+  /**
+   * The sender an undo just brought back, so §3.2 3c can put its card on top
+   * of the stack again. `listHeld` re-sorts by date, so without this the card
+   * reappeared wherever its newest message happened to fall.
+   */
+  restoredSenderId: string | null;
   reverse: (senderId: string, to: 'approved' | 'declined') => Promise<boolean>;
 
   search: (query: string, includeHeld: boolean) => Promise<SearchResults>;
@@ -94,6 +101,7 @@ export const useMail = create<MailState>((set, get) => ({
   revoked: false,
   providerEpoch: 0,
   deciding: 0,
+  restoredSenderId: null,
 
   setProvider: (provider) =>
     set((s) => ({
@@ -277,6 +285,7 @@ export const useMail = create<MailState>((set, get) => ({
         async () => {
           await get().provider.undecideSender(senderId);
           await Promise.all([get().loadHeld(), get().loadThreads('inbox'), get().loadSenders()]);
+          set({ restoredSenderId: senderId });
           toast.confirm('Decision undone.');
         },
       );

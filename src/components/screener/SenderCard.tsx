@@ -23,7 +23,7 @@ export interface SenderCardProps {
    * decision (§4.6 CARD RISE), `fromRight`/`fromLeft` after `j`/`k`
    * cycling (§5.7 — "animates out to the left ... returns from the right").
    */
-  enter?: 'rise' | 'fromRight' | 'fromLeft' | null;
+  enter?: 'rise' | 'fromRight' | 'fromLeft' | 'restore' | null;
   /** C-6 error state: a 1px destructive border, held for 3s by the caller. */
   error?: boolean;
   disabled?: boolean;
@@ -74,6 +74,7 @@ export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function Send
         deciding === 'approved' && styles.departApproved,
         deciding === 'declined' && styles.departDeclined,
         enter === 'rise' && styles.rising,
+        enter === 'restore' && styles.restoring,
         enter === 'fromRight' && styles.enterFromRight,
         enter === 'fromLeft' && styles.enterFromLeft,
         error && styles.error,

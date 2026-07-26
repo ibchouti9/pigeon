@@ -1,7 +1,8 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useMail, useHeldCount, useUnreadCount } from '../../store/mail';
 import { useCompose } from '../../store/compose';
+import { getSyncProgress, subscribeSync } from '../onboarding/syncSession';
 import { useOnline } from '../../hooks/useOnline';
 import { Button } from '../primitives/Button';
 import { Icon, type IconName } from '../primitives/Icon';
@@ -37,6 +38,11 @@ export function NavRail({ compact, searchRef }: NavRailProps) {
   const heldCount = useHeldCount();
   const openCompose = useCompose((s) => s.open);
   const online = useOnline();
+
+  const [sync, setSync] = useState(getSyncProgress);
+  useEffect(() => subscribeSync(setSync), []);
+  const syncing = sync.step !== 'complete' && !sync.error && sync.total !== null;
+  const syncPct = sync.total ? Math.round((sync.done / sync.total) * 100) : 0;
   const localRef = useRef<HTMLInputElement>(null);
   const inputRef = searchRef ?? localRef;
 
@@ -66,6 +72,23 @@ export function NavRail({ compact, searchRef }: NavRailProps) {
             <span className={cn('t-xs', 'truncate', styles.accountEmail)}>
               {account?.email ?? ''}
             </span>
+            {/*
+              §3.1 3a — a user who hits Continue at 20% leaves sync running.
+              Without this the rest of it finished invisibly, and a half-loaded
+              inbox looked like the whole of their mail.
+            */}
+            {syncing && (
+              <span
+                className={styles.syncLine}
+                role="progressbar"
+                aria-label="Still syncing your mail"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={syncPct}
+              >
+                <span className={styles.syncFill} style={{ width: `${syncPct}%` }} />
+              </span>
+            )}
           </span>
         )}
       </NavLink>
