@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#E4E8E7; font-family:"Public Sans",Helvetica,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#0F5F55; text-decoration:none; }
+  a:hover { color:#0B4B43; text-decoration:underline; }
+  ::selection { background:#E2EEEB; }
+</style>
+</helmet>
+
+<div style="padding:72px 72px 140px;display:flex;flex-direction:column;gap:24px">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:900px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <svg width="40" height="40" viewBox="0 0 40 40" style="transform:rotate(-9deg)"><circle cx="20" cy="20" r="18.5" fill="none" stroke="#0F5F55" stroke-width="1.5"></circle></svg>
+      <span style="font:700 40px/46px Archivo,sans-serif;letter-spacing:-0.022em;color:#1B2027">Pigeon</span>
+    </div>
+    <p style="margin:0;font:400 17px/26px 'Public Sans',sans-serif;color:#4C5763;max-width:720px;text-wrap:pretty">Every screen in the MVP specification, drawn at 1440 × 900. Frames follow the tokens in section 4 exactly — Archivo for display, Public Sans for interface, IBM Plex Mono for the utility register. Reference any frame by its id.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase">
+      <a href="#o1" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">o1</a>
+      <a href="#o3" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">o3</a>
+      <a href="#o4" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">o4</a>
+      <a href="#o5" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">o5</a>
+      <a href="#inbox" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">inbox</a>
+      <a href="#empty" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">empty</a>
+      <a href="#screener" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">screener</a>
+      <a href="#bulk" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">bulk</a>
+      <a href="#held" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">held</a>
+      <a href="#compose" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">compose</a>
+      <a href="#search" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">search</a>
+      <a href="#senders" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">senders</a>
+      <a href="#assistant" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">assistant</a>
+      <a href="#dark" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">dark</a>
+      <a href="#stamp" style="border:1px solid #C9D2D0;border-radius:999px;padding:4px 10px">stamp</a>
+    </div>
+  </div>
+
+  <!-- ============================ ONBOARDING ============================ -->
+  <div style="display:flex;align-items:center;gap:16px;margin-top:40px">
+    <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Onboarding</span>
+    <span style="flex:1;height:1px;background:#C9D2D0"></span>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:64px">
+
+    <!-- O1 -->
+    <div id="o1" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">o1</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Welcome / Connect Gmail</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">1440 × 900</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        <div style="width:480px;display:flex;flex-direction:column;align-items:flex-start">
+          <svg width="48" height="48" viewBox="0 0 48 48" style="transform:rotate(-9deg)"><circle cx="24" cy="24" r="22.5" fill="none" stroke="#0F5F55" stroke-width="1.5"></circle></svg>
+          <div style="height:24px"></div>
+          <h1 style="margin:0;font:700 40px/46px Archivo,sans-serif;letter-spacing:-0.022em;color:#1B2027">Pigeon</h1>
+          <div style="height:12px"></div>
+          <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C5763;max-width:400px;text-wrap:pretty">Mail from people you've chosen. Everyone else waits at the door.</p>
+          <div style="height:32px"></div>
+          <button style="width:100%;height:44px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer" style-hover="background:#0B4B43">Connect Gmail</button>
+          <div style="height:16px"></div>
+          <p style="margin:0;font:400 12px/18px 'Public Sans',sans-serif;color:#616D78;max-width:380px;text-wrap:pretty">Pigeon reads and sends mail on your behalf. It never sends anything you haven't seen.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- O3 -->
+    <div id="o3" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">o3</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Setting up your inbox</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">sync in progress</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        <div style="width:480px;display:flex;flex-direction:column;align-items:flex-start">
+          <h1 style="margin:0;font:600 32px/38px Archivo,sans-serif;letter-spacing:-0.018em;color:#1B2027">Setting up your inbox</h1>
+          <div style="height:32px"></div>
+          <div style="width:100%;height:4px;border-radius:999px;background:#EDF0EF;overflow:hidden"><div style="width:36%;height:4px;border-radius:999px;background:#0F5F55"></div></div>
+          <div style="height:12px"></div>
+          <span style="font:400 13px/18px 'IBM Plex Mono',monospace;letter-spacing:.02em;color:#4C5763;font-variant-numeric:tabular-nums">4,312 of 11,908 threads</span>
+          <div style="height:24px"></div>
+          <div style="width:100%;height:1px;background:#DFE4E3"></div>
+          <div style="height:24px"></div>
+          <div style="display:flex;flex-direction:column;gap:0;width:100%">
+            <div style="height:28px;display:flex;align-items:center;gap:12px"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="#0F5F55" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font:400 13px/18px 'Public Sans',sans-serif;color:#4C5763">Connected marc@ferrum.dev</span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:12px"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="#0F5F55" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font:400 13px/18px 'Public Sans',sans-serif;color:#4C5763">Read your contacts</span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:12px"><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="#DFE4E3" stroke-width="1.6"></circle><path d="M8 2a6 6 0 0 1 6 6" fill="none" stroke="#0F5F55" stroke-width="1.6" stroke-linecap="round"></path></svg><span style="font:500 13px/18px 'Public Sans',sans-serif;color:#1B2027">Reading your mail history</span></div>
+            <div style="height:28px;display:flex;align-items:center;gap:12px"><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="#C4CCCF" stroke-width="1.6"></circle></svg><span style="font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">Working out who you know</span></div>
+          </div>
+          <div style="height:32px"></div>
+          <button style="width:100%;height:44px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- O4 -->
+    <div id="o4" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">o4</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Confirm your known senders</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        <div style="width:720px;display:flex;flex-direction:column;align-items:flex-start">
+          <h1 style="margin:0;font:600 32px/38px Archivo,sans-serif;letter-spacing:-0.018em;color:#1B2027">Who already knows you?</h1>
+          <div style="height:12px"></div>
+          <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C5763;max-width:600px;text-wrap:pretty">These 342 people are in your contacts or you've written to them before. Their mail goes straight to your inbox. Everyone else starts in the Screener.</p>
+          <div style="height:24px"></div>
+          <div style="display:flex;gap:12px;width:100%;align-items:center">
+            <div style="flex:1;height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px">
+              <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+              <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Find a sender</span>
+            </div>
+            <button style="height:36px;padding:0 14px;border:1px solid #78838E;border-radius:5px;background:transparent;color:#1B2027;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Untick all</button>
+          </div>
+          <div style="height:16px"></div>
+          <div style="width:100%;background:#FBFCFB;border:1px solid #DFE4E3;border-radius:10px;overflow:hidden">
+            <sc-for list="{{ knownSenders }}" as="k" hint-placeholder-count="7">
+              <div style="height:44px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid #DFE4E3">
+                <span style="width:18px;height:18px;border-radius:3px;background:{{ k.boxBg }};border:1.5px solid {{ k.boxBorder }};display:flex;align-items:center;justify-content:center;flex:none">
+                  <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3L9.5 3.6" fill="none" stroke="{{ k.tick }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </span>
+                <span style="width:24px;height:24px;border-radius:999px;background:{{ k.tint }};color:#FBFCFB;font:600 10px/24px 'Public Sans',sans-serif;text-align:center;flex:none">{{ k.initials }}</span>
+                <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027;flex:none">{{ k.name }}</span>
+                <span style="font:400 13px/18px 'Public Sans',sans-serif;color:#616D78;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ k.email }}</span>
+                <span style="font:400 12px/16px 'Public Sans',sans-serif;color:#616D78;flex:none">{{ k.reason }}</span>
+              </div>
+            </sc-for>
+            <div style="height:44px;display:flex;align-items:center;padding:0 16px"><span style="font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">335 more</span></div>
+          </div>
+          <div style="height:24px"></div>
+          <button style="height:44px;padding:0 24px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Approve 341 senders</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- O5 -->
+    <div id="o5" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">o5</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">How the Screener works</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        <div style="width:520px;display:flex;flex-direction:column;align-items:flex-start">
+          <div style="width:280px;height:180px;position:relative">
+            <div style="position:absolute;left:28px;top:0;width:224px;height:110px;background:#E6EBEA;border:1px solid #DFE4E3;border-radius:14px"></div>
+            <div style="position:absolute;left:16px;top:12px;width:248px;height:120px;background:#E9EEED;border:1px solid #DFE4E3;border-radius:14px"></div>
+            <div style="position:absolute;left:0;top:26px;width:280px;height:132px;background:#EDF1F0;border:1px solid #DFE4E3;border-radius:14px;box-shadow:0 1px 2px rgb(27 32 39 / .05), 0 6px 16px -4px rgb(27 32 39 / .10);padding:18px;box-sizing:border-box">
+              <div style="width:28px;height:28px;border-radius:999px;background:#3E5A57;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center">SS</div>
+              <div style="height:12px"></div>
+              <div style="width:120px;height:9px;border-radius:3px;background:#CDD6D4"></div>
+              <div style="height:8px"></div>
+              <div style="width:190px;height:7px;border-radius:3px;background:#DBE2E0"></div>
+              <div style="height:6px"></div>
+              <div style="width:150px;height:7px;border-radius:3px;background:#DBE2E0"></div>
+            </div>
+          </div>
+          <div style="height:36px"></div>
+          <h1 style="margin:0;font:600 32px/38px Archivo,sans-serif;letter-spacing:-0.018em;color:#1B2027">Strangers wait at the door</h1>
+          <div style="height:16px"></div>
+          <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C5763;max-width:460px;text-wrap:pretty">Mail from someone new never lands in your inbox. It waits in the Screener until you decide.</p>
+          <div style="height:12px"></div>
+          <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C5763;max-width:460px;text-wrap:pretty">Approve someone and their mail — this one and everything after — goes to your inbox. Decline and you never see them again. You can change your mind any time in Settings.</p>
+          <div style="height:32px"></div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <button style="height:44px;padding:0 24px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Go to inbox</button>
+            <button style="height:44px;padding:0 4px;border:none;background:transparent;color:#0F5F55;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Skip</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================ MAIL ============================ -->
+  <div style="display:flex;align-items:center;gap:16px;margin-top:40px">
+    <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Inbox and reading</span>
+    <span style="flex:1;height:1px;background:#C9D2D0"></span>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:64px">
+
+    <!-- INBOX -->
+    <div id="inbox" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">inbox</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Inbox with a thread open</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">auto summary · 4 messages</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex">
+
+        <!-- rail -->
+        <div style="width:232px;flex:none;background:#F3F5F4;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px;border-radius:6px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Search mail</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railInbox }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;position:relative;margin-bottom:2px">
+              <span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:{{ n.bar }}"></span>
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">{{ n.count }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#DFE4E3;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;display:flex;align-items:center;gap:12px;padding:0 12px">
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#4C5763" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#4C5763" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763">Settings</span>
+          </div>
+        </div>
+
+        <!-- list -->
+        <div style="width:380px;flex:none;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;flex-direction:column">
+          <div style="height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #DFE4E3">
+            <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Inbox</span>
+            <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">12 unread</span>
+          </div>
+          <div style="flex:1;overflow:hidden">
+            <div style="height:32px;background:#F3F5F4;display:flex;align-items:center;padding:0 16px;font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Today</div>
+            <sc-for list="{{ todayThreads }}" as="r" hint-placeholder-count="3">
+              <div style="height:56px;display:flex;align-items:center;padding:0 16px;background:{{ r.bg }};position:relative;cursor:default" style-hover="background:#E9EDEC">
+                <span style="position:absolute;left:0;top:0;width:2px;height:56px;background:{{ r.bar }}"></span>
+                <span style="width:8px;flex:none;display:flex;justify-content:center"><span style="width:6px;height:6px;border-radius:999px;background:{{ r.dot }}"></span></span>
+                <span style="width:8px;flex:none"></span>
+                <span style="width:28px;height:28px;border-radius:999px;background:{{ r.tint }};color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">{{ r.initials }}</span>
+                <span style="width:12px;flex:none"></span>
+                <span style="flex:1;min-width:0">
+                  <span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.namePlus }}</span>
+                  <span style="display:block;font:{{ r.subjWeight }} 13px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.subject }}<span style="color:#616D78;font-weight:400"> — {{ r.snippet }}</span></span>
+                </span>
+                <span style="width:12px;flex:none"></span>
+                <span style="width:72px;flex:none;text-align:right">
+                  <span style="display:block">{{ r.ring }}</span>
+                  <span style="display:block;font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">{{ r.time }}</span>
+                </span>
+              </div>
+            </sc-for>
+            <div style="height:32px;background:#F3F5F4;display:flex;align-items:center;padding:0 16px;font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Yesterday</div>
+            <sc-for list="{{ yesterdayThreads }}" as="r" hint-placeholder-count="3">
+              <div style="height:56px;display:flex;align-items:center;padding:0 16px;background:{{ r.bg }};position:relative" style-hover="background:#E9EDEC">
+                <span style="width:8px;flex:none;display:flex;justify-content:center"><span style="width:6px;height:6px;border-radius:999px;background:{{ r.dot }}"></span></span>
+                <span style="width:8px;flex:none"></span>
+                <span style="width:28px;height:28px;border-radius:999px;background:{{ r.tint }};color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">{{ r.initials }}</span>
+                <span style="width:12px;flex:none"></span>
+                <span style="flex:1;min-width:0">
+                  <span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.namePlus }}</span>
+                  <span style="display:block;font:{{ r.subjWeight }} 13px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.subject }}<span style="color:#616D78;font-weight:400"> — {{ r.snippet }}</span></span>
+                </span>
+                <span style="width:12px;flex:none"></span>
+                <span style="width:72px;flex:none;text-align:right;font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">{{ r.time }}</span>
+              </div>
+            </sc-for>
+            <div style="height:32px;background:#F3F5F4;display:flex;align-items:center;padding:0 16px;font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Monday</div>
+            <sc-for list="{{ mondayThreads }}" as="r" hint-placeholder-count="1">
+              <div style="height:56px;display:flex;align-items:center;padding:0 16px;background:{{ r.bg }}" style-hover="background:#E9EDEC">
+                <span style="width:8px;flex:none"></span>
+                <span style="width:8px;flex:none"></span>
+                <span style="width:28px;height:28px;border-radius:999px;background:{{ r.tint }};color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">{{ r.initials }}</span>
+                <span style="width:12px;flex:none"></span>
+                <span style="flex:1;min-width:0">
+                  <span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.namePlus }}</span>
+                  <span style="display:block;font:400 13px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.subject }}<span style="color:#616D78"> — {{ r.snippet }}</span></span>
+                </span>
+                <span style="width:12px;flex:none"></span>
+                <span style="width:72px;flex:none;text-align:right;font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">{{ r.time }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- reader -->
+        <div style="flex:1;min-width:0;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;flex-direction:column">
+          <div style="height:72px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 40px;border-bottom:1px solid #DFE4E3">
+            <span style="min-width:0">
+              <span style="display:block;font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Contract redlines back from legal</span>
+              <span style="display:block;font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">4 messages · Dana Whitlock, you, Sana Sethi</span>
+            </span>
+            <span style="display:flex;gap:4px;flex:none">
+              <span style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center" style-hover="background:#E9EDEC"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M7 3.5L2.5 8 7 12.5M2.5 8H10a3.5 3.5 0 0 1 3.5 3.5v1" fill="none" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+              <span style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center" style-hover="background:#E9EDEC"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M5.5 3.5L1 8l4.5 4.5M9.5 3.5L5 8l4.5 4.5M5 8h5a3.5 3.5 0 0 1 3.5 3.5v1" fill="none" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+              <span style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center" style-hover="background:#E9EDEC"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M9 3.5L13.5 8 9 12.5M13.5 8H6a3.5 3.5 0 0 0-3.5 3.5v1" fill="none" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+              <span style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center" style-hover="background:#E9EDEC"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="3.5" rx="1" fill="none" stroke="#4C5763" stroke-width="1.5"></rect><rect x="3.5" y="6.5" width="9" height="6.5" rx="1" fill="none" stroke="#4C5763" stroke-width="1.5"></rect></svg></span>
+            </span>
+          </div>
+          <div style="flex:1;padding:32px 40px;overflow:hidden">
+
+            <div style="background:#EFEEF8;border-radius:10px;padding:20px;max-width:680px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:#4C4A8A">◆ Pigeon summary</span>
+                <span style="font:500 13px/18px 'Public Sans',sans-serif;color:#4C4A8A;cursor:pointer">Hide</span>
+              </div>
+              <div style="height:12px"></div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;gap:8px"><span style="width:3px;height:3px;background:#4C4A8A;margin-top:8px;flex:none"></span><span style="font:400 13px/18px 'Public Sans',sans-serif;color:#1B2027">Legal returned the MSA with three changes.</span></div>
+                <div style="display:flex;gap:8px"><span style="width:3px;height:3px;background:#4C4A8A;margin-top:8px;flex:none"></span><span style="font:400 13px/18px 'Public Sans',sans-serif;color:#1B2027">Liability cap moved from $1M to $500K.</span></div>
+                <div style="display:flex;gap:8px"><span style="width:3px;height:3px;background:#4C4A8A;margin-top:8px;flex:none"></span><span style="font:400 13px/18px 'Public Sans',sans-serif;color:#1B2027">Dana needs your answer before Friday.</span></div>
+              </div>
+            </div>
+
+            <div style="height:32px"></div>
+
+            <div style="display:flex;gap:16px;max-width:720px">
+              <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">DW</span>
+              <span style="flex:1;min-width:0">
+                <span style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">
+                  <span><span style="font:600 17px/24px 'Public Sans',sans-serif;letter-spacing:-0.008em;color:#1B2027">Dana Whitlock</span> <span style="font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">&lt;dana@lumenpartners.com&gt;</span></span>
+                  <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;flex:none">Jul 22, 9:14 AM</span>
+                </span>
+                <span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">to you, Sana</span>
+                <span style="display:block;height:12px"></span>
+                <span style="display:block;height:1px;background:#DFE4E3"></span>
+                <span style="display:block;height:16px"></span>
+                <span style="display:block;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027;max-width:68ch;text-wrap:pretty">Marc — legal came back on the MSA. Three things: they've moved the liability cap down to $500K, they want the notice period at 60 days instead of 30, and they've struck the exclusivity clause entirely.</span>
+                <span style="display:block;height:12px"></span>
+                <span style="display:block;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027;max-width:68ch;text-wrap:pretty">The cap is the one I'd push back on. Redline attached. Can you get me a yes or no before Friday? Sana is holding the signature slot.</span>
+                <span style="display:block;height:16px"></span>
+                <span style="display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;background:#EDF0EF;border-radius:5px">
+                  <svg width="14" height="14" viewBox="0 0 14 14"><rect x="2.5" y="1.5" width="9" height="11" rx="1" fill="none" stroke="#4C5763" stroke-width="1.3"></rect></svg>
+                  <span style="font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027">MSA-v4-redline.pdf</span>
+                  <span style="font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">240 KB</span>
+                </span>
+              </span>
+            </div>
+
+            <div style="height:24px"></div>
+
+            <div style="display:flex;gap:16px;align-items:center;max-width:720px;height:32px" style-hover="background:#E9EDEC">
+              <span style="width:20px;height:20px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 8px/20px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+              <span style="font:500 13px/18px 'Public Sans',sans-serif;color:#1B2027;flex:none">You</span>
+              <span style="flex:1;min-width:0;font:400 13px/18px 'Public Sans',sans-serif;color:#616D78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Thanks — reading now. Will come back with a view on the cap by tomorrow.</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;flex:none">Jul 22, 11:40 AM</span>
+            </div>
+
+            <div style="height:24px"></div>
+
+            <div style="display:flex;gap:16px;max-width:720px">
+              <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">DW</span>
+              <span style="flex:1;min-width:0">
+                <span style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">
+                  <span style="font:600 17px/24px 'Public Sans',sans-serif;letter-spacing:-0.008em;color:#1B2027">Dana Whitlock</span>
+                  <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;flex:none">Jul 24, 2:14 PM</span>
+                </span>
+                <span style="display:block;height:12px"></span>
+                <span style="display:block;height:1px;background:#DFE4E3"></span>
+                <span style="display:block;height:16px"></span>
+                <span style="display:block;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027;max-width:68ch;text-wrap:pretty">Checking in — Friday is the deadline on their side, not ours, but if we slip it goes to their next legal cycle in August.</span>
+              </span>
+            </div>
+
+            <div style="height:32px"></div>
+
+            <div style="max-width:720px;margin-left:44px">
+              <div style="height:44px;background:#EDF0EF;border-radius:6px;display:flex;align-items:center;padding:0 16px;font:400 14px/21px 'Public Sans',sans-serif;color:#616D78;cursor:text" style-hover="background:#E9EDEC">Reply to Dana Whitlock</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INBOX EMPTY -->
+    <div id="empty" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">empty</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Inbox, day one · list loading</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">empty + skeleton + no-selection states</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex">
+        <div style="width:232px;flex:none;background:#F3F5F4;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Search mail</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railInboxDay1 }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;position:relative;margin-bottom:2px">
+              <span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:{{ n.bar }}"></span>
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#DFE4E3;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;display:flex;align-items:center;gap:12px;padding:0 12px">
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#4C5763" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#4C5763" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763">Settings</span>
+          </div>
+        </div>
+
+        <div style="width:380px;flex:none;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;flex-direction:column">
+          <div style="height:52px;flex:none;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid #DFE4E3">
+            <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Inbox</span>
+          </div>
+          <div style="flex:1;padding:40px 24px">
+            <h2 style="margin:0;font:600 32px/38px Archivo,sans-serif;letter-spacing:-0.018em;color:#1B2027">Your inbox is empty.</h2>
+            <div style="height:12px"></div>
+            <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C5763;text-wrap:pretty">Mail from your approved senders lands here. Pigeon is holding 7 senders in the Screener — start there.</p>
+            <div style="height:24px"></div>
+            <button style="height:40px;padding:0 16px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Open Screener</button>
+            <div style="height:48px"></div>
+            <div style="height:1px;background:#DFE4E3"></div>
+            <div style="height:24px"></div>
+            <span style="font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Loading state, for reference</span>
+            <div style="height:16px"></div>
+            <sc-for list="{{ skeletonRows }}" as="s" hint-placeholder-count="5">
+              <div style="height:56px;display:flex;align-items:center;gap:12px">
+                <span style="width:28px;height:28px;border-radius:999px;background:#EDF0EF;flex:none"></span>
+                <span style="flex:1;min-width:0">
+                  <span style="display:block;width:{{ s.w1 }};height:12px;border-radius:3px;background:#EDF0EF"></span>
+                  <span style="display:block;height:8px"></span>
+                  <span style="display:block;width:{{ s.w2 }};height:12px;border-radius:3px;background:#EDF0EF"></span>
+                </span>
+                <span style="width:44px;height:11px;border-radius:3px;background:#EDF0EF;flex:none"></span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="flex:1;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;align-items:center;justify-content:center">
+          <div style="max-width:320px;display:flex;flex-direction:column;align-items:center;gap:16px">
+            <svg width="32" height="32" viewBox="0 0 32 32" style="transform:rotate(-9deg)"><circle cx="16" cy="16" r="15" fill="none" stroke="#DFE4E3" stroke-width="1.2"></circle></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Select a thread to read it.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================ SCREENER ============================ -->
+  <div style="display:flex;align-items:center;gap:16px;margin-top:40px">
+    <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">The Screener</span>
+    <span style="flex:1;height:1px;background:#C9D2D0"></span>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:64px">
+
+    <!-- SCREENER STACK -->
+    <div id="screener" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">screener</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Screener — card stack</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">the one screen that changes the shell</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex">
+        <div style="width:232px;flex:none;background:#F3F5F4;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Search mail</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railScreener }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;position:relative;margin-bottom:2px">
+              <span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:{{ n.bar }}"></span>
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">{{ n.count }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#DFE4E3;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;display:flex;align-items:center;gap:12px;padding:0 12px">
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#4C5763" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#4C5763" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763">Settings</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;flex-direction:column">
+          <div style="height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #DFE4E3">
+            <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Screener</span>
+            <span style="display:flex;background:#EDF0EF;border-radius:6px;padding:2px;gap:2px">
+              <span style="height:32px;padding:0 14px;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;font:600 13px/18px 'Public Sans',sans-serif;color:#1B2027;box-shadow:0 1px 2px rgb(27 32 39 / .05)">Stack</span>
+              <span style="height:32px;padding:0 14px;border-radius:5px;display:flex;align-items:center;font:500 13px/18px 'Public Sans',sans-serif;color:#4C5763;cursor:pointer">Bulk review</span>
+            </span>
+          </div>
+
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:24px 0 0">
+            <div style="width:720px;background:#EFEEF8;border-radius:10px;padding:20px;box-sizing:border-box">
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:#4C4A8A">◆ This week</span>
+              <div style="height:10px"></div>
+              <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027">12 senders held: 9 junk, 2 recruiters, 1 looks like a client inquiry.</p>
+              <div style="height:16px"></div>
+              <div style="display:flex;gap:8px">
+                <span style="height:28px;padding:0 12px;border:1px solid #78838E;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027;cursor:pointer" style-hover="background:#E9EDEC">Junk (9)</span>
+                <span style="height:28px;padding:0 12px;border:1px solid #78838E;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027;cursor:pointer" style-hover="background:#E9EDEC">Recruiters (2)</span>
+                <span style="height:28px;padding:0 12px;border:1px solid #78838E;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027;cursor:pointer" style-hover="background:#E9EDEC">Client inquiry (1)</span>
+              </div>
+            </div>
+
+            <div style="height:40px"></div>
+
+            <div style="position:relative;width:560px;margin-top:24px">
+              <div style="position:absolute;left:44px;right:44px;top:-24px;bottom:24px;background:#E7ECEB;border:1px solid #DFE4E3;border-radius:14px"></div>
+              <div style="position:absolute;left:32px;right:32px;top:-12px;bottom:12px;background:#EAEFEE;border:1px solid #DFE4E3;border-radius:14px"></div>
+              <div style="position:relative;width:520px;margin:0 auto;background:#EDF1F0;border:1px solid #DFE4E3;border-radius:14px;box-shadow:0 1px 2px rgb(27 32 39 / .05), 0 6px 16px -4px rgb(27 32 39 / .10);padding:32px;box-sizing:border-box">
+                <div style="width:40px;height:40px;border-radius:999px;background:#3E5A57;color:#FBFCFB;font:600 15px/40px 'Public Sans',sans-serif;text-align:center">SS</div>
+                <div style="height:16px"></div>
+                <div style="font:600 20px/28px 'Public Sans',sans-serif;letter-spacing:-0.010em;color:#1B2027">Sana Sethi</div>
+                <div style="font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">sana@northbound.io</div>
+                <div style="height:20px"></div>
+                <div style="height:1px;background:#DFE4E3"></div>
+                <div style="height:20px"></div>
+                <div style="font:600 17px/24px 'Public Sans',sans-serif;letter-spacing:-0.008em;color:#1B2027">Intro to the Atlas team</div>
+                <div style="height:6px"></div>
+                <div style="font:400 13px/18px 'Public Sans',sans-serif;color:#4C5763;text-wrap:pretty">Hi Marc — Dana suggested I reach out about the integration work you did for Lumen. We're rebuilding our ingest pipeline this quarter and I'd like twenty minutes of your read on it before we commit.</div>
+                <div style="height:20px"></div>
+                <div style="background:#EFEEF8;border-radius:6px;padding:12px">
+                  <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:#4C4A8A">◆ Pigeon's read</span>
+                  <div style="height:6px"></div>
+                  <span style="font:400 13px/18px 'Public Sans',sans-serif;color:#1B2027">A warm intro from Dana Whitlock, who you email often.</span>
+                </div>
+                <div style="height:24px"></div>
+                <div style="height:1px;background:#DFE4E3"></div>
+                <div style="height:20px"></div>
+                <div style="display:flex;gap:12px">
+                  <button style="flex:1;height:40px;border:1px solid #78838E;border-radius:6px;background:transparent;color:#A32C22;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer" style-hover="background:#F6E6E4;border-color:#A32C22">Decline sender</button>
+                  <button style="flex:1;height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer" style-hover="background:#0B4B43">Approve sender</button>
+                </div>
+                <div style="height:12px"></div>
+                <button style="width:100%;height:32px;border:none;background:transparent;color:#0F5F55;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Read message</button>
+              </div>
+            </div>
+
+            <div style="height:24px"></div>
+            <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">3 of 12</span>
+          </div>
+
+          <div style="position:absolute"></div>
+        </div>
+
+        <div style="position:relative;width:0">
+          <div style="position:absolute;left:-1176px;bottom:24px;width:380px;background:#1B2027;border-radius:10px;padding:16px;box-sizing:border-box;box-shadow:0 1px 2px rgb(27 32 39 / .05), 0 6px 16px -4px rgb(27 32 39 / .10);display:flex;align-items:center;gap:16px">
+            <span style="flex:1;font:400 13px/18px 'Public Sans',sans-serif;color:#FBFCFB">Approved Dana Whitlock. Their mail is in your inbox.</span>
+            <span style="font:500 13px/18px 'Public Sans',sans-serif;color:#4FBFA8;cursor:pointer;flex:none">Undo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BULK -->
+    <div id="bulk" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">bulk</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Screener — bulk review</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">9 selected via the Junk chip</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex">
+        <div style="width:232px;flex:none;background:#F3F5F4;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Search mail</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railScreener }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;position:relative;margin-bottom:2px">
+              <span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:{{ n.bar }}"></span>
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">{{ n.count }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#DFE4E3;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;display:flex;align-items:center;gap:12px;padding:0 12px">
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#4C5763" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#4C5763" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763">Settings</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;flex-direction:column;position:relative">
+          <div style="height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #DFE4E3">
+            <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Screener</span>
+            <span style="display:flex;background:#EDF0EF;border-radius:6px;padding:2px;gap:2px">
+              <span style="height:32px;padding:0 14px;border-radius:5px;display:flex;align-items:center;font:500 13px/18px 'Public Sans',sans-serif;color:#4C5763;cursor:pointer">Stack</span>
+              <span style="height:32px;padding:0 14px;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;font:600 13px/18px 'Public Sans',sans-serif;color:#1B2027;box-shadow:0 1px 2px rgb(27 32 39 / .05)">Bulk review</span>
+            </span>
+          </div>
+
+          <div style="flex:1;padding:24px;display:flex;flex-direction:column;align-items:center;gap:24px">
+            <div style="width:960px;background:#EFEEF8;border-radius:10px;padding:20px;box-sizing:border-box">
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:#4C4A8A">◆ This week</span>
+              <div style="height:10px"></div>
+              <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027">12 senders held: 9 junk, 2 recruiters, 1 looks like a client inquiry.</p>
+              <div style="height:16px"></div>
+              <div style="display:flex;gap:8px">
+                <span style="height:28px;padding:0 12px;border:1px solid #0F5F55;background:#E2EEEB;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027">Junk (9)</span>
+                <span style="height:28px;padding:0 12px;border:1px solid #78838E;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027;cursor:pointer">Recruiters (2)</span>
+                <span style="height:28px;padding:0 12px;border:1px solid #78838E;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027;cursor:pointer">Client inquiry (1)</span>
+              </div>
+            </div>
+
+            <div style="width:960px;background:#FBFCFB;border:1px solid #DFE4E3;border-radius:10px;overflow:hidden">
+              <div style="height:44px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid #DFE4E3">
+                <span style="width:18px;height:18px;border-radius:3px;background:#0F5F55;display:flex;align-items:center;justify-content:center;flex:none"><span style="width:8px;height:1.8px;background:#FBFCFB"></span></span>
+                <span style="font:500 13px/18px 'Public Sans',sans-serif;color:#1B2027">Select all (12)</span>
+              </div>
+              <sc-for list="{{ heldSenders }}" as="h" hint-placeholder-count="6">
+                <div style="height:64px;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid #DFE4E3;background:{{ h.bg }}" style-hover="background:#E9EDEC">
+                  <span style="width:18px;height:18px;border-radius:3px;background:{{ h.boxBg }};border:1.5px solid {{ h.boxBorder }};display:flex;align-items:center;justify-content:center;flex:none">
+                    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3L9.5 3.6" fill="none" stroke="{{ h.tick }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </span>
+                  <span style="width:28px;height:28px;border-radius:999px;background:{{ h.tint }};color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">{{ h.initials }}</span>
+                  <span style="width:180px;flex:none;font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ h.name }}</span>
+                  <span style="flex:1;min-width:0;font:400 13px/18px 'Public Sans',sans-serif;color:#4C5763;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ h.subject }}</span>
+                  <span style="width:240px;flex:none;font:400 12px/16px 'Public Sans',sans-serif;color:#4C4A8A">◆ {{ h.read }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="height:56px;flex:none;background:#FBFCFB;border-top:1px solid #DFE4E3;box-shadow:0 -6px 16px -4px rgb(27 32 39 / .08);display:flex;align-items:center;gap:12px;padding:0 24px">
+            <span style="font:500 13px/18px 'Public Sans',sans-serif;color:#1B2027">9 selected</span>
+            <span style="flex:1"></span>
+            <button style="height:40px;padding:0 16px;border:1px solid #78838E;border-radius:6px;background:transparent;color:#A32C22;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer" style-hover="background:#F6E6E4;border-color:#A32C22">Decline senders</button>
+            <button style="height:40px;padding:0 16px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Approve senders</button>
+            <button style="height:40px;padding:0 8px;border:none;background:transparent;color:#0F5F55;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HELD SHEET -->
+    <div id="held" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">held</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Held message sheet</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">read-only, images blocked</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;position:relative">
+        <div style="position:absolute;inset:0;display:flex;filter:blur(0px);opacity:.5">
+          <div style="width:232px;flex:none;background:#F3F5F4"></div>
+          <div style="flex:1;background:#FBFCFB;border-left:1px solid #DFE4E3"></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgb(27 32 39 / 0.32)"></div>
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:720px;height:720px;background:#FBFCFB;border-radius:14px;box-shadow:0 2px 4px rgb(27 32 39 / .06), 0 24px 48px -12px rgb(27 32 39 / .22);display:flex;flex-direction:column;overflow:hidden">
+          <div style="height:64px;flex:none;display:flex;align-items:center;gap:16px;padding:0 24px;border-bottom:1px solid #DFE4E3">
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font:400 14px/21px 'Public Sans',sans-serif;color:#1B2027">Sana Sethi <span style="color:#616D78">&lt;sana@northbound.io&gt;</span></span>
+              <span style="display:block;font:600 17px/24px 'Public Sans',sans-serif;letter-spacing:-0.008em;color:#1B2027">Intro to the Atlas team</span>
+            </span>
+            <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;flex:none">Jul 24</span>
+            <span style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:none;cursor:pointer" style-hover="background:#E9EDEC"><svg width="16" height="16" viewBox="0 0 16 16"><line x1="4" y1="4" x2="12" y2="12" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round"></line><line x1="12" y1="4" x2="4" y2="12" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round"></line></svg></span>
+          </div>
+          <div style="flex:1;padding:32px 40px;overflow:hidden">
+            <div style="height:28px;background:#EDF0EF;border-radius:5px;display:flex;align-items:center;padding:0 12px;font:400 12px/16px 'Public Sans',sans-serif;color:#4C5763">Images aren't loaded for senders you haven't approved.</div>
+            <div style="height:24px"></div>
+            <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027;max-width:68ch;text-wrap:pretty">Hi Marc — Dana suggested I reach out about the integration work you did for Lumen. We're rebuilding our ingest pipeline this quarter and I'd like twenty minutes of your read on it before we commit to an approach.</p>
+            <div style="height:16px"></div>
+            <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027;max-width:68ch;text-wrap:pretty">Specifically: we're deciding between event sourcing and a simpler CDC pipeline off the primary. Dana said you'd been through exactly this at Lumen and had opinions about which one ages badly.</p>
+            <div style="height:16px"></div>
+            <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027;max-width:68ch;text-wrap:pretty">Happy to pay for the time. Deck attached if it's useful, but the two paragraphs above are the whole question.</p>
+            <div style="height:16px"></div>
+            <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#1B2027;max-width:68ch">Sana</p>
+            <div style="height:24px"></div>
+            <span style="display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;background:#EDF0EF;border-radius:5px;opacity:.6">
+              <svg width="14" height="14" viewBox="0 0 14 14"><rect x="2.5" y="1.5" width="9" height="11" rx="1" fill="none" stroke="#7E8A95" stroke-width="1.3"></rect></svg>
+              <span style="font:500 12px/16px 'Public Sans',sans-serif;color:#7E8A95">deck.pdf</span>
+              <span style="font:400 12px/16px 'Public Sans',sans-serif;color:#7E8A95">1.2 MB</span>
+            </span>
+          </div>
+          <div style="height:72px;flex:none;border-top:1px solid #DFE4E3;display:flex;align-items:center;gap:12px;padding:0 24px">
+            <button style="flex:1;height:40px;border:1px solid #78838E;border-radius:6px;background:transparent;color:#A32C22;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Decline sender</button>
+            <button style="flex:1;height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Approve sender</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAMP / EMPTY -->
+    <div id="stamp" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">stamp</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">The signature moment · Screener empty</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:space-evenly;padding:0 64px;box-sizing:border-box">
+
+        <div style="display:flex;flex-direction:column;align-items:center;gap:24px">
+          <span style="font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Approve · postmark stamped</span>
+          <div style="position:relative;width:400px;height:300px;background:#EDF1F0;border:1px solid #DFE4E3;border-radius:14px;box-shadow:0 1px 2px rgb(27 32 39 / .05), 0 6px 16px -4px rgb(27 32 39 / .10);padding:28px;box-sizing:border-box">
+            <div style="width:40px;height:40px;border-radius:999px;background:#3E5A57;color:#FBFCFB;font:600 15px/40px 'Public Sans',sans-serif;text-align:center">SS</div>
+            <div style="height:14px"></div>
+            <div style="font:600 20px/28px 'Public Sans',sans-serif;letter-spacing:-0.010em;color:#1B2027">Sana Sethi</div>
+            <div style="font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">sana@northbound.io</div>
+            <div style="height:16px"></div>
+            <div style="height:1px;background:#DFE4E3"></div>
+            <div style="height:16px"></div>
+            <div style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Intro to the Atlas team</div>
+            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-9deg);opacity:.88">
+              <svg width="132" height="132" viewBox="0 0 132 132">
+                <circle cx="66" cy="66" r="65" fill="none" stroke="#0F5F55" stroke-width="1.5"></circle>
+                <circle cx="66" cy="66" r="50.8" fill="none" stroke="#0F5F55" stroke-width="1" opacity="0.55"></circle>
+                <text x="66" y="63" text-anchor="middle" fill="#0F5F55" font-family="IBM Plex Mono, monospace" font-size="15.2" font-weight="500" letter-spacing="1.2">APPROVED</text>
+                <text x="66" y="81" text-anchor="middle" fill="#0F5F55" font-family="IBM Plex Mono, monospace" font-size="15.2" font-weight="500" letter-spacing="1.2">JUL 25</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;align-items:center;gap:24px">
+          <span style="font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Decline · returned</span>
+          <div style="position:relative;width:400px;height:300px;background:#EDF1F0;border:1px solid #DFE4E3;border-radius:14px;box-shadow:0 1px 2px rgb(27 32 39 / .05), 0 6px 16px -4px rgb(27 32 39 / .10);padding:28px;box-sizing:border-box">
+            <div style="width:40px;height:40px;border-radius:999px;background:#5A5060;color:#FBFCFB;font:600 15px/40px 'Public Sans',sans-serif;text-align:center">QP</div>
+            <div style="height:14px"></div>
+            <div style="font:600 20px/28px 'Public Sans',sans-serif;letter-spacing:-0.010em;color:#1B2027">QuickPitch</div>
+            <div style="font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">growth@quickpitch.co</div>
+            <div style="height:16px"></div>
+            <div style="height:1px;background:#DFE4E3"></div>
+            <div style="height:16px"></div>
+            <div style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">You're invited to a 15-minute demo</div>
+            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-9deg);opacity:.88">
+              <svg width="132" height="132" viewBox="0 0 132 132">
+                <circle cx="66" cy="66" r="65" fill="none" stroke="#A32C22" stroke-width="1.5"></circle>
+                <circle cx="66" cy="66" r="50.8" fill="none" stroke="#A32C22" stroke-width="1" opacity="0.55"></circle>
+                <text x="66" y="63" text-anchor="middle" fill="#A32C22" font-family="IBM Plex Mono, monospace" font-size="15.2" font-weight="500" letter-spacing="1.2">RETURNED</text>
+                <text x="66" y="81" text-anchor="middle" fill="#A32C22" font-family="IBM Plex Mono, monospace" font-size="15.2" font-weight="500" letter-spacing="1.2">JUL 25</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:24px;width:420px">
+          <span style="font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Screener empty state</span>
+          <div style="width:420px;height:180px;background:#EDF1F0;border:1px dashed #C4CCCF;border-radius:14px"></div>
+          <h2 style="margin:0;font:600 32px/38px Archivo,sans-serif;letter-spacing:-0.018em;color:#1B2027">Nothing waiting.</h2>
+          <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C5763;text-wrap:pretty">New senders will appear here. You'll never miss them — they just don't interrupt you.</p>
+          <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#0F5F55;cursor:pointer">See who you've approved</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================ WRITING ============================ -->
+  <div style="display:flex;align-items:center;gap:16px;margin-top:40px">
+    <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Writing, search, settings</span>
+    <span style="flex:1;height:1px;background:#C9D2D0"></span>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:64px">
+
+    <!-- COMPOSE -->
+    <div id="compose" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">compose</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Composer with an AI draft</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">AI ink + unresolved [confirm:] chip</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex;position:relative">
+        <div style="width:232px;flex:none;background:#F3F5F4;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Search mail</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railInbox }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;position:relative;margin-bottom:2px">
+              <span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:{{ n.bar }}"></span>
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78;font-variant-numeric:tabular-nums">{{ n.count }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#DFE4E3;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;display:flex;align-items:center;gap:12px;padding:0 12px">
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#4C5763" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#4C5763" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763">Settings</span>
+          </div>
+        </div>
+
+        <div style="width:380px;flex:none;background:#FBFCFB;border-left:1px solid #DFE4E3">
+          <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #DFE4E3">
+            <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Inbox</span>
+            <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78">12 unread</span>
+          </div>
+          <div style="height:32px;background:#F3F5F4;display:flex;align-items:center;padding:0 16px;font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Today</div>
+          <sc-for list="{{ todayThreads }}" as="r" hint-placeholder-count="3">
+            <div style="height:56px;display:flex;align-items:center;padding:0 16px;background:#FBFCFB" style-hover="background:#E9EDEC">
+              <span style="width:8px;flex:none;display:flex;justify-content:center"><span style="width:6px;height:6px;border-radius:999px;background:{{ r.dot }}"></span></span>
+              <span style="width:8px;flex:none"></span>
+              <span style="width:28px;height:28px;border-radius:999px;background:{{ r.tint }};color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">{{ r.initials }}</span>
+              <span style="width:12px;flex:none"></span>
+              <span style="flex:1;min-width:0">
+                <span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.namePlus }}</span>
+                <span style="display:block;font:{{ r.subjWeight }} 13px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.subject }}<span style="color:#616D78;font-weight:400"> — {{ r.snippet }}</span></span>
+              </span>
+              <span style="width:12px;flex:none"></span>
+              <span style="width:72px;flex:none;text-align:right;font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78">{{ r.time }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="flex:1;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;align-items:center;justify-content:center">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+            <svg width="32" height="32" viewBox="0 0 32 32" style="transform:rotate(-9deg)"><circle cx="16" cy="16" r="15" fill="none" stroke="#DFE4E3" stroke-width="1.2"></circle></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Select a thread to read it.</span>
+          </div>
+        </div>
+
+        <div style="position:absolute;right:24px;bottom:24px;width:560px;background:#FBFCFB;border-radius:14px;box-shadow:0 2px 4px rgb(27 32 39 / .06), 0 24px 48px -12px rgb(27 32 39 / .22);overflow:hidden">
+          <div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid #DFE4E3">
+            <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027">Consulting availability</span>
+            <span style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E9EDEC"><span style="width:10px;height:1.5px;background:#4C5763"></span></span>
+            <span style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E9EDEC"><svg width="14" height="14" viewBox="0 0 14 14"><line x1="3.5" y1="3.5" x2="10.5" y2="10.5" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round"></line><line x1="10.5" y1="3.5" x2="3.5" y2="10.5" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round"></line></svg></span>
+          </div>
+          <div style="height:44px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid #DFE4E3">
+            <span style="width:64px;flex:none;font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">To</span>
+            <span style="height:24px;padding:0 4px 0 8px;background:#EDF0EF;border-radius:999px;display:inline-flex;align-items:center;gap:6px">
+              <span style="font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027">ravi@harborlight.dev</span>
+              <svg width="12" height="12" viewBox="0 0 12 12"><line x1="3.5" y1="3.5" x2="8.5" y2="8.5" stroke="#616D78" stroke-width="1.4" stroke-linecap="round"></line><line x1="8.5" y1="3.5" x2="3.5" y2="8.5" stroke="#616D78" stroke-width="1.4" stroke-linecap="round"></line></svg>
+            </span>
+            <span style="flex:1"></span>
+            <span style="font:500 13px/18px 'Public Sans',sans-serif;color:#0F5F55;cursor:pointer;flex:none">Cc Bcc</span>
+          </div>
+          <div style="height:44px;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid #DFE4E3">
+            <span style="width:64px;flex:none;font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">Subject</span>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#1B2027">Consulting availability</span>
+          </div>
+          <div style="background:#EFEEF8;padding:20px 16px;min-height:180px">
+            <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C4A8A;text-wrap:pretty">Ravi — thanks for reaching out, and for the detail in your note. The ingest question is one I've been through end to end at Lumen, so I can be useful here.</p>
+            <div style="height:12px"></div>
+            <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C4A8A;text-wrap:pretty">I have capacity from <span style="background:#F6E6E4;color:#A32C22;font:400 14px/20px 'IBM Plex Mono',monospace;border-radius:3px;padding:1px 5px">[confirm: a start date]</span> and would suggest a paid two-hour review before you commit to an approach. Does <span style="background:#F6E6E4;color:#A32C22;font:400 14px/20px 'IBM Plex Mono',monospace;border-radius:3px;padding:1px 5px">[confirm: a time]</span> work for a first call?</p>
+            <div style="height:12px"></div>
+            <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#4C4A8A">Marc</p>
+          </div>
+          <div style="background:#EFEEF8;padding:12px 16px;display:flex;align-items:center;gap:12px;border-top:1px solid #E3E1F2">
+            <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:#4C4A8A;flex:none">◆ Drafted by Pigeon</span>
+            <span style="display:flex;gap:6px">
+              <span style="height:28px;padding:0 12px;border:1px solid #78838E;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027;cursor:pointer">Shorter</span>
+              <span style="height:28px;padding:0 12px;border:1px solid #78838E;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027;cursor:pointer">Friendlier</span>
+              <span style="height:28px;padding:0 12px;border:1px solid #78838E;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#1B2027;cursor:pointer">Firmer</span>
+            </span>
+            <span style="flex:1"></span>
+            <span style="font:500 13px/18px 'Public Sans',sans-serif;color:#4C4A8A;cursor:pointer;flex:none">Discard draft</span>
+          </div>
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 16px;border-top:1px solid #DFE4E3">
+            <button style="height:40px;padding:0 20px;border:none;border-radius:6px;background:#EDF0EF;color:#7E8A95;font:500 14px/21px 'Public Sans',sans-serif;cursor:not-allowed">Send</button>
+            <span style="font:400 12px/16px 'Public Sans',sans-serif;color:#A32C22">Replace [confirm: a time] before sending.</span>
+            <span style="flex:1"></span>
+            <span style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E9EDEC"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="1.5" fill="none" stroke="#4C5763" stroke-width="1.4"></rect></svg></span>
+            <span style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E9EDEC"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="3.5" y="4.5" width="9" height="9" rx="1.5" fill="none" stroke="#4C5763" stroke-width="1.4"></rect><line x1="2" y1="4.5" x2="14" y2="4.5" stroke="#4C5763" stroke-width="1.4" stroke-linecap="round"></line></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div id="search" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">search</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Search results</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">grouped by place, terms marked</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex">
+        <div style="width:232px;flex:none;background:#F3F5F4;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:2px solid #0F5F55;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 11px;outline:2px solid #0F5F55;outline-offset:2px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#1B2027" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#1B2027" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#1B2027">atlas integration</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railSearch }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;position:relative;margin-bottom:2px">
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78">{{ n.count }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#DFE4E3;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;display:flex;align-items:center;gap:12px;padding:0 12px">
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#4C5763" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#4C5763" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763">Settings</span>
+          </div>
+        </div>
+
+        <div style="width:380px;flex:none;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;flex-direction:column">
+          <div style="height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid #DFE4E3">
+            <span style="flex:1;font:400 14px/21px 'Public Sans',sans-serif;color:#1B2027">atlas integration</span>
+            <span style="width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#E9EDEC"><svg width="12" height="12" viewBox="0 0 12 12"><line x1="3" y1="3" x2="9" y2="9" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round"></line><line x1="9" y1="3" x2="3" y2="9" stroke="#4C5763" stroke-width="1.5" stroke-linecap="round"></line></svg></span>
+          </div>
+          <div style="height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px">
+            <span style="font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">18 results · Inbox and Archive</span>
+            <span style="display:flex;align-items:center;gap:8px">
+              <span style="width:18px;height:18px;border-radius:3px;border:1.5px solid #78838E"></span>
+              <span style="font:400 13px/18px 'Public Sans',sans-serif;color:#4C5763">Also search held mail</span>
+            </span>
+          </div>
+          <div style="flex:1">
+            <div style="height:32px;background:#F3F5F4;display:flex;align-items:center;padding:0 16px;font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Inbox</div>
+            <sc-for list="{{ searchInbox }}" as="r" hint-placeholder-count="3">
+              <div style="height:56px;display:flex;align-items:center;padding:0 16px;background:{{ r.bg }}" style-hover="background:#E9EDEC">
+                <span style="width:16px;flex:none"></span>
+                <span style="width:28px;height:28px;border-radius:999px;background:{{ r.tint }};color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">{{ r.initials }}</span>
+                <span style="width:12px;flex:none"></span>
+                <span style="flex:1;min-width:0">
+                  <span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</span>
+                  <span style="display:block;font:400 13px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="background:#E2EEEB">{{ r.mark }}</span>{{ r.rest }}</span>
+                </span>
+                <span style="width:12px;flex:none"></span>
+                <span style="width:56px;flex:none;text-align:right;font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78">{{ r.time }}</span>
+              </div>
+            </sc-for>
+            <div style="height:32px;background:#F3F5F4;display:flex;align-items:center;padding:0 16px;font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Archive</div>
+            <sc-for list="{{ searchArchive }}" as="r" hint-placeholder-count="2">
+              <div style="height:56px;display:flex;align-items:center;padding:0 16px;background:#FBFCFB" style-hover="background:#E9EDEC">
+                <span style="width:16px;flex:none"></span>
+                <span style="width:28px;height:28px;border-radius:999px;background:{{ r.tint }};color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">{{ r.initials }}</span>
+                <span style="width:12px;flex:none"></span>
+                <span style="flex:1;min-width:0">
+                  <span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</span>
+                  <span style="display:block;font:400 13px/18px 'Public Sans',sans-serif;color:#1B2027;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="background:#E2EEEB">{{ r.mark }}</span>{{ r.rest }}</span>
+                </span>
+                <span style="width:12px;flex:none"></span>
+                <span style="width:56px;flex:none;text-align:right;font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78">{{ r.time }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="flex:1;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;align-items:center;justify-content:center">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+            <svg width="32" height="32" viewBox="0 0 32 32" style="transform:rotate(-9deg)"><circle cx="16" cy="16" r="15" fill="none" stroke="#DFE4E3" stroke-width="1.2"></circle></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Select a thread to read it.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SENDERS -->
+    <div id="senders" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">senders</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Settings — Senders</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">postmark dates as permanent record</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex">
+        <div style="width:232px;flex:none;background:#F3F5F4;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Search mail</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railSettings }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;position:relative;margin-bottom:2px">
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78">{{ n.count }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#DFE4E3;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;background:#E2E7E6;display:flex;align-items:center;gap:12px;padding:0 12px;position:relative">
+            <span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:#0F5F55"></span>
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#1B2027" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#1B2027" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027">Settings</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;flex-direction:column">
+          <div style="height:52px;flex:none;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid #DFE4E3">
+            <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Settings</span>
+          </div>
+          <div style="flex:1;display:flex;padding:32px">
+            <div style="width:200px;flex:none;display:flex;flex-direction:column;gap:2px">
+              <div style="height:36px;border-radius:6px;display:flex;align-items:center;padding:0 12px;font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763;cursor:pointer" style-hover="background:#E9EDEC">Account</div>
+              <div style="height:36px;border-radius:6px;background:#E2E7E6;display:flex;align-items:center;padding:0 12px;font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027;position:relative"><span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:#0F5F55"></span>Senders</div>
+              <div style="height:36px;border-radius:6px;display:flex;align-items:center;padding:0 12px;font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763;cursor:pointer" style-hover="background:#E9EDEC">Assistant</div>
+            </div>
+            <div style="width:32px;flex:none"></div>
+            <div style="flex:1;max-width:720px">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid #DFE4E3">
+                <div style="display:flex">
+                  <div style="height:36px;padding:0 16px;display:flex;align-items:center;font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027;border-bottom:2px solid #0F5F55">Approved (341)</div>
+                  <div style="height:36px;padding:0 16px;display:flex;align-items:center;font:500 14px/21px 'Public Sans',sans-serif;color:#616D78;cursor:pointer">Declined (28)</div>
+                </div>
+                <div style="width:240px;height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px;margin-bottom:8px;box-sizing:border-box">
+                  <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+                  <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Filter senders</span>
+                </div>
+              </div>
+              <sc-for list="{{ approvedSenders }}" as="a" hint-placeholder-count="7">
+                <div style="height:56px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #DFE4E3" style-hover="background:#E9EDEC">
+                  <span style="width:24px;height:24px;border-radius:999px;background:{{ a.tint }};color:#FBFCFB;font:600 10px/24px 'Public Sans',sans-serif;text-align:center;flex:none">{{ a.initials }}</span>
+                  <span style="flex:1;min-width:0">
+                    <span style="display:block"><span style="font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">{{ a.name }}</span> <span style="font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">{{ a.email }}</span></span>
+                    <span style="display:block;font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;color:#616D78">{{ a.stamp }}</span>
+                  </span>
+                  <button style="height:32px;padding:0 14px;border:1px solid #78838E;border-radius:5px;background:transparent;color:#1B2027;font:500 13px/18px 'Public Sans',sans-serif;cursor:pointer;flex:none" style-hover="background:#F6E6E4;border-color:#A32C22;color:#A32C22">Decline</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ASSISTANT -->
+    <div id="assistant" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">assistant</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Settings — Assistant &amp; Account</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#F3F5F4;border:1px solid #C9D2D0;border-radius:6px;overflow:hidden;display:flex">
+        <div style="width:232px;flex:none;background:#F3F5F4;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#616D78">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:1px solid #78838E;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;gap:8px;padding:0 12px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#616D78" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#616D78" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#616D78">Search mail</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railSettings }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;margin-bottom:2px">
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#616D78">{{ n.count }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#0F5F55;color:#FBFCFB;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#DFE4E3;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;background:#E2E7E6;display:flex;align-items:center;gap:12px;padding:0 12px;position:relative">
+            <span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:#0F5F55"></span>
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#1B2027" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#1B2027" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027">Settings</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;background:#FBFCFB;border-left:1px solid #DFE4E3;display:flex;flex-direction:column">
+          <div style="height:52px;flex:none;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid #DFE4E3">
+            <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#1B2027">Settings</span>
+          </div>
+          <div style="flex:1;display:flex;padding:32px">
+            <div style="width:200px;flex:none;display:flex;flex-direction:column;gap:2px">
+              <div style="height:36px;border-radius:6px;display:flex;align-items:center;padding:0 12px;font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763;cursor:pointer" style-hover="background:#E9EDEC">Account</div>
+              <div style="height:36px;border-radius:6px;display:flex;align-items:center;padding:0 12px;font:500 14px/21px 'Public Sans',sans-serif;color:#4C5763;cursor:pointer" style-hover="background:#E9EDEC">Senders</div>
+              <div style="height:36px;border-radius:6px;background:#E2E7E6;display:flex;align-items:center;padding:0 12px;font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027;position:relative"><span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:#0F5F55"></span>Assistant</div>
+            </div>
+            <div style="width:32px;flex:none"></div>
+            <div style="flex:1;max-width:720px">
+              <sc-for list="{{ assistantToggles }}" as="t" hint-placeholder-count="3">
+                <div style="height:64px;display:flex;align-items:center;gap:24px;border-bottom:1px solid #DFE4E3">
+                  <span style="flex:1;min-width:0">
+                    <span style="display:block;font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027">{{ t.label }}</span>
+                    <span style="display:block;font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">{{ t.desc }}</span>
+                  </span>
+                  <span style="width:36px;height:20px;border-radius:999px;background:{{ t.track }};flex:none;position:relative">
+                    <span style="position:absolute;top:2px;left:{{ t.knob }};width:16px;height:16px;border-radius:999px;background:#FBFCFB"></span>
+                  </span>
+                </div>
+              </sc-for>
+              <div style="height:24px"></div>
+              <p style="margin:0;font:400 13px/18px 'Public Sans',sans-serif;color:#4C5763;max-width:60ch;text-wrap:pretty">Pigeon never sends anything you haven't read. Every draft opens in the composer for you to edit.</p>
+
+              <div style="height:48px"></div>
+              <div style="height:1px;background:#DFE4E3"></div>
+              <div style="height:32px"></div>
+              <span style="font:500 10px/14px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#616D78">Account panel, for reference</span>
+              <div style="height:16px"></div>
+              <div style="height:56px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #DFE4E3">
+                <span style="width:28px;height:28px;border-radius:999px;background:#4C5763;color:#FBFCFB;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+                <span style="flex:1"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#1B2027">Marc Ferrum</span><span style="display:block;font:400 13px/18px 'Public Sans',sans-serif;color:#616D78">marc@ferrum.dev · Connected 3 weeks ago</span></span>
+              </div>
+              <div style="height:64px;display:flex;align-items:center;gap:24px;border-bottom:1px solid #DFE4E3">
+                <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:#1B2027">Appearance</span>
+                <span style="display:flex;background:#EDF0EF;border-radius:6px;padding:2px;gap:2px">
+                  <span style="height:28px;padding:0 14px;border-radius:5px;background:#FBFCFB;display:flex;align-items:center;font:600 13px/18px 'Public Sans',sans-serif;color:#1B2027;box-shadow:0 1px 2px rgb(27 32 39 / .05)">System</span>
+                  <span style="height:28px;padding:0 14px;border-radius:5px;display:flex;align-items:center;font:500 13px/18px 'Public Sans',sans-serif;color:#4C5763;cursor:pointer">Light</span>
+                  <span style="height:28px;padding:0 14px;border-radius:5px;display:flex;align-items:center;font:500 13px/18px 'Public Sans',sans-serif;color:#4C5763;cursor:pointer">Dark</span>
+                </span>
+              </div>
+              <div style="height:24px"></div>
+              <div style="display:flex;gap:12px">
+                <button style="height:40px;padding:0 16px;border:1px solid #78838E;border-radius:6px;background:transparent;color:#A32C22;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer" style-hover="background:#F6E6E4;border-color:#A32C22">Disconnect account</button>
+                <button style="height:40px;padding:0 16px;border:1px solid #78838E;border-radius:6px;background:transparent;color:#1B2027;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer" style-hover="background:#E9EDEC">Sign out</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DARK -->
+    <div id="dark" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:#0F5F55;border:1px solid #0F5F55;border-radius:999px;padding:3px 9px">dark</span>
+        <span style="font:600 17px/24px 'Public Sans',sans-serif;color:#1B2027">Dark theme — Screener</span>
+        <span style="font:400 13px/18px 'IBM Plex Mono',monospace;color:#616D78">same tokens, dark values</span>
+      </div>
+      <div style="width:1440px;height:900px;background:#12161A;border:1px solid #2C343D;border-radius:6px;overflow:hidden;display:flex">
+        <div style="width:232px;flex:none;background:#12161A;display:flex;flex-direction:column;padding:16px 12px;box-sizing:border-box">
+          <div style="height:56px;display:flex;align-items:center;gap:12px;padding:0 8px">
+            <span style="width:28px;height:28px;border-radius:999px;background:#7F98A8;color:#12161A;font:600 11px/28px 'Public Sans',sans-serif;text-align:center;flex:none">MF</span>
+            <span style="min-width:0"><span style="display:block;font:500 14px/18px 'Public Sans',sans-serif;color:#E7ECEF">Marc Ferrum</span><span style="display:block;font:400 12px/16px 'Public Sans',sans-serif;color:#8593A0">marc@ferrum.dev</span></span>
+          </div>
+          <div style="height:8px"></div>
+          <div style="height:36px;border:1px solid #6D7B88;border-radius:5px;background:#1A2027;display:flex;align-items:center;gap:8px;padding:0 12px">
+            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#8593A0" stroke-width="1.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#8593A0" stroke-width="1.5" stroke-linecap="round"></line></svg>
+            <span style="font:400 14px/21px 'Public Sans',sans-serif;color:#8593A0">Search mail</span>
+          </div>
+          <div style="height:20px"></div>
+          <sc-for list="{{ railDark }}" as="n" hint-placeholder-count="3">
+            <div style="height:36px;border-radius:6px;background:{{ n.bg }};display:flex;align-items:center;gap:12px;padding:0 12px;position:relative;margin-bottom:2px">
+              <span style="position:absolute;left:0;top:10px;width:3px;height:16px;border-radius:999px;background:{{ n.bar }}"></span>
+              <span style="width:20px;height:20px;flex:none;display:block">{{ n.icon }}</span>
+              <span style="flex:1;font:500 14px/21px 'Public Sans',sans-serif;color:{{ n.fg }}">{{ n.label }}</span>
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#8593A0;font-variant-numeric:tabular-nums">{{ n.count }}</span>
+              <span style="width:24px;height:24px;flex:none;display:block">{{ n.ring }}</span>
+            </div>
+          </sc-for>
+          <div style="height:16px"></div>
+          <button style="height:40px;border:none;border-radius:6px;background:#4FBFA8;color:#12161A;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Compose</button>
+          <div style="flex:1"></div>
+          <div style="height:1px;background:#2C343D;margin:0 4px 12px"></div>
+          <div style="height:36px;border-radius:6px;display:flex;align-items:center;gap:12px;padding:0 12px">
+            <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6" fill="none" stroke="#9AA6B0" stroke-width="1.5"></circle><circle cx="10" cy="10" r="2" fill="none" stroke="#9AA6B0" stroke-width="1.5"></circle></svg>
+            <span style="font:500 14px/21px 'Public Sans',sans-serif;color:#9AA6B0">Settings</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;background:#1A2027;border-left:1px solid #2C343D;display:flex;flex-direction:column">
+          <div style="height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #2C343D">
+            <span style="font:600 24px/30px Archivo,sans-serif;letter-spacing:-0.014em;color:#E7ECEF">Screener</span>
+            <span style="display:flex;background:#232A32;border-radius:6px;padding:2px;gap:2px">
+              <span style="height:32px;padding:0 14px;border-radius:5px;background:#1A2027;display:flex;align-items:center;font:600 13px/18px 'Public Sans',sans-serif;color:#E7ECEF">Stack</span>
+              <span style="height:32px;padding:0 14px;border-radius:5px;display:flex;align-items:center;font:500 13px/18px 'Public Sans',sans-serif;color:#9AA6B0;cursor:pointer">Bulk review</span>
+            </span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:24px 0 0">
+            <div style="width:720px;background:#22213A;border-radius:10px;padding:20px;box-sizing:border-box">
+              <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:#A9A4E8">◆ This week</span>
+              <div style="height:10px"></div>
+              <p style="margin:0;font:400 15px/24px 'Public Sans',sans-serif;color:#E7ECEF">12 senders held: 9 junk, 2 recruiters, 1 looks like a client inquiry.</p>
+              <div style="height:16px"></div>
+              <div style="display:flex;gap:8px">
+                <span style="height:28px;padding:0 12px;border:1px solid #6D7B88;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#E7ECEF;cursor:pointer">Junk (9)</span>
+                <span style="height:28px;padding:0 12px;border:1px solid #6D7B88;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#E7ECEF;cursor:pointer">Recruiters (2)</span>
+                <span style="height:28px;padding:0 12px;border:1px solid #6D7B88;border-radius:999px;display:flex;align-items:center;font:500 12px/16px 'Public Sans',sans-serif;color:#E7ECEF;cursor:pointer">Client inquiry (1)</span>
+              </div>
+            </div>
+            <div style="height:40px"></div>
+            <div style="position:relative;width:560px;height:566px">
+              <div style="position:absolute;left:44px;top:-4px;width:472px;height:511px;background:#1B2229;border:1px solid #2C343D;border-radius:14px"></div>
+              <div style="position:absolute;left:32px;top:8px;width:496px;height:511px;background:#1D242B;border:1px solid #2C343D;border-radius:14px"></div>
+              <div style="position:absolute;left:20px;top:20px;width:520px;background:#1F262E;border:1px solid #2C343D;border-radius:14px;box-shadow:0 1px 2px rgb(0 0 0 / .40), 0 6px 16px -4px rgb(0 0 0 / .45);padding:32px;box-sizing:border-box">
+                <div style="width:40px;height:40px;border-radius:999px;background:#7FA39D;color:#12161A;font:600 15px/40px 'Public Sans',sans-serif;text-align:center">SS</div>
+                <div style="height:16px"></div>
+                <div style="font:600 20px/28px 'Public Sans',sans-serif;letter-spacing:-0.010em;color:#E7ECEF">Sana Sethi</div>
+                <div style="font:400 13px/18px 'Public Sans',sans-serif;color:#8593A0">sana@northbound.io</div>
+                <div style="height:20px"></div>
+                <div style="height:1px;background:#2C343D"></div>
+                <div style="height:20px"></div>
+                <div style="font:600 17px/24px 'Public Sans',sans-serif;letter-spacing:-0.008em;color:#E7ECEF">Intro to the Atlas team</div>
+                <div style="height:6px"></div>
+                <div style="font:400 13px/18px 'Public Sans',sans-serif;color:#9AA6B0;text-wrap:pretty">Hi Marc — Dana suggested I reach out about the integration work you did for Lumen. We're rebuilding our ingest pipeline this quarter and I'd like twenty minutes of your read on it before we commit.</div>
+                <div style="height:20px"></div>
+                <div style="background:#22213A;border-radius:6px;padding:12px">
+                  <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:#A9A4E8">◆ Pigeon's read</span>
+                  <div style="height:6px"></div>
+                  <span style="font:400 13px/18px 'Public Sans',sans-serif;color:#E7ECEF">A warm intro from Dana Whitlock, who you email often.</span>
+                </div>
+                <div style="height:24px"></div>
+                <div style="height:1px;background:#2C343D"></div>
+                <div style="height:20px"></div>
+                <div style="display:flex;gap:12px">
+                  <button style="flex:1;height:40px;border:1px solid #6D7B88;border-radius:6px;background:transparent;color:#E8776A;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Decline sender</button>
+                  <button style="flex:1;height:40px;border:none;border-radius:6px;background:#4FBFA8;color:#12161A;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Approve sender</button>
+                </div>
+                <div style="height:12px"></div>
+                <button style="width:100%;height:32px;border:none;background:transparent;color:#4FBFA8;font:500 14px/21px 'Public Sans',sans-serif;cursor:pointer">Read message</button>
+              </div>
+            </div>
+            <div style="height:24px"></div>
+            <span style="font:500 11px/16px 'IBM Plex Mono',monospace;letter-spacing:.07em;color:#8593A0">3 of 12</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1000}}">
+const RAMP = ['#4C5763','#3E5A57','#4A5266','#565A4E','#3F5460','#5A5060'];
+const RAMP_DARK = ['#8894A0','#7FA39D','#8A90AC','#9A9E8B','#7F98A8','#A08FA6'];
+const h = (s) => { let n = 0; for (let i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) >>> 0; return n; };
+const tint = (e) => RAMP[h(e.toLowerCase()) % 6];
+const inits = (n) => { const p = n.trim().split(/\s+/); return (p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2)).toUpperCase(); };
+
+const E = React.createElement;
+const svg = (children, size) => E('svg', { width: size, height: size, viewBox: '0 0 ' + size + ' ' + size }, children);
+
+function icon(kind, stroke) {
+  const s = { fill: 'none', stroke, strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  if (kind === 'inbox') return svg([
+    E('rect', { key: 'r', x: 2.75, y: 3.75, width: 14.5, height: 12.5, rx: 2, ...s }),
+    E('path', { key: 'p', d: 'M2.75 11.5H6.5L8 13.5h4l1.5-2h3.75', ...s })
+  ], 20);
+  if (kind === 'screener') return svg([
+    E('circle', { key: 'c', cx: 10, cy: 10, r: 6.75, ...s })
+  ], 20);
+  if (kind === 'archive') return svg([
+    E('rect', { key: 'a', x: 2.75, y: 3.75, width: 14.5, height: 4, rx: 1.2, ...s }),
+    E('rect', { key: 'b', x: 4.25, y: 7.75, width: 11.5, height: 8.5, rx: 1.2, ...s })
+  ], 20);
+  return null;
+}
+
+function ringBadge(n, color) {
+  return svg([
+    E('circle', { key: 'c', cx: 12, cy: 12, r: 11.25, fill: 'none', stroke: color, strokeWidth: 1 }),
+    E('text', {
+      key: 't', x: 12, y: 15.5, textAnchor: 'middle', fill: color,
+      fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, fontWeight: 500
+    }, String(n))
+  ], 24);
+}
+
+function rail(active, opts) {
+  const o = opts || {};
+  const dark = !!o.dark;
+  const selBg = dark ? '#2B333C' : '#E2E7E6';
+  const fgOn = dark ? '#E7ECEF' : '#1B2027';
+  const fgOff = dark ? '#9AA6B0' : '#4C5763';
+  const ringCol = dark ? '#8593A0' : '#616D78';
+  const items = [
+    { key: 'inbox', label: 'Inbox', count: o.unread === undefined ? '12' : o.unread },
+    { key: 'screener', label: 'Screener', held: o.held === undefined ? 12 : o.held },
+    { key: 'archive', label: 'Archive' }
+  ];
+  return items.map((it) => {
+    const on = it.key === active;
+    return {
+      label: it.label,
+      icon: icon(it.key, on ? fgOn : fgOff),
+      bg: on ? selBg : 'transparent',
+      bar: on ? (dark ? '#4FBFA8' : '#0F5F55') : 'transparent',
+      fg: on ? fgOn : fgOff,
+      count: it.count || '',
+      ring: it.held ? ringBadge(it.held, ringCol) : ''
+    };
+  });
+}
+
+const THREADS_TODAY = [
+  { name: 'Dana Whitlock', email: 'dana@lumenpartners.com', n: 4, subject: 'Contract redlines back from legal', snippet: 'Checking in — Friday is the deadline on their side', time: '2:14 PM', unread: false, open: true },
+  { name: 'Sana Sethi', email: 'sana@northbound.io', n: 0, subject: 'Intro to the Atlas team', snippet: 'Hi Marc — Dana suggested I reach out about the', time: '11:02 AM', unread: true, arrival: true },
+  { name: 'Priya Raghunathan', email: 'priya@ferrum.dev', n: 3, subject: 'Re: Q3 invoice', snippet: 'Attached the corrected version, sorry for the', time: '9:47 AM', unread: true }
+];
+const THREADS_YDAY = [
+  { name: 'Jae Doss', email: 'jae@doss.studio', n: 0, subject: 'Re: office keys', snippet: 'Left them with the front desk on Wednesday', time: '4:31 PM', unread: true },
+  { name: 'Tomas Alvarez', email: 'tomas@atlas-ci.com', n: 0, subject: 'Deploy window moved to Thursday', snippet: 'Ops asked for an extra day of soak time on the', time: '2:08 PM', unread: false },
+  { name: 'Ines Okafor', email: 'ines@harborlight.dev', n: 2, subject: 'Notes from the Atlas kickoff', snippet: 'Rough notes below, will tidy them tomorrow', time: '11:15 AM', unread: false }
+];
+const THREADS_MON = [
+  { name: 'Ben Lindqvist', email: 'ben@northbound.io', n: 5, subject: 'Re: pricing for the extended pilot', snippet: 'That works on our side. Sending paperwork', time: 'Jul 20', unread: false }
+];
+
+function row(t, opts) {
+  const o = opts || {};
+  return {
+    initials: inits(t.name),
+    tint: tint(t.email),
+    namePlus: t.n ? t.name + ' · ' + t.n : t.name,
+    subject: t.subject,
+    snippet: t.snippet,
+    time: t.time,
+    dot: t.unread ? '#0F5F55' : 'transparent',
+    subjWeight: t.unread ? 600 : 400,
+    bg: (t.open && !o.flat) ? '#E2E7E6' : '#FBFCFB',
+    bar: (t.open && !o.flat) ? '#0F5F55' : 'transparent',
+    ring: t.arrival ? svg([E('circle', { key: 'c', cx: 5, cy: 5, r: 4.4, fill: 'none', stroke: '#0F5F55', strokeWidth: 1.2 })], 10) : ''
+  };
+}
+
+const HELD = [
+  { name: 'Northbound Digest', email: 'hello@northbound.io', subject: 'Weekly roundup #48', read: 'Bulk newsletter — no reply history.', checked: true },
+  { name: 'QuickPitch', email: 'growth@quickpitch.co', subject: "You're invited to a 15-minute demo", read: 'Cold sales mail from a list — no reply history.', checked: true },
+  { name: 'Sana Sethi', email: 'sana@northbound.io', subject: 'Intro to the Atlas team', read: 'A warm intro from Dana Whitlock, who you email often.', checked: false },
+  { name: 'Talia Brandt', email: 't.brandt@meridianrecruit.com', subject: 'Staff engineer role, Series B', read: "Recruiter mail; you've never replied to this firm.", checked: false },
+  { name: 'Atlas CI', email: 'noreply@atlas-ci.com', subject: 'Build #4821 failed on main', read: 'Automated build notice from a service you use.', checked: true },
+  { name: 'Ravi Menon', email: 'ravi@harborlight.dev', subject: 'Question about your consulting availability', read: 'Looks like a client inquiry; mentions your Lumen work.', checked: false }
+];
+
+const KNOWN = [
+  { name: 'Dana Whitlock', email: 'dana@lumenpartners.com', reason: '24 replies', on: true },
+  { name: 'Priya Raghunathan', email: 'priya@ferrum.dev', reason: 'Contact', on: true },
+  { name: 'Sana Sethi', email: 'sana@northbound.io', reason: '11 replies', on: true },
+  { name: 'Tomas Alvarez', email: 'tomas@atlas-ci.com', reason: '8 replies', on: true },
+  { name: 'Ines Okafor', email: 'ines@harborlight.dev', reason: 'Contact', on: true },
+  { name: 'Atlas CI', email: 'noreply@atlas-ci.com', reason: 'Contact', on: false },
+  { name: 'Ben Lindqvist', email: 'ben@northbound.io', reason: '3 replies', on: true }
+];
+
+const APPROVED = [
+  { name: 'Sana Sethi', email: 'sana@northbound.io', stamp: 'APPROVED · JUL 24' },
+  { name: 'Dana Whitlock', email: 'dana@lumenpartners.com', stamp: 'APPROVED · JUL 12' },
+  { name: 'Priya Raghunathan', email: 'priya@ferrum.dev', stamp: 'APPROVED · JUN 30' },
+  { name: 'Tomas Alvarez', email: 'tomas@atlas-ci.com', stamp: 'APPROVED · JUN 18' },
+  { name: 'Ines Okafor', email: 'ines@harborlight.dev', stamp: 'APPROVED · JUN 04' },
+  { name: 'Ben Lindqvist', email: 'ben@northbound.io', stamp: 'APPROVED · MAY 27' },
+  { name: 'Jae Doss', email: 'jae@doss.studio', stamp: 'APPROVED · MAY 09' }
+];
+
+const SEARCH_INBOX = [
+  { name: 'Sana Sethi', email: 'sana@northbound.io', mark: 'Intro to the Atlas', rest: ' team — Dana suggested I reach out', time: 'Jul 24', open: true },
+  { name: 'Ines Okafor', email: 'ines@harborlight.dev', mark: 'Notes from the Atlas', rest: ' kickoff — rough notes below', time: 'Jul 24' },
+  { name: 'Tomas Alvarez', email: 'tomas@atlas-ci.com', mark: 'Atlas', rest: ' deploy window moved to Thursday', time: 'Jul 24' }
+];
+const SEARCH_ARCHIVE = [
+  { name: 'Dana Whitlock', email: 'dana@lumenpartners.com', mark: 'Atlas integration', rest: ' scope — v2 of the estimate', time: 'Jun 11' },
+  { name: 'Ben Lindqvist', email: 'ben@northbound.io', mark: 'Re: Atlas integration', rest: ' timeline', time: 'May 27' }
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      railInbox: rail('inbox'),
+      railInboxDay1: rail('inbox', { unread: '', held: 7 }),
+      railScreener: rail('screener'),
+      railSearch: rail(null),
+      railSettings: rail(null),
+      railDark: rail('screener', { dark: true }),
+
+      todayThreads: THREADS_TODAY.map((t) => row(t)),
+      yesterdayThreads: THREADS_YDAY.map((t) => row(t)),
+      mondayThreads: THREADS_MON.map((t) => row(t)),
+
+      skeletonRows: [
+        { w1: '58%', w2: '84%' }, { w1: '44%', w2: '72%' }, { w1: '62%', w2: '50%' },
+        { w1: '38%', w2: '78%' }, { w1: '54%', w2: '64%' }
+      ],
+
+      knownSenders: KNOWN.map((k) => ({
+        name: k.name, email: k.email, reason: k.reason,
+        initials: inits(k.name), tint: tint(k.email),
+        boxBg: k.on ? '#0F5F55' : 'transparent',
+        boxBorder: k.on ? '#0F5F55' : '#78838E',
+        tick: k.on ? '#FBFCFB' : 'transparent'
+      })),
+
+      heldSenders: HELD.map((s) => ({
+        name: s.name, subject: s.subject, read: s.read,
+        initials: inits(s.name), tint: tint(s.email),
+        bg: s.checked ? '#E2EEEB' : '#FBFCFB',
+        boxBg: s.checked ? '#0F5F55' : 'transparent',
+        boxBorder: s.checked ? '#0F5F55' : '#78838E',
+        tick: s.checked ? '#FBFCFB' : 'transparent'
+      })),
+
+      approvedSenders: APPROVED.map((a) => ({
+        name: a.name, email: a.email, stamp: a.stamp,
+        initials: inits(a.name), tint: tint(a.email)
+      })),
+
+      searchInbox: SEARCH_INBOX.map((r) => ({
+        name: r.name, mark: r.mark, rest: r.rest, time: r.time,
+        initials: inits(r.name), tint: tint(r.email),
+        bg: r.open ? '#E2E7E6' : '#FBFCFB'
+      })),
+      searchArchive: SEARCH_ARCHIVE.map((r) => ({
+        name: r.name, mark: r.mark, rest: r.rest, time: r.time,
+        initials: inits(r.name), tint: tint(r.email)
+      })),
+
+      assistantToggles: [
+        { label: 'Summarize long threads automatically', desc: 'Pigeon writes a summary for threads with four or more messages.', track: '#0F5F55', knob: '18px' },
+        { label: 'Read new senders for the Screener', desc: 'Pigeon adds a one-line read to each sender card and writes the weekly digest.', track: '#0F5F55', knob: '18px' },
+        { label: 'Match my writing style in drafts', desc: "Pigeon looks at mail you've sent to write drafts that sound like you.", track: '#78838E', knob: '2px' }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

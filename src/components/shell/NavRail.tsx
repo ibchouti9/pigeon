@@ -1,0 +1,167 @@
+import { useRef } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useMail, useHeldCount, useUnreadCount } from '../../store/mail';
+import { useCompose } from '../../store/compose';
+import { Button } from '../primitives/Button';
+import { Icon, type IconName } from '../primitives/Icon';
+import { Monogram } from '../primitives/Monogram';
+import { cn } from '../../lib/cn';
+import { formatCount } from '../../lib/format';
+import styles from './NavRail.module.css';
+
+interface NavRailProps {
+  /** Tablet below 1080px: icons only, labels become title + aria-label. */
+  compact: boolean;
+  /** The search field lives in the list column header when compact. */
+  searchRef?: React.RefObject<HTMLInputElement | null>;
+}
+
+interface Item {
+  to: string;
+  icon: IconName;
+  label: string;
+  count?: number;
+  countVariant?: 'plain' | 'ring';
+  countNoun?: string;
+}
+
+/**
+ * §5.0 — the rail never changes contents. The same four items and the search
+ * field are present on every screen of the app shell.
+ */
+export function NavRail({ compact, searchRef }: NavRailProps) {
+  const navigate = useNavigate();
+  const account = useMail((s) => s.account);
+  const unread = useUnreadCount();
+  const heldCount = useHeldCount();
+  const openCompose = useCompose((s) => s.open);
+  const localRef = useRef<HTMLInputElement>(null);
+  const inputRef = searchRef ?? localRef;
+
+  const items: Item[] = [
+    { to: '/inbox', icon: 'inbox', label: 'Inbox', count: unread, countVariant: 'plain', countNoun: 'unread' },
+    { to: '/screener', icon: 'screener-ring', label: 'Screener', count: heldCount, countVariant: 'ring', countNoun: 'waiting' },
+    { to: '/archive', icon: 'archive', label: 'Archive' },
+  ];
+
+  return (
+    <nav
+      className={cn(styles.rail, compact && styles.compact)}
+      aria-label="Mail"
+      data-testid="nav-rail"
+    >
+      <NavLink
+        to="/settings/account"
+        className={styles.account}
+        aria-label={account ? `Account, ${account.name}, ${account.email}` : 'Account'}
+      >
+        <Monogram name={account?.name} email={account?.email ?? 'pigeon'} size={28} />
+        {!compact && (
+          <span className={styles.accountText}>
+            <span className={cn('t-base', 'truncate', styles.accountName)}>
+              {account?.name ?? 'Loading'}
+            </span>
+            <span className={cn('t-xs', 'truncate', styles.accountEmail)}>
+              {account?.email ?? ''}
+            </span>
+          </span>
+        )}
+      </NavLink>
+
+      {compact ? (
+        <Button
+          variant="icon"
+          size="md"
+          aria-label="Search mail"
+          title="Search mail"
+          onClick={() => navigate('/search')}
+        >
+          <Icon name="search" size={20} />
+        </Button>
+      ) : (
+        <div className={styles.search}>
+          <Icon name="search" size={16} className={styles.searchIcon} />
+          <input
+            ref={inputRef}
+            type="search"
+            className={cn('t-base', styles.searchInput)}
+            placeholder="Search mail"
+            aria-label="Search mail"
+            data-search-field="true"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') e.currentTarget.blur();
+            }}
+            onChange={(e) => {
+              const q = e.currentTarget.value;
+              navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
+            }}
+          />
+        </div>
+      )}
+
+      <div className={styles.nav}>
+        {items.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            title={compact ? item.label : undefined}
+            aria-label={
+              item.count
+                ? `${item.label}, ${formatCount(item.count)} ${item.countNoun}`
+                : item.label
+            }
+            className={({ isActive }) =>
+              cn('t-base', styles.item, isActive && styles.itemSelected)
+            }
+          >
+            <Icon name={item.icon} size={20} className={styles.itemIcon} />
+            {!compact && <span className={styles.itemLabel}>{item.label}</span>}
+            {!compact && item.count ? (
+              item.countVariant === 'ring' ? (
+                <span className={cn('t-mono-sm', styles.ringCount)} aria-hidden="true">
+                  {item.count > 99 ? '99+' : formatCount(item.count)}
+                </span>
+              ) : (
+                <span className={cn('t-mono-sm', styles.count)} aria-hidden="true">
+                  {formatCount(item.count)}
+                </span>
+              )
+            ) : null}
+            {compact && item.count ? <span className={styles.dot} aria-hidden="true" /> : null}
+          </NavLink>
+        ))}
+      </div>
+
+      {compact ? (
+        <Button
+          variant="primary"
+          size="md"
+          className={styles.compose}
+          aria-label="Compose"
+          title="Compose"
+          onClick={() => openCompose()}
+        >
+          <Icon name="compose" size={20} />
+        </Button>
+      ) : (
+        <Button variant="primary" fullWidth className={styles.compose} onClick={() => openCompose()}>
+          Compose
+        </Button>
+      )}
+
+      <div className={styles.spacer} />
+      <div className={styles.divider} />
+      <div className={cn(styles.nav, styles.footer)}>
+        <NavLink
+          to="/settings"
+          title={compact ? 'Settings' : undefined}
+          aria-label="Settings"
+          className={({ isActive }) => cn('t-base', styles.item, isActive && styles.itemSelected)}
+        >
+          <Icon name="settings" size={20} className={styles.itemIcon} />
+          {!compact && <span className={styles.itemLabel}>Settings</span>}
+        </NavLink>
+      </div>
+    </nav>
+  );
+}

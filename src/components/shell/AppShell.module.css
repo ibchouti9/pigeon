@@ -1,0 +1,51 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* The list column's left hairline provides the rail's right edge (§5.0). */
+.region {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  border-left: var(--border-hairline);
+  background: var(--color-surface);
+}
+
+.banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  background: var(--color-destructive-subtle);
+  color: var(--color-text-primary);
+}
+
+/* §5.14 — below 720px the app renders a single centered block. */
+.tooNarrow {
+  display: none;
+}
+
+@media (max-width: 719px) {
+  .body {
+    display: none;
+  }
+
+  .tooNarrow {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8);
+    text-align: center;
+  }
+}

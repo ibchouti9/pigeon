@@ -1,0 +1,100 @@
+.region {
+  position: fixed;
+  left: var(--space-6);
+  bottom: var(--space-6);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-1);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  min-width: 320px;
+  max-width: 420px;
+  padding: var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+  animation: toast-in var(--duration-toast-in) var(--ease-standard) both;
+}
+
+.toast:hover,
+.toast:focus-within {
+  border-color: var(--color-border-control);
+}
+
+.confirm {
+  background: var(--color-text-primary);
+  color: var(--color-text-inverse);
+}
+
+.error {
+  background: var(--color-destructive);
+  color: var(--color-text-inverse);
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+}
+
+.action {
+  flex: none;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: var(--radius-xs);
+}
+
+/* §5.14 — in the dark-on-light inversion the accent must be the dark-theme
+   accent so it clears 4.5:1 against the toast fill. */
+.confirm .action {
+  color: #4fbfa8;
+}
+
+.error .action {
+  color: var(--color-text-inverse);
+  text-decoration: underline;
+}
+
+.close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: -4px -4px -4px 0;
+  color: var(--color-text-inverse);
+  border-radius: var(--radius-xs);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-name: toast-fade;
+  }
+
+  @keyframes toast-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

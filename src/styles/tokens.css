@@ -1,0 +1,306 @@
+/* ============================================================
+   PIGEON — DESIGN TOKENS v1.0
+   Light theme is the default. Dark applies via [data-theme="dark"]
+   or the prefers-color-scheme fallback in the last block.
+   ============================================================ */
+
+:root {
+
+  /* ---------- 1. NAMED HUES (the only raw hex in the system) ---------- */
+  --hue-paper:        #F3F5F4;  /* cool grey-green daylight   */
+  --hue-ink:          #1B2027;  /* blue-cast franking ink     */
+  --hue-feather:      #4C5763;  /* pigeon grey                */
+  --hue-stamp:        #0F5F55;  /* stamp teal — accent        */
+  --hue-returned:     #A32C22;  /* returned-mail red          */
+  --hue-iridescent:   #4C4A8A;  /* AI violet                  */
+
+  /* ---------- 2. SEMANTIC COLOR — LIGHT ---------- */
+  --color-bg:               #F3F5F4;  /* app background, nav rail          */
+  --color-surface:          #FBFCFB;  /* lists, reading pane, cards        */
+  --color-surface-sunken:   #EDF0EF;  /* inputs, quoted text, code         */
+  --color-surface-held:     #EDF1F0;  /* Screener card body ("glassine")   */
+  --color-surface-ai:       #EFEEF8;  /* AI summary + AI draft background  */
+  --color-surface-hover:    #E9EDEC;  /* row and button hover              */
+  --color-surface-active:   #E2E7E6;  /* row pressed / open thread row     */
+
+  --color-text-primary:     #1B2027;  /* 15.9:1 on surface                 */
+  --color-text-secondary:   #4C5763;  /*  6.7:1 on bg                      */
+  --color-text-tertiary:    #616D78;  /*  4.8:1 on bg — meta, timestamps   */
+  --color-text-disabled:    #7E8A95;  /*  3.2:1 — disabled labels only     */
+  --color-text-inverse:     #FBFCFB;
+  --color-text-ai:          #4C4A8A;  /*  7.2:1 on bg                      */
+  --color-text-accent:      #0F5F55;  /*  7.0:1 on bg                      */
+  --color-text-destructive: #A32C22;  /*  6.5:1 on bg                      */
+
+  --color-border-subtle:    #DFE4E3;  /* dividers, card edges              */
+  --color-border-control:   #78838E;  /*  3.6:1 — inputs, checkboxes       */
+  --color-border-strong:    #1B2027;  /* secondary button border           */
+
+  --color-accent:           #0F5F55;
+  --color-accent-hover:     #0B4B43;
+  --color-accent-active:    #083A34;
+  --color-accent-subtle:    #E2EEEB;  /* approved chips, success tint      */
+
+  --color-destructive:        #A32C22;
+  --color-destructive-hover:  #8A231B;
+  --color-destructive-active: #711C15;
+  --color-destructive-subtle: #F6E6E4;
+
+  --color-ai:               #4C4A8A;
+  --color-ai-hover:         #3D3B72;
+  --color-ai-subtle:        #EFEEF8;
+
+  --color-focus:            #0F5F55;
+  --color-scrim:            rgb(27 32 39 / 0.32);  /* modal backdrop       */
+
+  /* Screener behind-card fills, stepped one shade toward the background. */
+  --color-card-behind-1:    #EAEFEE;
+  --color-card-behind-2:    #E7ECEB;
+
+  /* Monogram feather ramp (C-3). Six fills, all >= 4.5:1 on the tile text. */
+  --monogram-1: #4C5763;
+  --monogram-2: #3E5A57;
+  --monogram-3: #4A5266;
+  --monogram-4: #565A4E;
+  --monogram-5: #3F5460;
+  --monogram-6: #5A5060;
+  --monogram-text: #FBFCFB;
+
+  /* ---------- 3. TYPEFACES ---------- */
+  --font-display: "Archivo", "Helvetica Neue", Helvetica, sans-serif;
+  --font-body:    "Public Sans", "Helvetica Neue", Helvetica, sans-serif;
+  --font-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ---------- 4. TYPE SCALE ----------
+     Each step ships size / line-height / weight / tracking.
+     Steps 2xs–lg are Public Sans. display-* are Archivo. mono-* are IBM Plex Mono. */
+
+  --text-2xs-size: 11px;  --text-2xs-line: 16px;  --text-2xs-weight: 500;  --text-2xs-track:  0.06em;
+  --text-xs-size:  12px;  --text-xs-line:  16px;  --text-xs-weight:  500;  --text-xs-track:   0.005em;
+  --text-sm-size:  13px;  --text-sm-line:  18px;  --text-sm-weight:  400;  --text-sm-track:   0em;
+  --text-base-size:14px;  --text-base-line:21px;  --text-base-weight:400;  --text-base-track: 0em;
+  --text-md-size:  15px;  --text-md-line:  24px;  --text-md-weight:  400;  --text-md-track:  -0.003em;
+  --text-lg-size:  17px;  --text-lg-line:  24px;  --text-lg-weight:  600;  --text-lg-track:  -0.008em;
+  --text-xl-size:  20px;  --text-xl-line:  28px;  --text-xl-weight:  600;  --text-xl-track:  -0.010em;
+
+  --display-sm-size: 24px; --display-sm-line: 30px; --display-sm-weight: 600; --display-sm-track: -0.014em;
+  --display-md-size: 32px; --display-md-line: 38px; --display-md-weight: 600; --display-md-track: -0.018em;
+  --display-lg-size: 40px; --display-lg-line: 46px; --display-lg-weight: 700; --display-lg-track: -0.022em;
+
+  --mono-xs-size: 10px;  --mono-xs-line: 14px;  --mono-xs-weight: 500;  --mono-xs-track: 0.09em;
+  --mono-sm-size: 11px;  --mono-sm-line: 16px;  --mono-sm-weight: 500;  --mono-sm-track: 0.07em;
+  --mono-md-size: 13px;  --mono-md-line: 18px;  --mono-md-weight: 400;  --mono-md-track: 0.02em;
+
+  --font-feature-tabular: "tnum" 1, "lnum" 1;   /* all mono numerals      */
+  --measure-read: 68ch;                          /* message body max width */
+
+  /* ---------- 5. SPACING (4px base) ---------- */
+  --space-0:  0px;    --space-1:  4px;    --space-2:  8px;    --space-3: 12px;
+  --space-4: 16px;    --space-5: 20px;    --space-6: 24px;    --space-8: 32px;
+  --space-10:40px;    --space-12:48px;    --space-16:64px;    --space-20:80px;
+
+  /* ---------- 6. RADII ---------- */
+  --radius-xs:   3px;   /* checkbox, tag                       */
+  --radius-sm:   5px;   /* input, small button                 */
+  --radius-md:   6px;   /* button, menu item                   */
+  --radius-lg:  10px;   /* panel, toast, AI block              */
+  --radius-xl:  14px;   /* sender card, dialog, composer dock  */
+  --radius-full: 999px; /* monogram, badge ring, chip          */
+
+  /* ---------- 7. BORDERS ---------- */
+  --border-width-hairline: 1px;
+  --border-width-control:  1px;
+  --border-width-emphasis: 2px;   /* focus ring, selected card edge */
+  --border-hairline: 1px solid var(--color-border-subtle);
+  --border-control:  1px solid var(--color-border-control);
+
+  /* ---------- 8. ELEVATION (two levels, both cool-tinted) ---------- */
+  --shadow-none: none;
+  --shadow-overlay:
+      0 1px 2px rgb(27 32 39 / 0.05),
+      0 6px 16px -4px rgb(27 32 39 / 0.10);
+  --shadow-modal:
+      0 2px 4px rgb(27 32 39 / 0.06),
+      0 24px 48px -12px rgb(27 32 39 / 0.22);
+
+  /* ---------- 9. MOTION ---------- */
+  --duration-instant: 0ms;
+  --duration-fast:  120ms;   /* hover, checkbox, small tint changes  */
+  --duration-base:  180ms;   /* row departure, inline expand, crossfade */
+  --duration-slow:  280ms;   /* sheet, view crossfade                */
+  --duration-panel: 320ms;   /* composer dock open/close             */
+  --duration-stamp: 420ms;   /* postmark only                        */
+  --duration-toast-in:  180ms;
+  --duration-toast-out: 120ms;
+  --duration-undo:     8000ms;
+
+  --ease-standard: cubic-bezier(0.20, 0.00, 0.00, 1.00);  /* enter, move  */
+  --ease-exit:     cubic-bezier(0.40, 0.00, 1.00, 1.00);  /* leave        */
+  --ease-stamp:    cubic-bezier(0.18, 1.30, 0.42, 1.00);  /* press+settle */
+
+  /* ---------- 10. LAYOUT ---------- */
+  --layout-rail-width:        232px;
+  --layout-rail-width-compact: 56px;
+  --layout-list-width:        380px;
+  --layout-row-height:         56px;   /* thread list item              */
+  --layout-row-height-dense:   44px;   /* sender list rows in settings  */
+  --layout-header-height:      52px;
+  --layout-card-width:        520px;   /* Screener sender card          */
+  --layout-composer-width:    560px;   /* docked composer               */
+  --layout-onboarding-width:  480px;
+
+  --z-shell: 0; --z-dock: 40; --z-sheet: 50; --z-overlay: 60;
+  --z-dialog: 70; --z-toast: 80; --z-banner: 90;
+}
+
+/* ============================================================
+   DARK THEME
+   ============================================================ */
+[data-theme="dark"] {
+  --color-bg:               #12161A;
+  --color-surface:          #1A2027;
+  --color-surface-sunken:   #232A32;
+  --color-surface-held:     #1F262E;
+  --color-surface-ai:       #22213A;
+  --color-surface-hover:    #232A32;
+  --color-surface-active:   #2B333C;
+
+  --color-text-primary:     #E7ECEF;  /* 13.8:1 on surface */
+  --color-text-secondary:   #9AA6B0;  /*  6.6:1 on surface */
+  --color-text-tertiary:    #8593A0;  /*  5.0:1 on surface */
+  --color-text-disabled:    #647280;  /*  3.1:1            */
+  --color-text-inverse:     #12161A;
+  --color-text-ai:          #A9A4E8;  /*  7.2:1 on surface */
+  --color-text-accent:      #4FBFA8;  /*  7.4:1 on surface */
+  --color-text-destructive: #E8776A;  /*  5.7:1 on surface */
+
+  --color-border-subtle:    #2C343D;
+  --color-border-control:   #6D7B88;  /*  3.5:1 on surface */
+  --color-border-strong:    #E7ECEF;
+
+  --color-accent:           #4FBFA8;
+  --color-accent-hover:     #6BCEB9;
+  --color-accent-active:    #86DBC8;
+  --color-accent-subtle:    #16302C;
+
+  --color-destructive:        #E8776A;
+  --color-destructive-hover:  #F09085;
+  --color-destructive-active: #F5A79E;
+  --color-destructive-subtle: #331B18;
+
+  --color-ai:               #A9A4E8;
+  --color-ai-hover:         #BDB9EF;
+  --color-ai-subtle:        #22213A;
+
+  --color-focus:            #4FBFA8;
+  --color-scrim:            rgb(6 9 12 / 0.60);
+
+  --color-card-behind-1:    #1D242B;
+  --color-card-behind-2:    #1B2229;
+
+  --monogram-1: #8894A0;
+  --monogram-2: #7FA39D;
+  --monogram-3: #8A90AC;
+  --monogram-4: #9A9E8B;
+  --monogram-5: #7F98A8;
+  --monogram-6: #A08FA6;
+  --monogram-text: #12161A;
+
+  /* Dark surfaces need lift, not shadow: shadows are reduced and
+     surface separation carries the hierarchy. */
+  --shadow-overlay:
+      0 1px 2px rgb(0 0 0 / 0.40),
+      0 6px 16px -4px rgb(0 0 0 / 0.45);
+  --shadow-modal:
+      0 2px 4px rgb(0 0 0 / 0.45),
+      0 24px 48px -12px rgb(0 0 0 / 0.60);
+}
+
+/* Follow the OS unless the user has chosen a theme in Settings.
+   The app writes data-theme="light"|"dark" on <html> once the user chooses;
+   in the absence of that attribute this block applies. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg:               #12161A;
+    --color-surface:          #1A2027;
+    --color-surface-sunken:   #232A32;
+    --color-surface-held:     #1F262E;
+    --color-surface-ai:       #22213A;
+    --color-surface-hover:    #232A32;
+    --color-surface-active:   #2B333C;
+
+    --color-text-primary:     #E7ECEF;
+    --color-text-secondary:   #9AA6B0;
+    --color-text-tertiary:    #8593A0;
+    --color-text-disabled:    #647280;
+    --color-text-inverse:     #12161A;
+    --color-text-ai:          #A9A4E8;
+    --color-text-accent:      #4FBFA8;
+    --color-text-destructive: #E8776A;
+
+    --color-border-subtle:    #2C343D;
+    --color-border-control:   #6D7B88;
+    --color-border-strong:    #E7ECEF;
+
+    --color-accent:           #4FBFA8;
+    --color-accent-hover:     #6BCEB9;
+    --color-accent-active:    #86DBC8;
+    --color-accent-subtle:    #16302C;
+
+    --color-destructive:        #E8776A;
+    --color-destructive-hover:  #F09085;
+    --color-destructive-active: #F5A79E;
+    --color-destructive-subtle: #331B18;
+
+    --color-ai:               #A9A4E8;
+    --color-ai-hover:         #BDB9EF;
+    --color-ai-subtle:        #22213A;
+
+    --color-focus:            #4FBFA8;
+    --color-scrim:            rgb(6 9 12 / 0.60);
+
+    --color-card-behind-1:    #1D242B;
+    --color-card-behind-2:    #1B2229;
+
+    --monogram-1: #8894A0;
+    --monogram-2: #7FA39D;
+    --monogram-3: #8A90AC;
+    --monogram-4: #9A9E8B;
+    --monogram-5: #7F98A8;
+    --monogram-6: #A08FA6;
+    --monogram-text: #12161A;
+
+    --shadow-overlay:
+        0 1px 2px rgb(0 0 0 / 0.40),
+        0 6px 16px -4px rgb(0 0 0 / 0.45);
+    --shadow-modal:
+        0 2px 4px rgb(0 0 0 / 0.45),
+        0 24px 48px -12px rgb(0 0 0 / 0.60);
+  }
+}
+
+/* ============================================================
+   MOTION PREFERENCE
+   Reduced motion keeps state changes legible but removes travel.
+   Opacity crossfades are retained at 100ms so nothing "pops".
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast:  1ms;
+    --duration-base:  100ms;   /* opacity only — transforms are suppressed */
+    --duration-slow:  100ms;
+    --duration-panel: 100ms;
+    --duration-stamp: 100ms;   /* postmark fades in, does not scale/rotate-in */
+    --duration-toast-in:  100ms;
+    --duration-toast-out: 100ms;
+    --ease-standard: linear;
+    --ease-exit:     linear;
+    --ease-stamp:    linear;
+  }
+  /* All transform-based travel is removed; only opacity animates. */
+  *, *::before, *::after {
+    animation-duration: var(--duration-base) !important;
+    animation-iteration-count: 1 !important;
+    transition-property: opacity, background-color, border-color, color !important;
+  }
+}

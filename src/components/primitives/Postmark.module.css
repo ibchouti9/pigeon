@@ -1,0 +1,53 @@
+.mark {
+  transform: rotate(-9deg);
+  opacity: 0.88;
+  overflow: visible;
+}
+
+.text {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* §4.6 POSTMARK STAMP — the card beneath does not move. */
+.animate {
+  animation: stamp var(--duration-stamp) var(--ease-stamp) both;
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.18) rotate(-22deg);
+  }
+  to {
+    opacity: 0.88;
+    transform: scale(1) rotate(-9deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate {
+    animation: stamp-fade var(--duration-stamp) linear both;
+  }
+
+  @keyframes stamp-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 0.88;
+    }
+  }
+}
+
+.ring {
+  transform: rotate(-9deg);
+}
+
+.textOnly {
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  white-space: nowrap;
+}

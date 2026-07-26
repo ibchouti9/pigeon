@@ -1,0 +1,235 @@
+/* ============================================================
+   PIGEON — BASE
+   Reset, type utilities, focus treatment (§8.2), a11y helpers.
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-base-size);
+  line-height: var(--text-base-line);
+  font-weight: var(--text-base-weight);
+  letter-spacing: var(--text-base-track);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* §8.4 — lock background scroll without layout shift */
+  scrollbar-gutter: stable;
+}
+
+h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, ol, ul {
+  margin: 0;
+  padding: 0;
+}
+
+ol, ul {
+  list-style: none;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+a {
+  color: var(--color-text-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Focus (D40, §8.2) ----------
+   One ring, one color, everywhere. Never removed. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: var(--border-width-emphasis) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Where the ring would be clipped (list rows, table cells) it renders inset. */
+.focus-inset:focus-visible {
+  outline-offset: -2px;
+}
+
+/* ---------- Accessibility helpers ---------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link — first focusable element on every route (§8.2). */
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: var(--z-banner);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-md);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* ---------- Type utilities ---------- */
+.t-2xs {
+  font-size: var(--text-2xs-size);
+  line-height: var(--text-2xs-line);
+  font-weight: var(--text-2xs-weight);
+  letter-spacing: var(--text-2xs-track);
+}
+
+.t-xs {
+  font-size: var(--text-xs-size);
+  line-height: var(--text-xs-line);
+  font-weight: var(--text-xs-weight);
+  letter-spacing: var(--text-xs-track);
+}
+
+.t-sm {
+  font-size: var(--text-sm-size);
+  line-height: var(--text-sm-line);
+  font-weight: var(--text-sm-weight);
+  letter-spacing: var(--text-sm-track);
+}
+
+.t-base {
+  font-size: var(--text-base-size);
+  line-height: var(--text-base-line);
+  font-weight: var(--text-base-weight);
+  letter-spacing: var(--text-base-track);
+}
+
+.t-md {
+  font-size: var(--text-md-size);
+  line-height: var(--text-md-line);
+  font-weight: var(--text-md-weight);
+  letter-spacing: var(--text-md-track);
+}
+
+.t-lg {
+  font-size: var(--text-lg-size);
+  line-height: var(--text-lg-line);
+  font-weight: var(--text-lg-weight);
+  letter-spacing: var(--text-lg-track);
+}
+
+.t-xl {
+  font-size: var(--text-xl-size);
+  line-height: var(--text-xl-line);
+  font-weight: var(--text-xl-weight);
+  letter-spacing: var(--text-xl-track);
+}
+
+.t-display-sm,
+.t-display-md,
+.t-display-lg {
+  font-family: var(--font-display);
+}
+
+.t-display-sm {
+  font-size: var(--display-sm-size);
+  line-height: var(--display-sm-line);
+  font-weight: var(--display-sm-weight);
+  letter-spacing: var(--display-sm-track);
+}
+
+.t-display-md {
+  font-size: var(--display-md-size);
+  line-height: var(--display-md-line);
+  font-weight: var(--display-md-weight);
+  letter-spacing: var(--display-md-track);
+}
+
+.t-display-lg {
+  font-size: var(--display-lg-size);
+  line-height: var(--display-lg-line);
+  font-weight: var(--display-lg-weight);
+  letter-spacing: var(--display-lg-track);
+}
+
+.t-mono-xs,
+.t-mono-sm,
+.t-mono-md {
+  font-family: var(--font-mono);
+  font-feature-settings: var(--font-feature-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.t-mono-xs {
+  font-size: var(--mono-xs-size);
+  line-height: var(--mono-xs-line);
+  font-weight: var(--mono-xs-weight);
+  letter-spacing: var(--mono-xs-track);
+}
+
+.t-mono-sm {
+  font-size: var(--mono-sm-size);
+  line-height: var(--mono-sm-line);
+  font-weight: var(--mono-sm-weight);
+  letter-spacing: var(--mono-sm-track);
+}
+
+.t-mono-md {
+  font-size: var(--mono-md-size);
+  line-height: var(--mono-md-line);
+  font-weight: var(--mono-md-weight);
+  letter-spacing: var(--mono-md-track);
+}
+
+/* ---------- Shared truncation ---------- */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ---------- Ink colors ---------- */
+.ink-secondary { color: var(--color-text-secondary); }
+.ink-tertiary  { color: var(--color-text-tertiary); }
+.ink-ai        { color: var(--color-text-ai); }
+.ink-accent    { color: var(--color-text-accent); }
+.ink-destructive { color: var(--color-text-destructive); }
