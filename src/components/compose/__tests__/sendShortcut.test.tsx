@@ -85,6 +85,37 @@ describe('⌘Enter sends from anywhere in the composer (§8.1)', () => {
     await expectSent(send);
   });
 
+  /**
+   * §3.5 3e — "Send is disabled with tooltip and helper text". The helper text
+   * was there and the tooltip was not, so a greyed-out Send explained itself
+   * only below the button, never on the button.
+   */
+  it('explains a blocked Send on the button as well as below it', async () => {
+    const user = userEvent.setup();
+    const { subject } = await openDraft(user);
+    void subject;
+
+    // §4.7 / D26 — an unresolved placeholder blocks send, with §7.6's line.
+    // '[[' is userEvent's escape for a literal bracket.
+    await user.type(screen.getByLabelText('Message body'), ' [[confirm: a time]');
+
+    const send = screen.getByRole('button', { name: 'Send' });
+    expect(send).toBeDisabled();
+
+    const explanation = 'Replace [confirm: a time] before sending.';
+    // Below the button, permanently — the part a keyboard user gets.
+    expect(screen.getByText(explanation)).toBeInTheDocument();
+
+    // And on it: the tooltip wrapper is what listens, since a disabled button
+    // passes pointer events through to it.
+    await user.hover(send);
+    await waitFor(() => expect(screen.getAllByText(explanation).length).toBeGreaterThan(1), {
+      timeout: 2000,
+    });
+
+    useCompose.getState().close();
+  });
+
   it('does not send on a bare Enter in the Subject line', async () => {
     const user = userEvent.setup();
     const send = vi.spyOn(provider, 'send');

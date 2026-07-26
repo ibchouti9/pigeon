@@ -3,6 +3,7 @@ import type { Address, Draft, Message, OutgoingAttachment } from '../../types';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { Chip } from '../primitives/Controls';
+import { Tooltip } from '../primitives/Feedback';
 import { RecipientField } from './RecipientField';
 import { BodyEditor } from './BodyEditor';
 import { useAssistant, useBehaviour } from '../../ai/useAssistant';
@@ -468,9 +469,25 @@ export function Composer({
       )}
 
       <div className={styles.actions}>
-        <Button variant="primary" type="submit" loading={sending} disabled={sendDisabled}>
-          Send
-        </Button>
+        {/*
+          §3.5 3e — "Send is disabled with tooltip and helper text". The helper
+          text was there and the tooltip was not. The wrapper is what listens,
+          and a disabled button passes pointer events through to it, so hovering
+          the greyed-out Send explains itself. Keyboard users can't focus a
+          disabled button, which is why the helper text below stays the
+          permanent explanation rather than the tooltip replacing it.
+        */}
+        {blockedReason ? (
+          <Tooltip label={blockedReason}>
+            <Button variant="primary" type="submit" loading={sending} disabled={sendDisabled}>
+              Send
+            </Button>
+          </Tooltip>
+        ) : (
+          <Button variant="primary" type="submit" loading={sending} disabled={sendDisabled}>
+            Send
+          </Button>
+        )}
 
         {/*
           aria-disabled rather than `disabled`: a disabled button takes no focus
