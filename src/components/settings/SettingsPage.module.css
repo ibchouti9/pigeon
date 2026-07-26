@@ -1,0 +1,28 @@
+.page {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 720px;
+  padding: var(--space-8);
+}
+
+/* Pages that manage their own internal scroll region (Senders' virtualized
+   list) opt out of the outer scroll so there is only one scrollbar. */
+.noScroll {
+  display: flex;
+  overflow: hidden;
+}
+
+.innerNoScroll {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  padding-bottom: var(--space-8);
+}

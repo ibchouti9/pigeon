@@ -1,0 +1,97 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex: none;
+}
+
+.filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 240px;
+  flex: none;
+}
+
+.filterIcon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+.filterInput {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3) 0 calc(var(--space-3) + 16px + var(--space-2));
+  background: var(--color-surface);
+  border: var(--border-width-control) solid var(--color-border-control);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+}
+
+.filterInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.filterInput:focus-visible {
+  border-color: var(--color-accent);
+}
+
+.panel {
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
+  border-bottom: var(--border-hairline);
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.line1 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.name {
+  font-weight: 500;
+  flex: none;
+  max-width: 60%;
+}
+
+.address {
+  color: var(--color-text-tertiary);
+  min-width: 0;
+}
+
+.actionButton {
+  flex: none;
+}
+
+.noMatches {
+  padding: var(--space-6) var(--space-2);
+  color: var(--color-text-tertiary);
+}

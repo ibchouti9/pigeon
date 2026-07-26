@@ -1,0 +1,142 @@
+.providerBlock {
+  border: var(--border-hairline);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 52px;
+}
+
+.mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.headerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.headerMeta {
+  color: var(--color-text-tertiary);
+}
+
+.pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 22px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
+.pillDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+}
+
+.pillConnected {
+  background: var(--color-accent-subtle);
+  color: var(--color-text-accent);
+}
+
+.pillConnected .pillDot {
+  background: var(--color-accent);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 38px;
+  border-top: var(--border-hairline);
+}
+
+.metaLabel {
+  flex: none;
+  width: 150px;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.metaValue {
+  margin: 0;
+  min-width: 0;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-hairline);
+}
+
+.note {
+  margin-left: auto;
+  color: var(--color-text-disabled);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+}
+
+.behaviourBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 64px;
+  border-bottom: var(--border-hairline);
+}
+
+.toggleText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggleDescription {
+  color: var(--color-text-secondary);
+}
+
+.footer {
+  padding-top: var(--space-4);
+  color: var(--color-text-secondary);
+}
