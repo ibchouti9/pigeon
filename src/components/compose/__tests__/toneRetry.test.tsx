@@ -141,6 +141,39 @@ describe('retrying a failed tone change (§3.4 4a)', () => {
     expect(stub.calls.retone, 'Try again retoned after a draft failure').toBe(1);
   });
 
+  /**
+   * Two rewrites at once would leave the later one holding a "previous body"
+   * the earlier had already replaced, so Undo would restore text the user never
+   * wrote. The tone chips guard the same way.
+   */
+  it('does not run two retries at once', async () => {
+    const user = userEvent.setup();
+    await failATone(user);
+    expect(stub.calls.retone).toBe(1);
+
+    let release: (v: string) => void = () => {};
+    stub.behaviour.failRetone = false;
+    const held = new Promise<string>((r) => (release = r));
+    const retone = stub.assistant.client.retone;
+    stub.assistant.client.retone = () => {
+      stub.calls.retone += 1;
+      return held;
+    };
+
+    const tryAgain = screen.getByRole('button', { name: 'Try again' });
+    await user.click(tryAgain);
+    await waitFor(() => expect(stub.calls.retone).toBe(2));
+
+    // Both retry paths clear the error on entry, so the block and its button
+    // are gone before a second click is possible. That, not a disabled
+    // attribute, is what stops two rewrites running at once.
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+
+    release('done');
+    await waitFor(() => expect(stub.calls.retone).toBe(2));
+    stub.assistant.client.retone = retone;
+  });
+
   it('still regenerates when it was the draft itself that failed', async () => {
     const user = userEvent.setup();
     render(

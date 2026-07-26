@@ -339,7 +339,11 @@ export function Composer({
               // §5.12 binds send to ⌘Enter, not Enter. A single text input in a
               // form means the browser submits it on Enter — so leaving the
               // subject line, which is close to a reflex, sent the message.
-              if (e.key === 'Enter') {
+              //
+              // ⌘Enter belongs to the form handler above; without the modifier
+              // check this also jumped focus into the body on its way to
+              // sending, which looks like a glitch when Send is disabled.
+              if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
                 e.preventDefault();
                 bodyRef.current?.focus();
               }
@@ -414,6 +418,13 @@ export function Composer({
         </div>
       )}
 
+      {/*
+        Two rewrites at once would leave the later one holding a "previous body"
+        the earlier had already replaced, so Undo would restore text the user
+        never wrote. Nothing here is disabled to prevent that: both retry paths
+        clear `draftError` on entry, so this block — and its button — are gone
+        before a second click is possible. Tested rather than assumed.
+      */}
       {draftError && (
         <div className={cn('t-sm', styles.errorBlock)} role="alert">
           {draftError}

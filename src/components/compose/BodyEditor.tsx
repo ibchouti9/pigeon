@@ -43,7 +43,6 @@ export interface BodyEditorProps {
   busy?: boolean;
   className?: string;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 }
 
 export function BodyEditor({
@@ -59,7 +58,6 @@ export function BodyEditor({
   busy,
   className,
   textareaRef,
-  onKeyDown,
 }: BodyEditorProps) {
   const localRef = useRef<HTMLTextAreaElement>(null);
   const ref = textareaRef ?? localRef;
@@ -94,7 +92,6 @@ export function BodyEditor({
         aria-busy={busy || undefined}
         spellCheck
         style={{ minHeight }}
-        onKeyDown={onKeyDown}
         onScroll={(e) => {
           if (underlayRef.current) {
             underlayRef.current.scrollTop = e.currentTarget.scrollTop;
