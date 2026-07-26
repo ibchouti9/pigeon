@@ -531,6 +531,36 @@ What was real, and is fixed:
 Still open from that report, unverified: bulk review's live region says
 "9 selected" while a decision is in flight, rather than announcing the decision.
 
+## A third review pass, over the §2.3 work itself
+
+The commits that fixed §2.3's reversal rules introduced three defects of their
+own, all found by reviewing them rather than by any test:
+
+- **Declined mail was readable in the Archive.** Making the filter ask whether
+  a thread arrived *after* a decline is right for §2.3's carve-out, and wrong
+  for a decline made from the Screener, where D7 says their mail "never appears
+  in Pigeon". `silence()` is what puts those threads in the archive — taking
+  them out of the Gmail inbox is exactly what makes them match the archive
+  query — so everything older than the decision was sitting there.
+- **One reply hid a whole conversation.** The cutoff compared the thread's
+  newest message, and a Gmail thread is one unit: a declined-but-formerly-
+  approved sender replying to an existing conversation took the entire history
+  out of both lists. The user's own reply did it too.
+- **Reversing a decline resurfaced everything.** Approving simply stopped
+  hiding, so all the mail that arrived during the declined period reappeared at
+  once — the opposite of "only affects mail received after the reversal".
+
+All four cases now sit in one function keyed on the decision and whether it
+reversed an earlier one, each measured from when the conversation started. The
+contract test could not have caught the first: its Gmail stub returns the same
+list for both places and all three §2.3 cases only ever asked for the inbox.
+
+**The lesson is about where the yield is.** Three spec audits over §8 found
+nothing on this scale; three review passes over recent commits have now found
+twelve real defects, most of them introduced hours earlier by the fix for
+something else. A fix to intricate rules deserves its own review pass before it
+is trusted.
+
 ## Deliberate deviations from the spec
 
 Each is a considered call, not an oversight.
