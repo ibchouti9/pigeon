@@ -155,7 +155,7 @@ export function WelcomeRoute() {
 
         <p className={`t-xs ink-tertiary ${styles.legal}`}>
           Pigeon reads and sends mail on your behalf. It never sends anything you haven&apos;t
-          seen. The password stays in your Mac&apos;s Keychain and goes only to Gmail.
+          seen.{desktop && ' The password stays in your Mac’s Keychain and goes only to Gmail.'}
         </p>
         {!desktop && (
           <p className={`t-xs ink-tertiary ${styles.demoNote}`}>
