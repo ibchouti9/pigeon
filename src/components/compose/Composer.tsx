@@ -82,6 +82,15 @@ export function Composer({
   const [toneDone, setToneDone] = useState<Tone | null>(null);
   const [undoBody, setUndoBody] = useState<string | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // §3.4 step 3 — opening a reply "focus moves into the body field". The
+  // recipients are already filled in, so the field the user wants is the body;
+  // without this, `r` opened the composer and left focus on the thread row,
+  // and typing went nowhere.
+  useEffect(() => {
+    if (variant !== 'inline') return;
+    bodyRef.current?.focus();
+  }, [variant]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
   const provenanceId = useId();
