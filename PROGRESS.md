@@ -31,7 +31,7 @@ Every screen in §5 is built and runs against the demo account.
 | Design tokens (§4.3), base styles, focus (§8.2) | done |
 | Domain types + `MailProvider` | done |
 | Mock provider + demo seed | done, tested |
-| Gmail provider (auth, MIME, REST) | done, **never run against a real account** |
+| Gmail provider (auth, MIME, REST) | done and unit-tested against a stubbed transport; **never run against a real account** |
 | Stores | done, tested |
 | Primitives C-1…C-28 | done |
 | App shell, nav rail, global shortcuts | done |
@@ -89,6 +89,11 @@ found by driving the running app, not by reading the code.
   query parameter other than `view`; and its jump-back-to-Stack fired on the
   transient zero-count during a bulk decision, yanking the user out of bulk
   review mid-action.
+- **A revoked token was reported as a connection error.** The screens
+  implemented §5.5's token-revoked state, but every catch block in the store
+  discarded the error, so `MailError.code === 'revoked'` never reached the UI.
+  A user whose permission Google had withdrawn saw "Pigeon can't reach Gmail"
+  and could retry forever with no possibility of success.
 
 - **Breakpoint measured from `window.innerWidth`**, which includes the overflow
   the layout itself causes. Self-reinforcing: every viewport from 720–1079 chose
