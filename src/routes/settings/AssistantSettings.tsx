@@ -46,6 +46,11 @@ const BEHAVIOUR_ROWS: BehaviourRow[] = [
 
 function endpointFor(config: ProviderConfig): string {
   if (config.provider === 'local') return config.baseUrl || DEFAULT_BASE_URL;
+  // The demo provider answers from canned copy and reaches nothing. The row is
+  // always rendered, so leaving it blank reads as missing data rather than as
+  // the honest answer — and the demo is meant to say what it is wherever it
+  // appears.
+  if (config.provider === 'demo') return 'none — canned replies';
   return PROVIDER_ENDPOINTS[config.provider] ?? '';
 }
 
