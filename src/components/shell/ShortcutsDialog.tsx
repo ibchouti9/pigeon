@@ -57,6 +57,13 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
     ],
   },
   {
+    title: 'In Search',
+    rows: [
+      ['Enter', 'Answer the question from the results'],
+      ['↓', 'Move into the results'],
+    ],
+  },
+  {
     title: 'In the Screener',
     rows: [
       ['a', 'Approve sender'],
