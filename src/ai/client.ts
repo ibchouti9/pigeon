@@ -4,7 +4,6 @@ import type {
   AnswerRequest,
   AnswerResult,
   DraftInput,
-  SenderContext,
   SortAnswer,
   SortRequest,
   TriageAnswer,
@@ -13,13 +12,12 @@ import type {
   Tone,
 } from './types';
 import { AiError } from './types';
-import type { HeldSender, Thread } from '../types';
+import type { Thread } from '../types';
 import { type ProviderConfig, type ProviderId, useSettings } from '../store/settings';
 import {
   ANSWER_SYSTEM,
   answerUser,
   citedSources,
-  READ_SYSTEM,
   SUMMARY_SYSTEM,
   cleanCompletion,
   draftSystem,
@@ -27,9 +25,7 @@ import {
   parseBullets,
   isRefusal,
   parseLaneLines,
-  parseSentence,
   tidyAnswer,
-  readUser,
   SORT_SYSTEM,
   sortUser,
   TRIAGE_SYSTEM,
@@ -86,7 +82,6 @@ export async function testConnection(config: ProviderConfig): Promise<TestResult
 /** Output ceilings sized to the §7.9 limits, not to the model's capacity. */
 const MAX_TOKENS = {
   summary: 256,
-  read: 128,
   draft: 1024,
   /** One short line per thread, and a batch is at most `SORT_BATCH` of them. */
   sort: 512,
@@ -145,8 +140,23 @@ function usableReason(why: string, item: { from: string; subject: string }): str
   const lower = trimmed.toLowerCase();
   if (lower.includes('@') || lower.startsWith('from')) return '';
 
-  const subject = item.subject.toLowerCase().trim();
-  if (subject.length > 6 && (lower.includes(subject) || subject.includes(lower))) return '';
+  /*
+   * Word overlap, not substring. A substring test caught "Intro to the Atlas
+   * team" and missed "Introduction to Atlas team" — the same echo, reworded
+   * just enough, printed under a subject line two rows above it. Anything that
+   * is mostly the subject's own words is the subject.
+   */
+  const words = (v: string) => v.toLowerCase().match(/\p{L}{3,}/gu) ?? [];
+  const subject = words(item.subject);
+  const reason = words(trimmed);
+  // Prefix, not equality: "Introduction to Atlas team" is "Intro to the Atlas
+  // team" with one word lengthened, and word-for-word matching scored it 2 of
+  // 3 — just under the bar, and straight onto the screen.
+  const shares = (w: string) =>
+    subject.some((s) => (w.length >= s.length ? w.startsWith(s) : s.startsWith(w)));
+  if (subject.length > 1 && reason.length > 0) {
+    if (reason.filter(shares).length / reason.length >= 0.7) return '';
+  }
 
   return trimmed;
 }
@@ -168,13 +178,6 @@ function makeClient(config: ProviderConfig): AiClient {
       const bullets = parseBullets(text);
       if (bullets.length === 0) throw new AiError('Summary unavailable.');
       return bullets;
-    },
-
-    async readSender(held: HeldSender, context: SenderContext) {
-      const text = await run(READ_SYSTEM, readUser(held, context), MAX_TOKENS.read);
-      const sentence = parseSentence(text, 18);
-      if (!sentence) throw new AiError('Read unavailable.');
-      return sentence;
     },
 
     async draftReply(input: DraftInput) {
@@ -298,7 +301,6 @@ function failingClient(provider: ProviderId): AiClient {
   return {
     provider,
     summarizeThread: fail,
-    readSender: fail,
     draftReply: fail,
     retone: fail,
     // Sorting has a deterministic answer already; the failure harness only

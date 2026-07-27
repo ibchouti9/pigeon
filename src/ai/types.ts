@@ -1,4 +1,4 @@
-import type { HeldSender, Message, Thread } from '../types';
+import type { Message, Thread } from '../types';
 import type { ProviderConfig, ProviderId } from '../store/settings';
 
 /** The four jobs the assistant does. One model per provider does all of them (D45). */
@@ -7,9 +7,6 @@ export interface AiClient {
 
   /** §7.9 — max 3 bullets, max 14 words each. */
   summarizeThread(thread: Thread, userEmail: string): Promise<string[]>;
-
-  /** §7.9 — exactly one sentence, max 18 words. */
-  readSender(held: HeldSender, context: SenderContext): Promise<string>;
 
   /** §7.9 — no new facts; anything unverifiable becomes `[confirm: …]` (D26). */
   draftReply(input: DraftInput): Promise<string>;
@@ -84,12 +81,6 @@ export interface SortAnswer {
 
 export type Tone = 'shorter' | 'friendlier' | 'firmer';
 
-export interface SenderContext {
-  /** How many messages the user has sent this address. */
-  replyCount: number;
-  /** Names the user emails often, for "a warm intro from X" reads. */
-  frequentContacts: string[];
-}
 
 export interface DraftInput {
   /** The thread being replied to, newest last. Empty for a new message. */

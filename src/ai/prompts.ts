@@ -4,8 +4,8 @@
  * surface. Keep them verbatim; loosening them changes the product's voice.
  */
 
-import type { DraftInput, SenderContext, Tone } from './types';
-import type { HeldSender, Message, Thread } from '../types';
+import type { DraftInput, Tone } from './types';
+import type { Message, Thread } from '../types';
 import { displayName, formatMessageTimestamp } from '../lib/format';
 
 const UNIVERSAL = `You write inside Pigeon, a mail client.
@@ -31,26 +31,6 @@ Rules:
   bullet rather than inventing one.
 
 Output format: one bullet per line, each line starting with "- ". Nothing else.`;
-
-export const READ_SYSTEM = `${UNIVERSAL}
-
-Write one sentence explaining why a held message might matter to the reader.
-
-Rules:
-- Exactly one sentence. Maximum 18 words.
-- Answer only "why might this matter", using evidence in the message and in the
-  reader's own mail history.
-- The history line above is the only history there is. If it says the reader
-  has never written to this address, never suggest otherwise: no "who you email
-  often", no "following up on your conversation", no prior relationship of any
-  kind.
-- Preferred forms: "Cold sales mail from a list — no reply history." / "Names a
-  project the reader has mail about." / "A support reply about a ticket opened
-  on Tuesday."
-- Never a judgment word ("spam", "worthless", "important"). Never an instruction
-  ("you should approve this"). Never a question.
-
-Output format: the sentence alone. Nothing else.`;
 
 const DRAFT_RULES = `Rules:
 - No new facts. Every claim must be traceable to the thread.
@@ -337,24 +317,6 @@ export function summaryUser(thread: Thread, userEmail: string): string {
   return `Subject: ${thread.subject}\n\n${messages
     .map((m) => renderMessage(m, userEmail))
     .join('\n\n---\n\n')}`;
-}
-
-export function readUser(held: HeldSender, context: SenderContext): string {
-  const first = held.messages[0];
-  const history =
-    context.replyCount > 0
-      ? `The reader has sent this address ${context.replyCount} messages before.`
-      : 'The reader has never written to this address.';
-  const contacts = context.frequentContacts.length
-    ? `People the reader emails often: ${context.frequentContacts.join(', ')}.`
-    : '';
-
-  return `Sender: ${held.sender.name} <${held.sender.email}>
-Subject: ${first.subject}
-${history}
-${contacts}
-
-${first.body.slice(0, MAX_MESSAGE_CHARS)}`;
 }
 
 export function draftUser(input: DraftInput): string {

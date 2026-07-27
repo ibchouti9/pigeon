@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useMail, type LoadStatus } from '../../store/mail';
+import type { TriageView } from '../../ai/useTriage';
 import { shortcutsBlocked, useUi } from '../../store/ui';
 import { displayName, plural } from '../../lib/format';
 import { cn } from '../../lib/cn';
@@ -15,8 +16,8 @@ import styles from './CardStack.module.css';
 export interface CardStackProps {
   held: HeldSender[];
   status: LoadStatus;
-  /** Sender id → live AI read, from `useScreenerAi().reads`. */
-  reads: Record<string, string>;
+  /** What Pigeon would do with each sender, from `useTriage`. */
+  triage: TriageView;
   online: boolean;
   onRead: (senderId: string) => void;
   onToggleView: () => void;
@@ -31,7 +32,7 @@ type Overlay =
  * behind cards are decorative fills positioned with opposing insets against
  * a 560px wrapper that takes its height from the live card.
  */
-export function CardStack({ held, status, reads, online, onRead, onToggleView }: CardStackProps) {
+export function CardStack({ held, status, triage, online, onRead, onToggleView }: CardStackProps) {
   const decide = useMail((s) => s.decide);
   const heldSheetSenderId = useUi((s) => s.heldSheetSenderId);
   const countId = useId();
@@ -257,7 +258,7 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
         <SenderCard
           ref={cardRef}
           entry={top}
-          aiRead={reads[top.sender.id]}
+          verdict={triage.verdicts.get(top.sender.id)}
           disabled={!online}
           enter={enter}
           error={errorId === top.sender.id}
@@ -276,7 +277,7 @@ export function CardStack({ held, status, reads, online, onRead, onToggleView }:
           >
             <SenderCard
               entry={overlay.entry}
-              aiRead={reads[overlay.entry.sender.id]}
+              verdict={triage.verdicts.get(overlay.entry.sender.id)}
               interactive={false}
               deciding={overlay.kind === 'approved' || overlay.kind === 'declined' ? overlay.kind : null}
             />

@@ -70,12 +70,23 @@ describe('the bulk row AI read carries its prefix (§4.7)', () => {
 
   it('names Pigeon in the accessible text', () => {
     const held = makeHeldList(['a', 'b']);
+    // The row's sentence is the evidence behind Pigeon's suggestion now, not a
+    // separate read — one model call, so the row cannot contradict itself.
+    const triage = {
+      ...NO_TRIAGE,
+      verdicts: new Map([
+        [
+          held[0].sender.id,
+          { suggestion: 'decline' as const, why: 'Cold sales mail from a list', confidence: 0.9 },
+        ],
+      ]),
+      decline: [held[0].sender.id],
+    };
     render(
       <BulkReview
         held={held}
         status="ready"
-        reads={{ [held[0].sender.id]: 'Cold sales mail from a list — no reply history.' }}
-        triage={NO_TRIAGE}
+        triage={triage}
         online
         checked={new Set()}
         onCheckedChange={vi.fn()}

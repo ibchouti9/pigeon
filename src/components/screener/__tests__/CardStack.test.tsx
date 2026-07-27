@@ -7,6 +7,9 @@ import { CardStack } from '../CardStack';
 import { BEHIND_INSETS } from '../stack';
 import { makeHeldList } from './fixtures';
 
+/** Nothing suggested: these tests are about the stack, not about triage. */
+const NO_TRIAGE = { verdicts: new Map(), approve: [], decline: [], thinking: false };
+
 afterEach(() => {
   cleanup();
   useUi.setState({ heldSheetSenderId: null, dialog: null, shortcutsOpen: false });
@@ -19,7 +22,7 @@ function renderStack(count: number, decide = vi.fn().mockResolvedValue(true)) {
     <CardStack
       held={held}
       status="ready"
-      reads={{}}
+      triage={NO_TRIAGE}
       online={true}
       onRead={vi.fn()}
       onToggleView={vi.fn()}
@@ -127,7 +130,7 @@ describe('CardStack — decisions', () => {
     useMail.setState({ decide });
     const held = makeHeldList(['s0', 's1']);
     render(
-      <CardStack held={held} status="ready" reads={{}} online={false} onRead={vi.fn()} onToggleView={vi.fn()} />,
+      <CardStack held={held} status="ready" triage={NO_TRIAGE} online={false} onRead={vi.fn()} onToggleView={vi.fn()} />,
     );
 
     await user.click(screen.getByRole('button', { name: 'Approve sender' }));

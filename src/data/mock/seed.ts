@@ -620,7 +620,6 @@ export function buildArchiveThreads(): Thread[] {
 interface HeldSeed {
   name: string;
   email: string;
-  aiRead: string;
   messages: { subject: string; body: string; daysAgo: number; hour: number }[];
 }
 
@@ -628,7 +627,6 @@ const HELD_SEEDS: HeldSeed[] = [
   {
     name: 'Sana Sethi',
     email: 'sana@northbound.io',
-    aiRead: 'A warm intro from Dana Whitlock, who you email often.',
     messages: [
       {
         subject: 'Intro to the Atlas team',
@@ -643,7 +641,6 @@ We're standing up a connection between Atlas and our billing side and it's squar
   {
     name: 'Talia Brooks',
     email: 'talia.brooks@vertexsearch.com',
-    aiRead: 'A recruiter with a staff engineer role at a company you have no history with.',
     messages: [
       {
         subject: 'Staff Engineer — Series B, remote-first',
@@ -666,7 +663,6 @@ Your background in integration work is exactly what they've been struggling to f
   {
     name: 'Devon Ricci',
     email: 'devon@harborlane-talent.com',
-    aiRead: 'Cold recruiter mail from a list — no reply history.',
     messages: [
       {
         subject: 'Contract role, 6 months, immediate start',
@@ -681,7 +677,6 @@ Are you available? Day rate is negotiable for the right person.`,
   {
     name: 'Northbound Digest',
     email: 'digest@northbound-media.com',
-    aiRead: 'A weekly newsletter you have never opened or replied to.',
     messages: [
       {
         subject: 'Weekly roundup #48',
@@ -696,7 +691,6 @@ Read the full issue online.`,
   {
     name: 'QuickPitch',
     email: 'hello@quickpitch.io',
-    aiRead: 'Cold sales mail from a list — no reply history.',
     messages: [
       {
         subject: "You're invited to a 15-minute demo",
@@ -711,7 +705,6 @@ Fifteen minutes is all it takes. Here are three times that work this week.`,
   {
     name: 'Meridian Cloud',
     email: 'billing-notice@meridian-cloud-services.net',
-    aiRead: 'A billing notice from a service that does not appear in your sent mail.',
     messages: [
       {
         subject: 'Action required: verify your billing details',
@@ -726,7 +719,6 @@ Click the link below to confirm your payment method.`,
   {
     name: 'The Founder Letter',
     email: 'letters@founderletter.co',
-    aiRead: 'A subscription newsletter with no reply history.',
     messages: [
       {
         subject: 'The one metric that actually matters',
@@ -739,7 +731,6 @@ Click the link below to confirm your payment method.`,
   {
     name: 'DevTools Weekly',
     email: 'noreply@devtoolsweekly.com',
-    aiRead: 'A tooling newsletter you have not replied to.',
     messages: [
       {
         subject: 'Issue 212: the state of build tools',
@@ -752,7 +743,6 @@ Click the link below to confirm your payment method.`,
   {
     name: 'Apex Growth',
     email: 'growth@apex-outbound.com',
-    aiRead: 'Cold outbound sales mail with no reply history.',
     messages: [
       {
         subject: 'Quick question, Marc',
@@ -779,7 +769,6 @@ Worth a chat?`,
   {
     name: 'Prize Notification',
     email: 'winner-notice@promo-rewards-intl.biz',
-    aiRead: 'Bulk mail from an address with no history and no unsubscribe link.',
     messages: [
       {
         subject: 'Your reward is waiting',
@@ -792,7 +781,6 @@ Worth a chat?`,
   {
     name: 'SEO Partners',
     email: 'outreach@seopartners-global.com',
-    aiRead: 'Unsolicited outreach about a website you have not asked anyone to work on.',
     messages: [
       {
         subject: 'I found 14 issues on ferrum.dev',
@@ -807,7 +795,6 @@ I can send the full report free of charge. Just reply "yes".`,
   {
     name: 'Conference Alerts',
     email: 'alerts@techsummit-invites.com',
-    aiRead: 'Bulk event mail from an address with no reply history.',
     messages: [
       {
         subject: 'Speaker applications close Friday',
@@ -819,7 +806,7 @@ I can send the full report free of charge. Just reply "yes".`,
   },
 ];
 
-export function buildHeldMessages(): { sender: Sender; messages: Message[]; aiRead: string }[] {
+export function buildHeldMessages(): { sender: Sender; messages: Message[] }[] {
   return HELD_SEEDS.map((seed, si) => {
     const sender: Sender = {
       id: `s-held-${si}`,
@@ -840,7 +827,7 @@ export function buildHeldMessages(): { sender: Sender; messages: Message[]; aiRe
       attachments: [],
       isFromUser: false,
     }));
-    return { sender, messages, aiRead: seed.aiRead };
+    return { sender, messages };
   });
 }
 

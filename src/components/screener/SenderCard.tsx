@@ -4,18 +4,19 @@ import { Button } from '../primitives/Button';
 import { Monogram } from '../primitives/Monogram';
 import { Postmark } from '../primitives/Postmark';
 import { cn } from '../../lib/cn';
+import type { TriageVerdict } from '../../data/triage';
 import { plural } from '../../lib/format';
 import styles from './SenderCard.module.css';
 
 export interface SenderCardProps {
   entry: HeldSender;
   /**
-   * The live AI read for this sender (`useScreenerAi().reads[senderId]`).
-   * Undefined for any reason — no provider, the Screener-reads toggle is
-   * off, still loading, or the call failed — and section 5 is simply
-   * omitted (§5.7 "Per-card AI read failed"), never shown empty.
+   * What Pigeon would do with this sender, and the evidence behind it. Absent
+   * when the reads toggle is off, no provider is connected, or the pass has
+   * not reached this card — and then section 5 is omitted entirely, never
+   * shown empty.
    */
-  aiRead?: string;
+  verdict?: TriageVerdict;
   /** Set while an approve/decline decision is animating out (§4.6). */
   deciding?: 'approved' | 'declined' | null;
   /**
@@ -43,7 +44,7 @@ export interface SenderCardProps {
 export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function SenderCard(
   {
     entry,
-    aiRead,
+    verdict,
     deciding = null,
     enter,
     error,
@@ -61,7 +62,7 @@ export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function Send
   const { sender, messages } = entry;
   const first = messages[0];
   const heldMany = messages.length > 1;
-  const showRead = Boolean(aiRead);
+  const showRead = Boolean(verdict?.why);
 
   /*
    * §8.4 — "the top card is the only focusable region". A card rendered with
@@ -113,12 +114,22 @@ export const SenderCard = forwardRef<HTMLElement, SenderCardProps>(function Send
         <p className={cn('t-sm', styles.snippet)}>{first.body}</p>
       </div>
 
-      {/* 5. Pigeon's read — omitted entirely, never shown empty */}
-      {showRead && (
+      {/*
+        5. Pigeon's read — omitted entirely, never shown empty.
+
+        The label carries the recommendation and the sentence carries the
+        evidence for it, both from the one triage pass. They used to be two
+        model calls, and two calls disagree: a card can no more say "a warm
+        intro from someone you email often" above a suggestion to decline than
+        a bulk row can.
+      */}
+      {showRead && verdict && (
         <section aria-label="Pigeon's read of this sender" className={styles.read}>
-          <span className="visually-hidden">Pigeon's read of this sender:</span>
-          <h3 className={cn('t-mono-sm', styles.readLabel)}>◆ PIGEON'S READ</h3>
-          <p className={cn('t-sm', styles.readSentence)}>{aiRead}</p>
+          <span className="visually-hidden">Pigeon&apos;s read of this sender:</span>
+          <h3 className={cn('t-mono-sm', styles.readLabel)}>
+            ◆ {verdict.suggestion === 'unsure' ? "PIGEON'S READ" : `WOULD ${verdict.suggestion.toUpperCase()}`}
+          </h3>
+          <p className={cn('t-sm', styles.readSentence)}>{verdict.why}</p>
         </section>
       )}
 

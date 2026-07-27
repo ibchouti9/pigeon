@@ -22,7 +22,6 @@ function renderBulk(checked: Set<string>, onCheckedChange = vi.fn()) {
     <BulkReview
       held={HELD}
       status="ready"
-      reads={{}}
       triage={NO_TRIAGE}
       online={true}
       checked={checked}

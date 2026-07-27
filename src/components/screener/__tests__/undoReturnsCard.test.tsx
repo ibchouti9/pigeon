@@ -7,6 +7,9 @@ import { useToasts } from '../../../store/toast';
 import { MockMailProvider } from '../../../data/mock/mockProvider';
 import { CardStack } from '../CardStack';
 
+/** Nothing suggested: these tests are about the stack, not about triage. */
+const NO_TRIAGE = { verdicts: new Map(), approve: [], decline: [], thinking: false };
+
 /**
  * §3.2 3c — undoing a decision "reverses server-side, the card returns to the
  * top of the stack". `listHeld` re-sorts by newest message, and the stack kept
@@ -21,7 +24,7 @@ describe('undo returns the card to the top (§3.2 3c)', () => {
       <CardStack
         held={held}
         status="ready"
-        reads={{}}
+        triage={NO_TRIAGE}
         online
         onRead={() => {}}
         onToggleView={() => {}}

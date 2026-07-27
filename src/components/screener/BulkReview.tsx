@@ -18,8 +18,6 @@ import styles from './BulkReview.module.css';
 export interface BulkReviewProps {
   held: HeldSender[];
   status: LoadStatus;
-  /** Sender id → live AI read, from `useScreenerAi().reads`. */
-  reads: Record<string, string>;
   /** What Pigeon would do with each sender. A selection, never an action. */
   triage: TriageView;
   online: boolean;
@@ -50,7 +48,6 @@ const POSTMARK_SIZE = 96;
 export function BulkReview({
   held,
   status,
-  reads,
   triage,
   online,
   checked,
@@ -89,7 +86,7 @@ export function BulkReview({
    * text, so the two cannot disagree — and it is one call rather than two.
    */
   function rowRead(id: string): string | undefined {
-    return triage.verdicts.get(id)?.why || reads[id];
+    return triage.verdicts.get(id)?.why;
   }
 
   function rowFor(id: string): HeldSender | undefined {

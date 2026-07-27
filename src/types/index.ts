@@ -110,8 +110,6 @@ export interface Sender {
 export interface HeldSender {
   sender: Sender;
   messages: Message[];
-  /** One sentence, <= 18 words (§7.9). Absent when no provider is connected. */
-  aiRead?: string;
 }
 
 
