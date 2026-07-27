@@ -1,0 +1,99 @@
+/* "Sorted into Offers" in the reader's meta line, plus its correction menu. */
+
+.root {
+  position: relative;
+  display: inline-flex;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  /* The meta line is one sentence; this has to read as part of it. */
+  font: inherit;
+}
+
+.tag:hover,
+.tagOpen {
+  color: var(--color-text-primary);
+}
+
+.chevron {
+  opacity: 0.7;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 20;
+  min-width: 240px;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
+}
+
+/*
+ * The reason, in the classifier's own words, as the first thing in the menu
+ * rather than a tooltip. A sorting decision you cannot read is Gmail's tabs.
+ */
+.why {
+  padding: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.byModel {
+  color: var(--color-text-tertiary);
+}
+
+.menuLabel {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--color-text-tertiary);
+  /* An address is long and must not stretch the menu. */
+  overflow-wrap: anywhere;
+}
+
+.divider {
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--color-border-subtle);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--color-surface-hover);
+}
+
+.check {
+  flex: none;
+  width: 8px;
+  color: var(--color-accent);
+}
+
+.itemCurrent {
+  color: var(--color-text-primary);
+}
+
+.itemReset {
+  color: var(--color-text-secondary);
+}

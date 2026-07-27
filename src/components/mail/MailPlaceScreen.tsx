@@ -11,7 +11,8 @@ import { useThreadSummary } from '../../ai/useThreadSummary';
 import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
 import { useThreadLanes } from '../../hooks/useThreadLanes';
 import { useLanes } from '../../store/lanes';
-import { LANES, LANE_KEYS } from '../../data/lanes';
+import { LANES, LANE_KEYS, LANE_LABELS, threadSender } from '../../data/lanes';
+import { toast } from '../../store/toast';
 import { useLaneSort } from '../../ai/useLaneSort';
 import { ThreadReader, type ThreadReaderStatus } from './ThreadReader';
 import { useThreadReply } from './useThreadReply';
@@ -39,6 +40,8 @@ export function MailPlaceScreen({ place }: { place: Place }) {
    */
   const lanes = useThreadLanes(allThreads, place);
   const selectLane = useLanes((s) => s.select);
+  const correctLane = useLanes((s) => s.correct);
+  const clearLaneCorrection = useLanes((s) => s.clearCorrection);
   const threads = lanes.threads;
   // Asks the model about the threads the rules were unsure of, in the
   // background, over the whole listing rather than the visible lane.
@@ -371,6 +374,17 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           onSummarize={summary.summarize}
           hasProvider={connected}
           replySlot={reply.slot}
+          lane={threadId ? lanes.laneOf(threadId) : undefined}
+          onCorrectLane={(lane) => {
+            if (!openThread) return;
+            const sender = threadSender(openThread);
+            correctLane(sender.email, lane);
+            toast.confirm(`Mail from ${sender.email} goes to ${LANE_LABELS[lane]}.`);
+          }}
+          onClearLaneCorrection={() => {
+            if (!openThread) return;
+            clearLaneCorrection(threadSender(openThread).email);
+          }}
         />
       )}
     </div>

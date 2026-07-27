@@ -11,6 +11,8 @@ import { Icon, type IconName } from '../primitives/Icon';
 import { PostmarkRing } from '../primitives/Postmark';
 import { SkeletonBar, SkeletonCircle, Tooltip } from '../primitives/Feedback';
 import { MessageBlock } from './MessageBlock';
+import { LaneTag } from './LaneTag';
+import type { Lane, LaneAssignment } from '../../data/lanes';
 import styles from './ThreadReader.module.css';
 
 export type ReplyMode = 'reply' | 'reply-all' | 'forward';
@@ -51,6 +53,13 @@ export interface ThreadReaderProps {
   onRetrySummary?: () => void;
   onSummarize?: () => void;
   hasProvider?: boolean;
+  /**
+   * Inbox only, and absent when lanes are off. The reader is where "why is
+   * this here" gets asked, and the only place with room to answer it.
+   */
+  lane?: LaneAssignment;
+  onCorrectLane?: (lane: Lane) => void;
+  onClearLaneCorrection?: () => void;
 }
 
 function nameFor(addr: Address, selfEmail: string): string {
@@ -95,6 +104,9 @@ export function ThreadReader({
   onRetrySummary,
   onSummarize,
   hasProvider,
+  lane,
+  onCorrectLane,
+  onClearLaneCorrection,
 }: ThreadReaderProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
@@ -211,6 +223,9 @@ export function ThreadReader({
   const seenAddresses = new Set<string>();
   const lastOther = [...messages].reverse().find((m) => !m.isFromUser);
   const replyToName = lastOther ? nameFor(lastOther.from, selfEmail) : (participants[0] ?? 'the sender');
+  // Who a lane correction is recorded against: the newest message that is not
+  // the user's own, which is the same sender the row and the classifier used.
+  const laneSender = lastOther?.from ?? messages[messages.length - 1]?.from ?? { name: '', email: '' };
 
   const showBack = breakpoint === 'narrow' && backLabel;
   const showSummaryBlock =
@@ -294,6 +309,18 @@ export function ThreadReader({
         </div>
         <p className={cn('t-sm', styles.meta)}>
           {plural(messages.length, 'message')} · {joinNames(participants)}
+          {lane && onCorrectLane && onClearLaneCorrection && (
+            <>
+              {' · '}
+              <LaneTag
+                assignment={lane}
+                senderEmail={laneSender.email}
+                senderName={displayName(laneSender)}
+                onCorrect={onCorrectLane}
+                onClear={onClearLaneCorrection}
+              />
+            </>
+          )}
         </p>
       </header>
 

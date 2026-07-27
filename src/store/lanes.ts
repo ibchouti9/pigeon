@@ -102,7 +102,16 @@ export function assignLane(
 
   const help = assisted[thread.id];
   if (help && isGuess(verdict)) {
-    return { ...help, confidence: 0.75, source: 'assistant' };
+    return {
+      lane: help.lane,
+      confidence: 0.75,
+      // A model that gave no reason worth showing still gave a verdict. Say
+      // where it came from rather than dressing up the rules' reason as the
+      // model's, which would attribute an argument to something that never
+      // made it.
+      why: help.why || 'Your model read this one',
+      source: 'assistant',
+    };
   }
 
   return { ...verdict, source: 'rules' };

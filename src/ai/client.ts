@@ -94,6 +94,31 @@ const MAX_TOKENS = {
  */
 export const SORT_BATCH = 10;
 
+/**
+ * A reason worth showing a person, or nothing.
+ *
+ * Asked for evidence, a small model will sometimes hand back the sender's
+ * address or the subject line — the two things the user is already looking at.
+ * "from: marketing@kavelle.com" appeared verbatim under a Kavelle email in the
+ * reader, which reads as a broken feature rather than a considered one. The
+ * prompt asks it not to; this is what happens when it does anyway.
+ *
+ * An empty reason is a fine outcome: the lane still stands, and the UI has an
+ * honest line for a verdict that came with no argument.
+ */
+function usableReason(why: string, item: SortRequest): string {
+  const trimmed = why.trim();
+  if (trimmed.length < 4) return '';
+
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('@') || lower.startsWith('from')) return '';
+
+  const subject = item.subject.toLowerCase().trim();
+  if (subject.length > 6 && (lower.includes(subject) || subject.includes(lower))) return '';
+
+  return trimmed;
+}
+
 function makeClient(config: ProviderConfig): AiClient {
   const adapter = ADAPTERS[config.provider as Exclude<ProviderId, 'none'>];
 
@@ -147,11 +172,14 @@ function makeClient(config: ProviderConfig): AiClient {
       );
       return parseLaneLines(text, LANES)
         .filter((line) => line.n >= 1 && line.n <= items.length)
-        .map((line) => ({
-          threadId: items[line.n - 1].threadId,
-          lane: line.lane,
-          why: line.why,
-        }));
+        .map((line) => {
+          const item = items[line.n - 1];
+          return {
+            threadId: item.threadId,
+            lane: line.lane,
+            why: usableReason(line.why, item),
+          };
+        });
     },
 
     async retone(draft: string, tone: Tone) {

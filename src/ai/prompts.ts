@@ -114,6 +114,8 @@ Rules:
 - A service email a human never typed is notifications, even if it is friendly.
 - Several emails in a batch often belong in the same lane. Answer each one on
   its own evidence; never vary the answer for the sake of variety.
+- The evidence is a statement about the email. Never quote the sender's address
+  back, never repeat the subject line, never write the word "from".
 
 For each email, state the evidence first, in at most 7 words, and let the lane
 follow from it.
