@@ -1,6 +1,8 @@
 import type {
   AiClient,
   Adapter,
+  AnswerRequest,
+  AnswerResult,
   DraftInput,
   SenderContext,
   SortAnswer,
@@ -12,6 +14,9 @@ import { AiError } from './types';
 import type { HeldSender, Thread } from '../types';
 import { type ProviderConfig, type ProviderId, useSettings } from '../store/settings';
 import {
+  ANSWER_SYSTEM,
+  answerUser,
+  citedSources,
   DIGEST_SYSTEM,
   READ_SYSTEM,
   SUMMARY_SYSTEM,
@@ -20,8 +25,10 @@ import {
   draftSystem,
   draftUser,
   parseBullets,
+  isRefusal,
   parseLaneLines,
   parseSentence,
+  tidyAnswer,
   readUser,
   SORT_SYSTEM,
   sortUser,
@@ -82,7 +89,19 @@ const MAX_TOKENS = {
   draft: 1024,
   /** One short line per thread, and a batch is at most `SORT_BATCH` of them. */
   sort: 512,
+  /** Three sentences. The ceiling is the rule, not a suggestion to fill it. */
+  answer: 320,
 };
+
+/**
+ * How many threads an answer is allowed to read.
+ *
+ * Every one of these is up to 1,200 characters of body in a single prompt, and
+ * a laptop model's recall across a long context is the first thing to go. Six
+ * well-ranked threads beat twenty badly-ranked ones, and the search that
+ * produced them already sorted by how well they matched.
+ */
+export const ANSWER_SOURCES = 6;
 
 /**
  * How many threads go in one sorting request.
@@ -182,6 +201,32 @@ function makeClient(config: ProviderConfig): AiClient {
         });
     },
 
+    async answer(question: string, sources: AnswerRequest[]): Promise<AnswerResult> {
+      if (sources.length === 0) {
+        return { text: 'Not in this mail.', cited: [], refused: true };
+      }
+      const capped = sources.slice(0, ANSWER_SOURCES);
+      const raw = cleanCompletion(
+        await run(
+          ANSWER_SYSTEM,
+          answerUser(question, capped.map((s, i) => ({ n: i + 1, ...s }))),
+          MAX_TOKENS.answer,
+        ),
+      );
+      const text = tidyAnswer(raw);
+      if (!text) throw new AiError('Pigeon couldn\'t answer that. Try again, or read the results.');
+      /*
+       * Citations come from the *whole* completion, not the tidied text: a
+       * model that lists its sources in a footnote paragraph has still cited
+       * them, and that paragraph is exactly what `tidyAnswer` removes.
+       */
+      return {
+        text,
+        cited: citedSources(raw, capped.length).map((n) => capped[n - 1].threadId),
+        refused: isRefusal(text),
+      };
+    },
+
     async retone(draft: string, tone: Tone) {
       const text = await run(toneSystem(tone), draft, MAX_TOKENS.draft);
       const body = cleanCompletion(text);
@@ -233,6 +278,7 @@ function failingClient(provider: ProviderId): AiClient {
     // Sorting has a deterministic answer already; the failure harness only
     // needs it to produce nothing, not to throw into a background pass.
     sortThreads: async () => [],
+    answer: fail,
   };
 }
 

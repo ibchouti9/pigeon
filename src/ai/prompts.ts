@@ -123,6 +123,110 @@ follow from it.
 Output format: one line per email, exactly \`<number>: <evidence> — <lane>\`.
 No preamble, no numbering of your own, no blank lines.`;
 
+/**
+ * Answering a question from the user's own mail.
+ *
+ * The retrieval is the term search that already exists, which means this is
+ * grounded in whatever that found and nothing else — no memory, no training
+ * data, no guessing. Everything about the prompt is aimed at the one failure
+ * that would make the feature worse than useless: a confident answer to a
+ * question the mail does not contain.
+ */
+export const ANSWER_SYSTEM = `${UNIVERSAL}
+
+Answer a question using only the emails supplied.
+
+Rules:
+- Use only what is in the emails. Never add a fact from anywhere else.
+- Cite every claim with the email's number in square brackets: [2].
+- Maximum 3 sentences.
+- If the emails do not answer the question, say exactly: Not in this mail.
+- Never say what the reader should do about it. Never offer to help further.
+- Dates and amounts must be copied exactly as they appear, not restated.
+
+Output format: the answer alone, with its citations. Nothing else.`;
+
+export interface AnswerSource {
+  n: number;
+  from: string;
+  subject: string;
+  date: string;
+  body: string;
+}
+
+export function answerUser(question: string, sources: AnswerSource[]): string {
+  const block = sources
+    .map(
+      (s) =>
+        `[${s.n}] from ${s.from}, ${s.date}\nsubject: ${s.subject}\n${s.body.replace(/\n{3,}/g, '\n\n').slice(0, 1200)}`,
+    )
+    .join('\n\n---\n\n');
+  return `Question: ${question}\n\nEmails:\n\n${block}`;
+}
+
+/**
+ * Which sources the answer actually leaned on, in the order it cited them.
+ * The UI lists these under the answer so every claim is one click from the
+ * message it came from — the citation is the whole reason to trust this.
+ */
+export function citedSources(answer: string, max: number): number[] {
+  const out: number[] = [];
+  for (const match of answer.matchAll(/\[(\d+)\]/g)) {
+    const n = Number(match[1]);
+    if (n >= 1 && n <= max && !out.includes(n)) out.push(n);
+  }
+  return out;
+}
+
+/**
+ * What the model meant, minus what it typed twice.
+ *
+ * Small models end an answer and then keep going: a paragraph of citations on
+ * their own (`[2] [3]`), or the whole answer again underneath. Both were
+ * visible in the first run of this prompt against llama3.2:3b, including on the
+ * refusal — "Not in this mail." followed by two stray citations and then "Not
+ * in this mail." again.
+ *
+ * Citation-only paragraphs are dropped from the *text* and not from the
+ * answer: `citedSources` reads the whole completion, so a model that lists its
+ * sources at the bottom still gets them shown, just not as a stray line of
+ * brackets under a sentence.
+ */
+export function tidyAnswer(raw: string): string {
+  const paragraphs = raw
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    // Nothing but citations and punctuation: the model's own footnote line.
+    .filter((p) => p.replace(/\[\d+\]/g, '').replace(/[^\p{L}\p{N}]/gu, '').length > 0);
+
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const p of paragraphs) {
+    const key = p.toLowerCase().replace(/\[\d+\]/g, '').replace(/\s+/g, ' ').trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    kept.push(p);
+  }
+
+  /*
+   * §7.9's ceiling is a rule, not a suggestion to fill — and a model that
+   * ignored it should not get to.
+   *
+   * Split on a full stop followed by a space and a capital, rather than on the
+   * punctuation alone. "EUR 248.00" is one number, and the prompt specifically
+   * tells the model to copy amounts exactly; a splitter that cuts inside them
+   * turned a correct answer into "00 [3]".
+   */
+  const sentences = kept.join(' ').split(/(?<=[.!?])\s+(?=["'([]?\p{Lu})/u);
+  return sentences.slice(0, 3).join(' ').trim();
+}
+
+/** True when the model said, in so many words, that it could not answer. */
+export function isRefusal(answer: string): boolean {
+  return /^\s*not in this mail\b/i.test(answer.trim());
+}
+
 export interface SortItem {
   /** Row number in the prompt, and the key the answer is matched back on. */
   n: number;

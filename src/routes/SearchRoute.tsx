@@ -15,6 +15,8 @@ import { Icon } from '../components/primitives/Icon';
 import { Monogram } from '../components/primitives/Monogram';
 import { EmptyState, SkeletonRows } from '../components/primitives/Feedback';
 import { ThreadRow } from '../components/mail/ThreadRow';
+import { AnswerBlock } from '../components/mail/AnswerBlock';
+import { useMailAnswer } from '../ai/useMailAnswer';
 import { ThreadReader } from '../components/mail/ThreadReader';
 import { useThreadReply } from '../components/mail/useThreadReply';
 import { cn } from '../lib/cn';
@@ -157,6 +159,13 @@ export function SearchRoute() {
 
   const flatThreads = useMemo(() => groups.flatMap((g) => g.threads), [groups]);
   const total = flatThreads.length + (includeHeld ? results.held.length : 0);
+
+  /*
+   * The results are the retrieval. Nothing is indexed ahead of time and nothing
+   * else is sent — which is what makes the citations mean something, and is why
+   * this hangs off `flatThreads` rather than off the query.
+   */
+  const answer = useMailAnswer(query, flatThreads, status === 'ready');
 
   const storedThread = useMail((s) =>
     [...s.inbox, ...s.archive].find((t) => t.id === threadId),
@@ -317,6 +326,17 @@ export function SearchRoute() {
   }, [results]);
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    /*
+     * Enter on a question asks it. Everywhere else in a search box Enter means
+     * "search now", and search here is already live on every keystroke — so the
+     * key is free, and it is the one every user presses after typing a
+     * question anyway.
+     */
+    if (e.key === 'Enter' && answer.state === 'offered') {
+      answer.ask();
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'Escape') {
       if (draftQuery) {
         setDraftQuery('');
@@ -386,6 +406,8 @@ export function SearchRoute() {
           </label>
         </div>
       )}
+
+      <AnswerBlock answer={answer} onOpenThread={openResult} />
 
       <div className={styles.results}>
         {status === 'empty' && recent.length > 0 && (

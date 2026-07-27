@@ -27,6 +27,28 @@ export interface AiClient {
    * and keeps the rules' verdict.
    */
   sortThreads(items: SortRequest[]): Promise<SortAnswer[]>;
+
+  /**
+   * Answers a question from the threads a search found, and from nothing else.
+   * `sources` is already ranked; the answer cites them by position.
+   */
+  answer(question: string, sources: AnswerRequest[]): Promise<AnswerResult>;
+}
+
+export interface AnswerRequest {
+  threadId: string;
+  from: string;
+  subject: string;
+  date: string;
+  body: string;
+}
+
+export interface AnswerResult {
+  text: string;
+  /** Thread ids the answer cited, in the order it cited them. */
+  cited: string[];
+  /** The model said the mail does not contain an answer. */
+  refused: boolean;
 }
 
 export interface SortRequest {

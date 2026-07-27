@@ -1,0 +1,119 @@
+/* The answer above the search results, and the offer that precedes it. */
+
+.offer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-hairline);
+}
+
+.offerNote {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-tertiary);
+}
+
+/*
+ * The same tint every other generated surface uses. An answer must be legible
+ * as a machine's work at a glance, and inventing a second treatment for it
+ * would make that harder rather than clearer.
+ */
+.block {
+  padding: var(--space-4);
+  background: var(--color-surface-ai);
+  border-bottom: var(--border-hairline);
+}
+
+.thinking {
+  padding: var(--space-3) var(--space-4);
+}
+
+.thinkingText {
+  color: var(--color-text-secondary);
+}
+
+.body {
+  color: var(--color-text-primary);
+}
+
+/* A citation is a link to the message it came from, not a footnote marker. */
+.cite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin: 0 1px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  vertical-align: baseline;
+  cursor: pointer;
+}
+
+.cite:hover {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}
+
+.sources {
+  margin-top: var(--space-3);
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.source {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  margin-left: calc(var(--space-2) * -1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.source:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.sourceNum {
+  flex: none;
+  min-width: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.sourceText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.provenance {
+  color: var(--color-text-tertiary);
+}
