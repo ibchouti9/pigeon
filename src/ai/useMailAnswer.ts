@@ -15,6 +15,8 @@ export interface MailAnswer {
   cited: Thread[];
   /** The mail did not contain an answer, and the model said so. */
   refused: boolean;
+  /** Text is still arriving. The citations are not known until it stops. */
+  streaming: boolean;
   /** The question this answer belongs to, so a stale one is never shown. */
   question: string;
   ask: () => void;
@@ -47,6 +49,7 @@ export function useMailAnswer(
   const [refused, setRefused] = useState(false);
   const [answered, setAnswered] = useState('');
   const [dismissed, setDismissed] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState(false);
 
   const request = useRef(0);
   const parsed = parseQuery(query);
@@ -67,6 +70,7 @@ export function useMailAnswer(
     setCited([]);
     setRefused(false);
     setAnswered('');
+    setStreaming(false);
   }, [query]);
 
   const ask = useCallback(() => {
@@ -93,7 +97,14 @@ export function useMailAnswer(
     });
 
     void live
-      .answer(query, sources)
+      .answer(query, sources, (soFar) => {
+        if (id !== request.current) return;
+        // First token flips the state: a spinner that keeps spinning while
+        // words appear underneath it is the app arguing with itself.
+        setState('ready');
+        setStreaming(true);
+        setText(soFar);
+      })
       .then((result) => {
         if (id !== request.current) return;
         setText(result.text);
@@ -104,10 +115,12 @@ export function useMailAnswer(
             .filter((t): t is Thread => Boolean(t)),
         );
         setAnswered(query);
+        setStreaming(false);
         setState('ready');
       })
       .catch(() => {
         if (id !== request.current) return;
+        setStreaming(false);
         setState('failed');
       });
   }, [query, results]);
@@ -124,6 +137,7 @@ export function useMailAnswer(
     text,
     cited,
     refused,
+    streaming,
     question: answered,
     ask,
     dismiss,

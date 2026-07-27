@@ -90,6 +90,29 @@ describe('scoreMatch', () => {
     expect(scoreMatch(doc({ body: 'anything' }), parseQuery('the and of'))).toBe(0);
   });
 
+  it('does not match a short term inside a longer word', () => {
+    // "what happened to the liability cap" pulled in a thread about project
+    // scope, because `cap` is inside `capacity`.
+    expect(scoreMatch(doc({ body: 'we are at capacity until March' }), parseQuery('cap'))).toBe(0);
+    expect(scoreMatch(doc({ body: 'the liability cap moved' }), parseQuery('cap'))).toBeGreaterThan(0);
+  });
+
+  it('lets a longer term match the start of a longer word', () => {
+    // A stem should still find its plural: this is the case word-for-word
+    // matching would break.
+    expect(scoreMatch(doc({ subject: 'Your invoices' }), parseQuery('invoic'))).toBeGreaterThan(0);
+    expect(scoreMatch(doc({ subject: 'Renewal notice' }), parseQuery('renewa'))).toBeGreaterThan(0);
+  });
+
+  it('never matches a term starting mid-word, however long', () => {
+    expect(scoreMatch(doc({ body: 'unsubscribe here' }), parseQuery('subscribe'))).toBe(0);
+  });
+
+  it('matches an address whose punctuation would otherwise be a regex', () => {
+    const d = doc({ people: 'Priya Raman priya@atlasgrid.dev' });
+    expect(scoreMatch(d, parseQuery('priya@atlasgrid.dev'))).toBeGreaterThan(0);
+  });
+
   it('finds a two-word query the old substring match could not', () => {
     // `dana contract` never appears adjacent in any real message.
     const q = parseQuery('dana contract');

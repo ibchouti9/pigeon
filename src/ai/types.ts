@@ -26,7 +26,12 @@ export interface AiClient {
    * Answers a question from the threads a search found, and from nothing else.
    * `sources` is already ranked; the answer cites them by position.
    */
-  answer(question: string, sources: AnswerRequest[]): Promise<AnswerResult>;
+  answer(
+    question: string,
+    sources: AnswerRequest[],
+    /** Called with the answer so far, when the provider can stream. */
+    onPartial?: (soFar: string) => void,
+  ): Promise<AnswerResult>;
 
   /**
    * Recommends approve / decline / unsure for held senders. A recommendation
@@ -127,5 +132,25 @@ export interface Adapter {
     system: string,
     user: string,
     maxTokens: number,
+  ): Promise<{ text: string; usd: number; ms: number }>;
+  /**
+   * The same request, delivering text as it arrives.
+   *
+   * Optional. An adapter without it is called through `complete` and the
+   * caller simply never sees a partial — which is why `onText` is the only
+   * difference in the signature, and why nothing above this layer branches on
+   * whether streaming happened.
+   *
+   * A local model is the reason this exists. Three sentences out of a 3B model
+   * on a laptop is several seconds of a motionless "Reading the results…",
+   * which reads as a hang; the same wait with words appearing in it reads as
+   * work. Nothing about the final answer changes.
+   */
+  stream?(
+    config: ProviderConfig,
+    system: string,
+    user: string,
+    maxTokens: number,
+    onText: (soFar: string) => void,
   ): Promise<{ text: string; usd: number; ms: number }>;
 }

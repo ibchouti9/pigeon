@@ -84,6 +84,107 @@ async function post(
   };
 }
 
+/**
+ * Ollama's streaming shape: newline-delimited JSON, one object per token-ish
+ * chunk, each carrying the delta rather than the total.
+ *
+ * The reader has to buffer across chunk boundaries — a network read can and
+ * does split a line in half, and `JSON.parse` on half an object throws. That
+ * is the whole subtlety here, and getting it wrong produces a stream that
+ * works on a fast localhost and drops text on a slow one.
+ */
+async function streamPost(
+  config: ProviderConfig,
+  system: string,
+  user: string,
+  maxTokens: number,
+  onText: (soFar: string) => void,
+): Promise<{ text: string; usd: number; ms: number }> {
+  const started = performance.now();
+  let response: Response;
+
+  try {
+    response = await httpFetch(`${trimBase(config.baseUrl)}/api/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: config.model,
+        stream: true,
+        options: { num_predict: maxTokens },
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+    });
+  } catch {
+    throw unreachable(config.baseUrl);
+  }
+
+  if (!response.ok) throw unreachable(config.baseUrl);
+
+  /*
+   * No readable body: Tauri's HTTP plugin buffers the whole response rather
+   * than handing back a stream. Falling back to one `onText` with the lot is
+   * better than failing, and better than a second round trip.
+   */
+  if (!response.body) {
+    const text = collect(await response.text());
+    onText(text);
+    return { text, usd: 0, ms: Math.round(performance.now() - started) };
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // Everything up to the last newline is complete; the remainder is a
+    // half-received line and stays in the buffer until the next read.
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      const chunk = parseChunk(line);
+      if (chunk === null) continue;
+      text += chunk;
+      onText(text);
+    }
+  }
+
+  const tail = parseChunk(buffer);
+  if (tail) {
+    text += tail;
+    onText(text);
+  }
+
+  return { text, usd: 0, ms: Math.round(performance.now() - started) };
+}
+
+function parseChunk(line: string): string | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  try {
+    return (JSON.parse(trimmed) as OllamaChat).message?.content ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Reassembles a whole NDJSON body that arrived in one piece. */
+function collect(body: string): string {
+  return body
+    .split('\n')
+    .map(parseChunk)
+    .filter((c): c is string => c !== null)
+    .join('');
+}
+
 export const localAdapter: Adapter = {
   async test(config): Promise<TestResult> {
     const started = performance.now();
@@ -100,4 +201,5 @@ export const localAdapter: Adapter = {
   },
 
   complete: post,
+  stream: streamPost,
 };

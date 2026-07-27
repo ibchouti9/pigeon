@@ -117,3 +117,27 @@
 .provenance {
   color: var(--color-text-tertiary);
 }
+
+/* The caret that says text is still arriving. */
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--color-accent);
+  animation: caretBlink 1s steps(2, start) infinite;
+}
+
+@keyframes caretBlink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* §8.5 — motion is decoration; a caret that never blinks still says "here". */
+@media (prefers-reduced-motion: reduce) {
+  .caret {
+    animation: none;
+  }
+}

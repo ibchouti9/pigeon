@@ -93,6 +93,30 @@ export interface Searchable {
   body: string;
 }
 
+const ESCAPE = /[.*+?^${}()|[\]\\]/g;
+
+/**
+ * Where a term is allowed to match.
+ *
+ * Plain `includes` is substring matching, and substring matching is why
+ * "what happened to the liability cap" pulled in a thread about project scope:
+ * `cap` is inside `capacity`. So a term has to start a word.
+ *
+ * Short terms have to *be* the word as well. `cap` matching `capacity` is
+ * still wrong even at a word boundary, while `invoic` matching `invoices` and
+ * `renew` matching `renewal` are exactly what a search should do — and the
+ * difference between those cases is length. Under five characters a term is
+ * usually a whole word already; over it, it is usually a stem.
+ *
+ * A quoted phrase is matched as typed: the user asked for those characters.
+ */
+function matcher(term: string): (field: string) => boolean {
+  const escaped = term.replace(ESCAPE, '\\$&');
+  if (/\s/.test(term)) return (field) => field.includes(term);
+  const re = new RegExp(term.length < 5 ? `\\b${escaped}\\b` : `\\b${escaped}`, 'i');
+  return (field) => re.test(field);
+}
+
 /**
  * How well one thread answers one query. Zero means it does not.
  *
@@ -114,10 +138,11 @@ export function scoreMatch(doc: Searchable, query: ParsedQuery): number {
   let score = 0;
   let hits = 0;
   for (const term of query.terms) {
+    const test = matcher(term);
     let best = 0;
-    if (people.includes(term)) best = 5;
-    else if (subject.includes(term)) best = 3;
-    else if (body.includes(term)) best = 1;
+    if (test(people)) best = 5;
+    else if (test(subject)) best = 3;
+    else if (test(body)) best = 1;
     if (best === 0) continue;
     hits += 1;
     score += best;

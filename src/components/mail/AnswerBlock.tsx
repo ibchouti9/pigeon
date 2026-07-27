@@ -119,9 +119,20 @@ export function AnswerBlock({ answer, onOpenThread }: AnswerBlockProps) {
     <div className={styles.block} aria-live="polite">
       <p className={cn('t-md', styles.body)}>
         {withCitations(answer.text, answer.cited, onOpenThread)}
+        {/*
+          A caret while text is arriving. Without it the answer stops mid
+          sentence for a second at a time and reads as finished-and-truncated
+          rather than as still being written.
+        */}
+        {answer.streaming && <span className={styles.caret} aria-hidden="true" />}
       </p>
 
-      {answer.cited.length > 0 && (
+      {/*
+        The sources list waits for the end. Citations are only known once the
+        answer stops — a list that grows a row at a time under a sentence that
+        is also growing is two things moving at once for no reason.
+      */}
+      {!answer.streaming && answer.cited.length > 0 && (
         <ul className={styles.sources}>
           {answer.cited.map((thread, i) => {
             const from = [...thread.messages].reverse().find((m) => !m.isFromUser)?.from;
@@ -143,16 +154,18 @@ export function AnswerBlock({ answer, onOpenThread }: AnswerBlockProps) {
         </ul>
       )}
 
-      <div className={styles.actions}>
-        <span className={cn('t-xs', styles.provenance)}>
-          {answer.refused
-            ? 'Nothing in the results answered it.'
-            : 'From the results below only.'}
-        </span>
-        <Button variant="tertiary" size="sm" onClick={answer.dismiss}>
-          Hide
-        </Button>
-      </div>
+      {!answer.streaming && (
+        <div className={styles.actions}>
+          <span className={cn('t-xs', styles.provenance)}>
+            {answer.refused
+              ? 'Nothing in the results answered it.'
+              : 'From the results below only.'}
+          </span>
+          <Button variant="tertiary" size="sm" onClick={answer.dismiss}>
+            Hide
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

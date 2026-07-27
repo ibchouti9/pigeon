@@ -170,6 +170,23 @@ function makeClient(config: ProviderConfig): AiClient {
     return text;
   }
 
+  /**
+   * `run`, delivering text as it arrives when the adapter can. An adapter with
+   * no `stream` is called normally and `onText` simply never fires before the
+   * end — so no caller has to know which kind it got.
+   */
+  async function runStreaming(
+    system: string,
+    user: string,
+    maxTokens: number,
+    onText?: (soFar: string) => void,
+  ): Promise<string> {
+    if (!onText || !adapter.stream) return run(system, user, maxTokens);
+    const { text, usd, ms } = await adapter.stream(config, system, user, maxTokens, onText);
+    useSettings.getState().recordCall(usd, ms);
+    return text;
+  }
+
   return {
     provider: config.provider,
 
@@ -210,16 +227,27 @@ function makeClient(config: ProviderConfig): AiClient {
         });
     },
 
-    async answer(question: string, sources: AnswerRequest[]): Promise<AnswerResult> {
+    async answer(
+      question: string,
+      sources: AnswerRequest[],
+      onPartial?: (soFar: string) => void,
+    ): Promise<AnswerResult> {
       if (sources.length === 0) {
         return { text: 'Not in this mail.', cited: [], refused: true };
       }
       const capped = sources.slice(0, ANSWER_SOURCES);
       const raw = cleanCompletion(
-        await run(
+        await runStreaming(
           ANSWER_SYSTEM,
           answerUser(question, capped.map((s, i) => ({ n: i + 1, ...s }))),
           MAX_TOKENS.answer,
+          /*
+           * The partial is tidied on the way past, so what the user watches
+           * appear is the same shape as what settles: a model that ends its
+           * answer and starts a footnote paragraph does not get to flash the
+           * footnote on screen before it is removed.
+           */
+          onPartial && ((soFar) => onPartial(tidyAnswer(soFar))),
         ),
       );
       const text = tidyAnswer(raw);
