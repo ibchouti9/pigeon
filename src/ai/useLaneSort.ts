@@ -89,41 +89,50 @@ export function useLaneSort(threads: Thread[], place: 'inbox' | 'archive'): void
 
     if (pending.length === 0) return;
 
-    let live = true;
+    /*
+     * No teardown, and that is the point.
+     *
+     * The first version aborted the run from the effect's cleanup, which fires
+     * on every change to `threads` — including the one the inbox load itself
+     * causes, a few hundred milliseconds after mount and reliably in the
+     * middle of the first request. The batch went out, the model answered, the
+     * answer was thrown away, and the threads were already marked as asked, so
+     * nothing ever tried again. `assisted` stayed empty forever on an account
+     * where the pass appeared, in the network log, to be working.
+     *
+     * `recordAssisted` is a store action and is safe to call after this
+     * component has gone; `runningRef` is what stops a second pass starting on
+     * top of this one, so it is cleared when the loop finishes and not before.
+     */
     runningRef.current = true;
 
     void (async () => {
-      for (let i = 0; i < pending.length; i += SORT_BATCH) {
-        if (!live) break;
-        const batch = pending.slice(i, i + SORT_BATCH);
-        batch.forEach((item) => askedRef.current.add(item.threadId));
+      try {
+        for (let i = 0; i < pending.length; i += SORT_BATCH) {
+          const batch = pending.slice(i, i + SORT_BATCH);
+          batch.forEach((item) => askedRef.current.add(item.threadId));
 
-        try {
-          const answers = await client.sortThreads(batch);
-          if (!live) break;
-          for (const answer of answers) {
-            if (!LANES.includes(answer.lane as Lane)) continue;
-            recordAssisted(answer.threadId, answer.lane as Lane, answer.why);
+          try {
+            const answers = await client.sortThreads(batch);
+            for (const answer of answers) {
+              if (!LANES.includes(answer.lane as Lane)) continue;
+              recordAssisted(answer.threadId, answer.lane as Lane, answer.why);
+            }
+          } catch {
+            /*
+             * One dead batch stops the pass rather than marching through the
+             * rest. A local endpoint that has gone away fails every call, and
+             * four of those is four timeouts for a result nobody was promised.
+             */
+            break;
           }
-        } catch {
-          /*
-           * One dead batch stops the pass rather than marching through the
-           * rest. A local endpoint that has gone away fails every call, and
-           * forty of those is forty seconds of a spinning machine for a
-           * result the user was never promised.
-           */
-          break;
         }
+      } finally {
+        runningRef.current = false;
       }
-      runningRef.current = false;
     })();
-
-    return () => {
-      live = false;
-      runningRef.current = false;
-    };
     // `assisted` is deliberately absent: it changes on every recorded answer,
-    // and depending on it would tear down the pass that is writing it.
+    // and depending on it would restart the pass that is writing it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threads, enabled, place, sortInbox, provider, overrides, approved, recordAssisted]);
 }
