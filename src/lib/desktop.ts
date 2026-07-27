@@ -22,6 +22,31 @@ export async function invoke<T>(command: string, args?: Record<string, unknown>)
 }
 
 /**
+ * Subscribes to an event the engine emits mid-command.
+ *
+ * A listing walks the metadata of every message in a place before it can group
+ * anything into conversations, and on a large account that is a minute of work
+ * inside one `invoke`. Without this the screen has nothing to show for it, which
+ * is indistinguishable from a hang — it was reported as one.
+ *
+ * Resolves to a no-op unsubscriber in the web build, where nothing emits.
+ */
+export async function listen<T>(
+  event: string,
+  handler: (payload: T) => void,
+): Promise<() => void> {
+  if (!isDesktop()) return () => {};
+  try {
+    const { listen: subscribe } = await import('@tauri-apps/api/event');
+    const unlisten = await subscribe<T>(event, (e) => handler(e.payload));
+    return unlisten;
+  } catch {
+    // Progress is a courtesy; losing it must not fail the work it describes.
+    return () => {};
+  }
+}
+
+/**
  * Sends a URL to the user's real browser.
  *
  * The setup guide links into the Google console, and the console is somewhere
