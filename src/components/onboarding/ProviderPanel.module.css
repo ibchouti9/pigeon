@@ -126,3 +126,32 @@
   gap: var(--space-4);
   margin-top: var(--space-8);
 }
+
+/*
+ * The one line that says a model was found on this machine. Accent-tinted
+ * because it is the rarest and best outcome this screen has: nothing to paste,
+ * nothing to sign up for, nothing leaving the Mac.
+ */
+.found {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+}
+
+.foundDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.foundName {
+  color: var(--color-text-primary);
+}

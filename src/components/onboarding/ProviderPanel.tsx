@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';
 import { CURATED_MODELS, testConnection } from '../../ai/client';
+import { detectLocalEndpoint, preferredModel, type LocalEndpoint } from '../../ai/detectLocal';
 import {
   DEFAULT_BASE_URL,
   PROVIDER_LABELS,
@@ -133,6 +134,16 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
    */
   const [testDetail, setTestDetail] = useState<string | null>(null);
   const [localModels, setLocalModels] = useState<string[] | null>(null);
+  /*
+   * What was already running when this screen opened.
+   *
+   * The people most likely to want Pigeon already have Ollama open, and making
+   * them type `http://localhost:11434` into a field is asking them to
+   * configure a thing Pigeon can simply look for. Found is not connected: the
+   * card says what answered and fills the fields in, and the user still picks
+   * Local and still presses Test.
+   */
+  const [found, setFound] = useState<LocalEndpoint | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
   const revealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -144,6 +155,25 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     [],
   );
 
+  useEffect(() => {
+    let live = true;
+    void detectLocalEndpoint().then((endpoint) => {
+      if (!live || !endpoint) return;
+      setFound(endpoint);
+      setLocalModels(endpoint.models);
+      /*
+       * Fill the fields, select nothing. Preselecting Local would answer the
+       * one question this screen exists to ask — and a probe that guesses
+       * wrong would have pointed the assistant at a stranger's port.
+       */
+      setBaseUrl((current) => (current === DEFAULT_BASE_URL ? endpoint.baseUrl : current));
+      setModel((current) => current || preferredModel(endpoint.models));
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   function selectProvider(id: SelectableProvider) {
     setProviderId(id);
     setTestMs(undefined);
@@ -152,7 +182,10 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     if (revealTimer.current) clearTimeout(revealTimer.current);
     if (id === 'local') {
       setApiKey('');
-      setModel('');
+      // A probe already found the models; clearing them here would make the
+      // select empty on the one provider where Pigeon knows the answer.
+      setLocalModels(found?.models ?? null);
+      setModel(found ? preferredModel(found.models) : '');
       setStatus(baseUrl.trim() ? 'entered' : 'empty');
     } else if (id === 'demo') {
       // No key, no base URL — canned replies, ready to test immediately.
@@ -273,6 +306,17 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
       <section className={styles.section}>
         <span className={cn('t-mono-sm', styles.sectionLabel)}>PROVIDER</span>
         <ProviderRadioGroup value={providerId} onChange={selectProvider} />
+        {found && providerId !== 'local' && (
+          <p className={cn('t-sm', styles.found)}>
+            <span className={styles.foundDot} aria-hidden="true" />
+            <span>
+              <span className={styles.foundName}>{found.runtime} is already running here</span>
+              {' '}
+              with {found.models.length === 1 ? 'one model' : `${found.models.length} models`}.
+              Choose Local to use it — no key, and nothing leaves this Mac.
+            </span>
+          </p>
+        )}
       </section>
 
       {providerId && (

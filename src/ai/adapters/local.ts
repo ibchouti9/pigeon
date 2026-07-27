@@ -2,6 +2,7 @@ import type { Adapter, TestResult } from '../types';
 import { httpFetch } from '../../lib/http';
 import { AiError } from '../types';
 import type { ProviderConfig } from '../../store/settings';
+import { isChatModel } from '../detectLocal';
 
 /**
  * D47 — a local provider has no key. Pigeon asks for a base URL and lists the
@@ -35,7 +36,14 @@ async function listModels(baseUrl: string): Promise<string[]> {
   const body = (await response.json().catch(() => null)) as OllamaTags | null;
   return (body?.models ?? [])
     .map((m) => m.name ?? m.model ?? '')
-    .filter(Boolean);
+    .filter(Boolean)
+    /*
+     * An embedding model is in `/api/tags` and cannot answer a chat request.
+     * Offering one in the model picker — which the connection test populates —
+     * hands the user a choice whose only outcome is an empty completion and a
+     * "try again" they can never satisfy.
+     */
+    .filter(isChatModel);
 }
 
 async function post(
