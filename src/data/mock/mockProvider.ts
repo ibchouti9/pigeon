@@ -9,6 +9,7 @@ import type {
   Thread,
 } from '../../types';
 import { MailError, type MailProvider, type SearchResults } from '../provider';
+import { parseQuery, scoreMatch, searchableOf } from '../query';
 import {
   DEMO_ACCOUNT,
   DEMO_USER,
@@ -464,39 +465,40 @@ export class MockMailProvider implements MailProvider {
   }
 
   async search(query: string, includeHeld: boolean): Promise<SearchResults> {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) return delay({ inbox: [], archive: [], held: [] });
+    const parsed = parseQuery(query);
+    if (parsed.terms.length === 0) return delay({ inbox: [], archive: [], held: [] });
 
-    const matches = (t: Thread) =>
-      t.subject.toLowerCase().includes(q) ||
-      t.messages.some(
-        (m) =>
-          m.body.toLowerCase().includes(q) ||
-          m.from.name.toLowerCase().includes(q) ||
-          m.from.email.toLowerCase().includes(q),
-      );
+    /*
+     * Scored, not filtered. The old version matched the whole query as one
+     * substring, which meant `dana contract` found nothing — no message
+     * contains those two words adjacent — and a question found nothing at all.
+     * Ranking by how many terms landed, and where, is what makes both work.
+     */
+    const rank = (threads: Thread[]) =>
+      threads
+        .map((t) => ({ t, score: scoreMatch(searchableOf(t), parsed) }))
+        .filter((r) => r.score > 0)
+        .sort((a, b) => b.score - a.score || b.t.lastMessageAt.localeCompare(a.t.lastMessageAt))
+        .map((r) => r.t);
 
-    const inbox = this.state.threads.filter((t) => t.place === 'inbox' && matches(t));
-    const archive = this.state.threads.filter((t) => t.place === 'archive' && matches(t));
+    const inbox = rank(this.state.threads.filter((t) => t.place === 'inbox'));
+    const archive = rank(this.state.threads.filter((t) => t.place === 'archive'));
 
     let held: HeldSender[] = [];
     if (includeHeld) {
       const all = await this.listHeld();
-      held = all.filter(
-        (h) =>
-          h.sender.name.toLowerCase().includes(q) ||
-          h.sender.email.toLowerCase().includes(q) ||
-          h.messages.some(
-            (m) => m.subject.toLowerCase().includes(q) || m.body.toLowerCase().includes(q),
-          ),
+      held = all.filter((h) =>
+        scoreMatch(
+          {
+            subject: h.messages.map((m) => m.subject).join(' '),
+            people: `${h.sender.name} ${h.sender.email}`,
+            body: h.messages.map((m) => m.body).join('\n'),
+          },
+          parsed,
+        ) > 0,
       );
     }
 
-    const byDate = (a: Thread, b: Thread) => b.lastMessageAt.localeCompare(a.lastMessageAt);
-    return delay({
-      inbox: inbox.sort(byDate),
-      archive: archive.sort(byDate),
-      held,
-    }, 180);
+    return delay({ inbox, archive, held }, 180);
   }
 }

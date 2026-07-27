@@ -9,6 +9,7 @@ import type {
   Thread,
 } from '../../types';
 import { MailError, type MailProvider, type SearchResults } from '../provider';
+import { parseQuery } from '../query';
 import { SenderDecisions } from '../decisions';
 import { buildRawMessage } from '../mime';
 import { invoke } from '../../lib/desktop';
@@ -721,14 +722,21 @@ export class ImapMailProvider implements MailProvider {
   /* ------------------------------------------------------------------ */
 
   async search(query: string, includeHeld: boolean): Promise<SearchResults> {
-    const q = query.trim();
-    if (q.length < 2) return { inbox: [], archive: [], held: [] };
+    const parsed = parseQuery(query);
+    if (parsed.terms.length === 0) return { inbox: [], archive: [], held: [] };
     await this.getAccount();
 
-    // Gmail's own query language, straight through X-GM-RAW. Same semantics
-    // the REST provider's `q` parameter had, because they are the same engine.
+    /*
+     * Gmail's own query language, straight through X-GM-RAW — but the terms
+     * rather than the raw string. Gmail ANDs bare words, so "what did priya say
+     * about the window change" as typed matches nothing at all, while
+     * `priya window change` finds the thread. An operator query
+     * (`from:dana has:attachment`) survives untouched: `parseQuery` keeps
+     * anything with punctuation in one piece, and those terms rejoin in the
+     * same order they were typed.
+     */
     const page = await this.call<BridgeListPage>('mail_search', {
-      query: q,
+      query: parsed.isQuestion ? parsed.terms.join(' ') : parsed.raw,
       limit: SEARCH_CAP,
     });
 

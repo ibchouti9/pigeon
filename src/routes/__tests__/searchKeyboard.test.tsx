@@ -24,6 +24,12 @@ describe('search result keyboard navigation (§8.1)', () => {
 
   afterEach(cleanup);
 
+  /*
+   * `marc` rather than `the`. Search matches terms now, and stop words are
+   * dropped before matching — `the` used to match every thread by substring
+   * and now matches nothing, which is the point of the change. `marc` is the
+   * demo user's own name and lands across both places.
+   */
   async function renderSearch(query: string) {
     render(
       <MemoryRouter initialEntries={[`/search?q=${encodeURIComponent(query)}`]}>
@@ -57,7 +63,7 @@ describe('search result keyboard navigation (§8.1)', () => {
 
   it('moves the cursor down and up with j and k', async () => {
     const user = userEvent.setup();
-    await renderSearch('the');
+    await renderSearch('marc');
 
     await enterList(user);
     expect(cursorIndex()).toBe(0);
@@ -71,7 +77,7 @@ describe('search result keyboard navigation (§8.1)', () => {
 
   it('stops at both ends rather than wrapping', async () => {
     const user = userEvent.setup();
-    await renderSearch('the');
+    await renderSearch('marc');
 
     await enterList(user);
     await user.keyboard('k');
@@ -88,7 +94,7 @@ describe('search result keyboard navigation (§8.1)', () => {
 
   it('gives the cursor row real focus, not just a tab stop', async () => {
     const user = userEvent.setup();
-    await renderSearch('the');
+    await renderSearch('marc');
 
     await enterList(user);
     await user.keyboard('j');
@@ -98,7 +104,7 @@ describe('search result keyboard navigation (§8.1)', () => {
 
   it('opens the cursor row on Enter', async () => {
     const user = userEvent.setup();
-    await renderSearch('the');
+    await renderSearch('marc');
 
     await enterList(user);
     await user.keyboard('j');
@@ -116,7 +122,7 @@ describe('search result keyboard navigation (§8.1)', () => {
 
   it('archives the cursor row on e', async () => {
     const user = userEvent.setup();
-    await renderSearch('the');
+    await renderSearch('marc');
 
     await enterList(user);
     const archived = useMail.getState().archive.length;
@@ -134,7 +140,7 @@ describe('search result keyboard navigation (§8.1)', () => {
   it('sends an archived result back to the inbox on e', async () => {
     const user = userEvent.setup();
     await useMail.getState().loadThreads('archive');
-    await renderSearch('the');
+    await renderSearch('marc');
 
     const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
     const subjects = useMail.getState().archive.map((t) => t.subject);
@@ -160,7 +166,7 @@ describe('search result keyboard navigation (§8.1)', () => {
    */
   describe('replying to a result', () => {
     async function openFirstResult(user: ReturnType<typeof userEvent.setup>) {
-      await renderSearch('the');
+      await renderSearch('marc');
       const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
       await user.click(rows[0]);
       await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument());
@@ -218,7 +224,7 @@ describe('search result keyboard navigation (§8.1)', () => {
     const user = userEvent.setup();
     // The store deliberately holds no archive: that is the state this breaks in.
     expect(useMail.getState().archive).toEqual([]);
-    await renderSearch('the');
+    await renderSearch('marc');
 
     const archivedIds = new Set(
       (await useMail.getState().provider.listThreads('archive')).map((t) => t.id),
@@ -255,7 +261,7 @@ describe('search result keyboard navigation (§8.1)', () => {
    */
   it('still replies and closes with no results left', async () => {
     const user = userEvent.setup();
-    await renderSearch('the');
+    await renderSearch('marc');
 
     const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
     await user.click(rows[0]);
@@ -284,7 +290,7 @@ describe('search result keyboard navigation (§8.1)', () => {
    */
   it('archives the thread being read, not whatever the cursor reset to', async () => {
     const user = userEvent.setup();
-    await renderSearch('the');
+    await renderSearch('marc');
 
     const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
     await user.click(rows[2]);
@@ -293,7 +299,7 @@ describe('search result keyboard navigation (§8.1)', () => {
 
     // A different query resets the cursor to 0; the reader stays put.
     await user.clear(screen.getByRole('searchbox', { name: 'Search mail' }));
-    await user.type(screen.getByRole('searchbox', { name: 'Search mail' }), 'the');
+    await user.type(screen.getByRole('searchbox', { name: 'Search mail' }), 'atlasgrid');
     await waitFor(() => expect(cursorIndex()).toBe(0));
 
     act(() => (document.activeElement as HTMLElement)?.blur());
@@ -310,7 +316,7 @@ describe('search result keyboard navigation (§8.1)', () => {
    */
   it('moves the cursor to a row that is opened by clicking', async () => {
     const user = userEvent.setup();
-    await renderSearch('the');
+    await renderSearch('marc');
 
     const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-search-row]'));
     expect(rows.length).toBeGreaterThan(2);
