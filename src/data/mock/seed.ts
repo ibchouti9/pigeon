@@ -66,6 +66,21 @@ const PEOPLE: Person[] = [
   { name: 'Atlas CI', email: 'noreply@atlas-ci.com', reason: 'contact' },
   { name: 'Kenji Aoki', email: 'kenji@aoki.dev', reason: 'replies', replyCount: 19 },
   { name: 'Lena Fischer', email: 'lena@fischerlaw.de', reason: 'replies', replyCount: 6 },
+
+  /*
+   * Not people — the rest of what lands in a real inbox, and the reason lanes
+   * exist. A demo made only of correspondence shows one chip and proves
+   * nothing: the whole claim is that a Stripe receipt, a Substack issue and a
+   * 30%-off email are three different kinds of thing, and Pigeon can tell.
+   */
+  { name: 'Stripe', email: 'receipts@stripe.com', reason: 'contact' },
+  { name: 'Nordvik Rail', email: 'no-reply@nordvikrail.se', reason: 'contact' },
+  { name: 'Ben Kuhn', email: 'ben@benkuhn.net', reason: 'contact' },
+  { name: 'The Diff', email: 'byrne@thediff.co', reason: 'contact' },
+  { name: 'Rivet', email: 'hello@rivet.app', reason: 'contact' },
+  { name: 'Kavelle', email: 'marketing@kavelle.com', reason: 'contact' },
+  { name: 'GitHub', email: 'notifications@github.com', reason: 'contact' },
+  { name: '1Password', email: 'no-reply@1password.com', reason: 'contact' },
 ];
 
 const P = Object.fromEntries(PEOPLE.map((p) => [p.email, p])) as Record<string, Person>;
@@ -83,6 +98,14 @@ const ruth = P['ruth@meridianhealth.org'];
 const atlasCi = P['noreply@atlas-ci.com'];
 const kenji = P['kenji@aoki.dev'];
 const lena = P['lena@fischerlaw.de'];
+const stripe = P['receipts@stripe.com'];
+const nordvik = P['no-reply@nordvikrail.se'];
+const benKuhn = P['ben@benkuhn.net'];
+const theDiff = P['byrne@thediff.co'];
+const rivet = P['hello@rivet.app'];
+const kavelle = P['marketing@kavelle.com'];
+const github = P['notifications@github.com'];
+const onePassword = P['no-reply@1password.com'];
 
 // ---------------------------------------------------------------------------
 // Thread construction helpers
@@ -368,6 +391,110 @@ Ended up writing 40 lines to map offsets back to line and column, which rather d
         attachments: [
           { filename: 'engagement-countersigned.pdf', size: 190_400, mimeType: 'application/pdf' },
         ],
+      },
+    ]),
+
+    // ---- Receipts ----------------------------------------------------------
+    thread('Your receipt from Atlasgrid — €248.00', 'inbox', true, [
+      {
+        from: stripe,
+        date: at(0, 6, 12),
+        body: `Receipt #2471-0093
+
+Atlasgrid Cloud, Team plan
+€248.00 paid on Visa ending 4419.
+
+This is an automatic receipt. Nothing is owed.`,
+      },
+    ]),
+
+    thread('Booking confirmation — Stockholm to Gothenburg, 4 Aug', 'inbox', false, [
+      {
+        from: nordvik,
+        date: at(1, 18, 40),
+        body: `Your booking is confirmed.
+
+Departs Stockholm Central 07:14, arrives Gothenburg 10:22. Coach 4, seat 31A.
+Booking reference NVK-8823PL.
+
+Show this email or your reference at the barrier.`,
+      },
+    ]),
+
+    // ---- Reading -----------------------------------------------------------
+    thread('The Diff — Issue #412: the storage tier nobody priced', 'inbox', true, [
+      {
+        from: theDiff,
+        date: at(0, 7, 5),
+        body: `In this issue: why three of the four big cloud vendors quietly repriced cold storage in the same quarter, and what that says about where the margin actually is.
+
+The short version is that the tier was never about storage. It was about the egress you pay to find out what is in it.
+
+Read online. Unsubscribe at any time.`,
+      },
+    ]),
+
+    thread('Some things I got wrong about caching', 'inbox', false, [
+      {
+        from: benKuhn,
+        date: at(2, 20, 15),
+        body: `I wrote last year that the hard part of caching is invalidation. Having spent a year on it, I think that framing is wrong, or at least badly incomplete.
+
+The hard part is that a cache is a second source of truth you did not mean to create, and every bug you will have is really a disagreement between the two.
+
+Three cases where I got this wrong, at length, below.
+
+You are receiving this because you subscribed. Unsubscribe.`,
+      },
+    ]),
+
+    // ---- Offers ------------------------------------------------------------
+    thread('30% off annual — ends tonight', 'inbox', true, [
+      {
+        from: rivet,
+        date: at(0, 8, 30),
+        body: `Last chance. 30% off every annual plan, until midnight.
+
+Upgrade to Pro and keep your current seat count.
+
+Unsubscribe | Manage your preferences`,
+      },
+    ]),
+
+    thread('New in Kavelle this month', 'inbox', false, [
+      {
+        from: kavelle,
+        date: at(3, 11, 0),
+        body: `A quick look at what shipped.
+
+Faster exports, a rebuilt settings screen, and a new keyboard layer.
+
+You are receiving this because you have a Kavelle account. Unsubscribe.`,
+      },
+    ]),
+
+    // ---- Alerts ------------------------------------------------------------
+    thread('[atlasgrid/api] priya-raman commented on pull request #218', 'inbox', true, [
+      {
+        from: github,
+        date: at(0, 8, 55),
+        body: `priya-raman commented on pull request #218:
+
+"Left one note on the retry budget — otherwise this reads fine to me."
+
+View it on GitHub. You are receiving this because you were mentioned.`,
+      },
+    ]),
+
+    thread('New sign-in to your 1Password account', 'inbox', false, [
+      {
+        from: onePassword,
+        date: at(2, 7, 20),
+        body: `A new sign-in was recorded.
+
+Safari on macOS, Stockholm, Sweden.
+
+If this was you, nothing to do. If it was not, change your password immediately.`,
       },
     ]),
 

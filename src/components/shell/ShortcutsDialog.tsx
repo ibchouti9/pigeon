@@ -34,6 +34,17 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
     ],
   },
   {
+    title: 'In the Inbox',
+    rows: [
+      ['0', 'All mail'],
+      ['1', 'People'],
+      ['2', 'Reading'],
+      ['3', 'Offers'],
+      ['4', 'Receipts'],
+      ['5', 'Alerts'],
+    ],
+  },
+  {
     title: 'In a thread',
     rows: [
       ['r', 'Reply'],

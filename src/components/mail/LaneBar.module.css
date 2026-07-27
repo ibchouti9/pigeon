@@ -15,6 +15,14 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
+  /*
+   * Six chips do not fit in a 380px column and no amount of shortening makes
+   * them. The row scrolls, and the last chip fades out at the edge rather than
+   * being cut cleanly in half — a clean cut reads as a rendering bug, a fade
+   * reads as "there is more this way". The digits do the same job for anyone
+   * who would rather not reach for the pointer.
+   */
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
 }
 
 .bar::-webkit-scrollbar {

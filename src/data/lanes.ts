@@ -31,6 +31,19 @@ export const LANES: Lane[] = [
   'notifications',
 ];
 
+/**
+ * The digit that selects each lane, fixed to `LANES` order. `0` is All. Stable
+ * across accounts and across days: what a digit means must not depend on which
+ * chips are on screen this morning.
+ */
+export const LANE_KEYS: Record<Lane, string> = {
+  people: '1',
+  newsletters: '2',
+  promotions: '3',
+  receipts: '4',
+  notifications: '5',
+};
+
 export const LANE_LABELS: Record<Lane, string> = {
   people: 'People',
   newsletters: 'Reading',

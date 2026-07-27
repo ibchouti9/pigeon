@@ -11,6 +11,7 @@ import { useThreadSummary } from '../../ai/useThreadSummary';
 import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
 import { useThreadLanes } from '../../hooks/useThreadLanes';
 import { useLanes } from '../../store/lanes';
+import { LANES, LANE_KEYS } from '../../data/lanes';
 import { ThreadReader, type ThreadReaderStatus } from './ThreadReader';
 import { useThreadReply } from './useThreadReply';
 import styles from './MailPlaceScreen.module.css';
@@ -229,6 +230,28 @@ export function MailPlaceScreen({ place }: { place: Place }) {
 
       if (shortcutsBlocked(e)) return;
 
+      /*
+       * Lanes on the number row. Bound to the canonical lane order rather than
+       * to the chips on screen, so `3` is Offers on every account and on every
+       * day — a digit that changes meaning because a campaign arrived
+       * overnight is worse than one that occasionally does nothing.
+       */
+      if (lanes.enabled && /^[0-5]$/.test(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.key === '0') {
+          selectLane('all');
+          e.preventDefault();
+          return;
+        }
+        const lane = LANES.find((l) => LANE_KEYS[l] === e.key);
+        // An empty lane has no chip, so selecting it would leave the user in a
+        // column with nothing in it and nothing visible to click back out of.
+        if (lane && lanes.counts[lane] > 0) {
+          selectLane(lane);
+          e.preventDefault();
+        }
+        return;
+      }
+
       switch (e.key) {
         case 'e': {
           const id = threadId ?? cursorThreadIdRef.current;
@@ -275,7 +298,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId, threads, openThread, bp, online, reply.mode]);
+  }, [threadId, threads, openThread, bp, online, reply.mode, lanes.enabled, lanes.counts]);
 
   // §5.0 narrow tablet (720–879px) — list and reader are a single column.
   const showList = bp !== 'narrow' || !threadId;

@@ -22,20 +22,27 @@ export interface LaneBarProps {
  *
  * All is always first and is where the app starts. Lanes hide nothing: every
  * thread is in All, and turning lanes off in Settings leaves exactly this list.
+ *
+ * `0` and `1`–`5` switch lanes from the keyboard, on the canonical lane order
+ * rather than on which chips happen to be showing — a digit that means Offers
+ * today and Receipts tomorrow, because a campaign arrived overnight, is worse
+ * than a digit that sometimes does nothing.
  */
 export function LaneBar({ selected, counts, unread, onSelect }: LaneBarProps) {
   const lanes = occupiedLanes(counts);
   // One lane means there is nothing to choose between.
   if (lanes.length < 2) return null;
 
-  const total = lanes.reduce((sum, lane) => sum + unread[lane], 0);
-
   return (
     <div className={styles.bar} role="group" aria-label="Filter the inbox">
+      {/*
+        No count on All. The header already carries the unread total two rows
+        above it, and six chips in a 380px column is the difference between a
+        row that fits and a row that scrolls.
+      */}
       <Chip
         kind="filter"
         label="All"
-        count={total || undefined}
         selected={selected === 'all'}
         onClick={() => onSelect('all')}
       />
