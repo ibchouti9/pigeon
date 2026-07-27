@@ -40,9 +40,13 @@ Rules:
 - Exactly one sentence. Maximum 18 words.
 - Answer only "why might this matter", using evidence in the message and in the
   reader's own mail history.
-- Preferred forms: "A warm intro from Dana Whitlock, who you email often." /
-  "Cold sales mail from a list — no reply history." / "A support reply about a
-  ticket you opened on Tuesday."
+- The history line above is the only history there is. If it says the reader
+  has never written to this address, never suggest otherwise: no "who you email
+  often", no "following up on your conversation", no prior relationship of any
+  kind.
+- Preferred forms: "Cold sales mail from a list — no reply history." / "Names a
+  project the reader has mail about." / "A support reply about a ticket opened
+  on Tuesday."
 - Never a judgment word ("spam", "worthless", "important"). Never an instruction
   ("you should approve this"). Never a question.
 
@@ -145,6 +149,58 @@ Rules:
 - Dates and amounts must be copied exactly as they appear, not restated.
 
 Output format: the answer alone, with its citations. Nothing else.`;
+
+/**
+ * Screening a stranger.
+ *
+ * The only prompt in Pigeon whose output can silence somebody, which is why it
+ * is written to say "unsure" rather than to be decisive, and why nothing it
+ * returns is ever applied without the user pressing a button. The model
+ * proposes a selection; the Screener's existing approve and decline actions,
+ * with their existing eight seconds of undo, are what act.
+ *
+ * Same evidence-first ordering as the lane prompt, for the same reason.
+ */
+export const TRIAGE_SYSTEM = `${UNIVERSAL}
+
+Recommend what to do with mail from a sender the reader has never written to.
+
+The three answers:
+- approve: a person is writing to this reader specifically, about something
+  real, and would reasonably expect a reply.
+- decline: bulk mail sent to a list, a cold sales pitch, or an attempt to
+  extract money, credentials or attention under a false pretext.
+- unsure: anything else, including anything you would have to guess at.
+
+Rules:
+- Prefer unsure. A wrong decline silences somebody permanently.
+- A newsletter is unsure unless it was plainly never subscribed to: the reader
+  may well have signed up for it.
+- A recruiter writing personally is unsure. A recruiter mail-merging is decline.
+- An invoice, receipt or security alert the reader did not expect is unsure,
+  never decline — an unexpected bill is the most important mail of the week.
+- Urgency, a deadline, or a threat of account closure is evidence of decline,
+  not of importance.
+- State the evidence first, in at most 8 words, then the answer.
+
+Output format: one line per sender, exactly \`<number>: <evidence> — <answer>\`.
+No preamble, no numbering of your own, no blank lines.`;
+
+export interface TriageItem {
+  n: number;
+  from: string;
+  subject: string;
+  body: string;
+}
+
+export function triageUser(items: TriageItem[]): string {
+  return items
+    .map(
+      (i) =>
+        `${i.n}. from: ${i.from}\n   subject: ${i.subject}\n   ${i.body.replace(/\s+/g, ' ').slice(0, 400)}`,
+    )
+    .join('\n\n');
+}
 
 export interface AnswerSource {
   n: number;
@@ -413,37 +469,46 @@ export function parseLaneLines(
     if (seen.has(n)) continue;
 
     const body = numbered[2];
-    let lane: string | null = null;
-    let why = '';
 
     /*
-     * The lane is at the end, which is what the prompt asks for. Read the last
-     * word rather than splitting on the dash: an evidence phrase can contain
-     * one ("Series B, remote-first") and splitting throws half of it away.
+     * Find the label anywhere on the line, and take the last one.
+     *
+     * Matching only the end was too strict — `decline (no subscription)` and
+     * `decline (prize notification)` were dropped outright, losing two of
+     * twelve senders in the first live run. Matching only the start was too
+     * strict the other way. Last-wins also resolves the one genuinely
+     * ambiguous shape correctly: in "unsure about the deadline — decline" the
+     * answer is decline, and the word "unsure" is part of the evidence.
      */
-    const tail = /(?:^|[\s—–:-])\**([A-Za-z]+)\**\s*[.]?\s*$/.exec(body);
-    if (tail && allowed.includes(tail[1].toLowerCase())) {
-      lane = tail[1].toLowerCase();
-      why = body.slice(0, tail.index).replace(/[\s—–:-]+$/, '').trim();
-    } else {
-      /*
-       * And the other way round, for a model that reverts to label-first. The
-       * prompt no longer asks for it; some of them do it anyway, and the
-       * answer is still an answer.
-       */
-      const head = /^\**([A-Za-z]+)\**\s*(?:[—–:-]\s*(.*))?$/.exec(body);
-      if (head && allowed.includes(head[1].toLowerCase())) {
-        lane = head[1].toLowerCase();
-        why = (head[2] ?? '').trim();
-      }
+    let lane: string | null = null;
+    let at = -1;
+    let width = 0;
+    for (const match of body.matchAll(/\p{L}+/gu)) {
+      const word = match[0].toLowerCase();
+      if (!allowed.includes(word)) continue;
+      lane = word;
+      at = match.index ?? 0;
+      width = match[0].length;
     }
 
-    // An unrecognised lane is worth discarding, because the only alternative
-    // is filing the thread somewhere that does not exist.
+    // An unrecognised answer is worth discarding, because the only
+    // alternative is acting on a label that does not exist.
     if (!lane) continue;
 
+    /*
+     * Evidence is whatever the label was not. Before it, per the prompt; after
+     * it for a model that led with the label, and for the parenthetical some
+     * of them append instead.
+     */
+    // `*` is in the trim set because a model that bolds its answer leaves the
+    // opening asterisks stranded on the evidence: "an invoice — **".
+    const trimEdges = (v: string) =>
+      v.replace(/^[\s—–:*()-]+/, '').replace(/[\s—–:*()-]+$/, '').trim();
+    const before = trimEdges(body.slice(0, at));
+    const after = trimEdges(body.slice(at + width));
+
     seen.add(n);
-    out.push({ n, lane, why: why.replace(/[.]$/, '').trim() });
+    out.push({ n, lane, why: (before || after).replace(/[.]$/, '').trim() });
   }
 
   return out;

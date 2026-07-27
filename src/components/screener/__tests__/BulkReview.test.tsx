@@ -6,6 +6,9 @@ import { useUi } from '../../../store/ui';
 import { BulkReview } from '../BulkReview';
 import { makeHeldList } from './fixtures';
 
+/** Nothing suggested: these tests are about the list, not about triage. */
+const NO_TRIAGE = { verdicts: new Map(), approve: [], decline: [], thinking: false };
+
 afterEach(() => {
   cleanup();
   useUi.setState({ heldSheetSenderId: null, dialog: null, shortcutsOpen: false });
@@ -20,6 +23,7 @@ function renderBulk(checked: Set<string>, onCheckedChange = vi.fn()) {
       held={HELD}
       status="ready"
       reads={{}}
+      triage={NO_TRIAGE}
       online={true}
       checked={checked}
       onCheckedChange={onCheckedChange}

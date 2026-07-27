@@ -7,6 +7,8 @@ import type {
   SenderContext,
   SortAnswer,
   SortRequest,
+  TriageAnswer,
+  TriageRequest,
   TestResult,
   Tone,
 } from './types';
@@ -32,6 +34,8 @@ import {
   readUser,
   SORT_SYSTEM,
   sortUser,
+  TRIAGE_SYSTEM,
+  triageUser,
   summaryUser,
   toneSystem,
 } from './prompts';
@@ -91,7 +95,19 @@ const MAX_TOKENS = {
   sort: 512,
   /** Three sentences. The ceiling is the rule, not a suggestion to fill it. */
   answer: 320,
+  /** One short line per sender, `TRIAGE_BATCH` of them. */
+  triage: 512,
 };
+
+/** The three answers `TRIAGE_SYSTEM` is allowed to give. */
+const SUGGESTIONS = ['approve', 'decline', 'unsure'] as const;
+
+/**
+ * Held senders per triage request. Smaller than the sorting batch: each item
+ * carries a body excerpt rather than a preview line, and this is the prompt
+ * whose mistakes are the most expensive.
+ */
+export const TRIAGE_BATCH = 8;
 
 /**
  * How many threads an answer is allowed to read.
@@ -125,7 +141,7 @@ export const SORT_BATCH = 10;
  * An empty reason is a fine outcome: the lane still stands, and the UI has an
  * honest line for a verdict that came with no argument.
  */
-function usableReason(why: string, item: SortRequest): string {
+function usableReason(why: string, item: { from: string; subject: string }): string {
   const trimmed = why.trim();
   if (trimmed.length < 4) return '';
 
@@ -227,6 +243,27 @@ function makeClient(config: ProviderConfig): AiClient {
       };
     },
 
+    async triageSenders(items: TriageRequest[]): Promise<TriageAnswer[]> {
+      if (items.length === 0) return [];
+      const text = await run(
+        TRIAGE_SYSTEM,
+        triageUser(items.map((item, i) => ({ n: i + 1, ...item }))),
+        MAX_TOKENS.triage,
+      );
+      return parseLaneLines(text, SUGGESTIONS)
+        .filter((line) => line.n >= 1 && line.n <= items.length)
+        .map((line) => {
+          const item = items[line.n - 1];
+          return {
+            senderId: item.senderId,
+            suggestion: line.lane as TriageAnswer['suggestion'],
+            // Same echo filter as the lane pass, and for the same reason: the
+            // first live run answered every row with that row's subject line.
+            why: usableReason(line.why, item),
+          };
+        });
+    },
+
     async retone(draft: string, tone: Tone) {
       const text = await run(toneSystem(tone), draft, MAX_TOKENS.draft);
       const body = cleanCompletion(text);
@@ -279,6 +316,7 @@ function failingClient(provider: ProviderId): AiClient {
     // needs it to produce nothing, not to throw into a background pass.
     sortThreads: async () => [],
     answer: fail,
+    triageSenders: async () => [],
   };
 }
 

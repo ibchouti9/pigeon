@@ -209,3 +209,44 @@
 .spacer {
   flex: 1;
 }
+
+/*
+ * "Pigeon would decline 6 and approve 2" — the queue read at a glance, with
+ * each count a control that ticks those boxes. It selects; it never decides.
+ * The C-22 action bar below is still what acts, with its undo intact.
+ */
+.suggestion {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-ai);
+  border-bottom: var(--border-hairline);
+}
+
+.suggestionText {
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.suggestionLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.suggestionLink:hover {
+  color: var(--color-accent);
+}
+
+.suggestionBusy {
+  flex: none;
+  color: var(--color-text-tertiary);
+}

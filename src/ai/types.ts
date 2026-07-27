@@ -33,6 +33,26 @@ export interface AiClient {
    * `sources` is already ranked; the answer cites them by position.
    */
   answer(question: string, sources: AnswerRequest[]): Promise<AnswerResult>;
+
+  /**
+   * Recommends approve / decline / unsure for held senders. A recommendation
+   * is a selection the user can accept, never an action — nothing in Pigeon
+   * decides a sender on the model's say-so.
+   */
+  triageSenders(items: TriageRequest[]): Promise<TriageAnswer[]>;
+}
+
+export interface TriageRequest {
+  senderId: string;
+  from: string;
+  subject: string;
+  body: string;
+}
+
+export interface TriageAnswer {
+  senderId: string;
+  suggestion: 'approve' | 'decline' | 'unsure';
+  why: string;
 }
 
 export interface AnswerRequest {

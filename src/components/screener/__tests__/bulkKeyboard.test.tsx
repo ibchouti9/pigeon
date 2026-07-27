@@ -5,6 +5,9 @@ import { useUi } from '../../../store/ui';
 import { BulkReview } from '../BulkReview';
 import { makeHeldList } from './fixtures';
 
+/** Nothing suggested: these tests are about the list, not about triage. */
+const NO_TRIAGE = { verdicts: new Map(), approve: [], decline: [], thinking: false };
+
 /**
  * §8.1 puts bulk review in the thread-list scope, which binds `Enter`/`o`,
  * `Home`/`End` and `Shift+J`/`Shift+K` alongside `j`/`k`/`x`. Only the latter
@@ -27,6 +30,7 @@ describe('bulk review keyboard (§8.1)', () => {
       held,
       status: 'ready' as const,
       reads: {},
+    triage: NO_TRIAGE,
       online: true,
       onCheckedChange,
       onToggleView: vi.fn(),

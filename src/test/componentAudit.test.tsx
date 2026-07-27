@@ -17,6 +17,9 @@ import { useMinimumVisible } from '../hooks/useMinimumVisible';
 import { useRouteFocus } from '../hooks/useRouteFocus';
 import { makeHeldList } from '../components/screener/__tests__/fixtures';
 
+/** Nothing suggested: these tests are about the list, not about triage. */
+const NO_TRIAGE = { verdicts: new Map(), approve: [], decline: [], thinking: false };
+
 function resetStores() {
   localStorage.clear();
   MockMailProvider.reset();
@@ -72,6 +75,7 @@ describe('the bulk row AI read carries its prefix (§4.7)', () => {
         held={held}
         status="ready"
         reads={{ [held[0].sender.id]: 'Cold sales mail from a list — no reply history.' }}
+        triage={NO_TRIAGE}
         online
         checked={new Set()}
         onCheckedChange={vi.fn()}

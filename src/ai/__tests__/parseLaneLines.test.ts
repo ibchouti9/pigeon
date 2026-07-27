@@ -92,4 +92,33 @@ describe('parseLaneLines', () => {
   it('is case-insensitive about the lane name', () => {
     expect(parseLaneLines('1: a reply — People', LANES)[0].lane).toBe('people');
   });
+
+  /*
+   * The shapes the live triage run produced, which the end-anchored parser
+   * silently dropped — two of twelve senders, gone, with no sign anything had
+   * happened.
+   */
+  it('reads a label followed by a parenthetical', () => {
+    expect(parseLaneLines('4: promotions (no subscription)', LANES)[0]).toEqual({
+      n: 4,
+      lane: 'promotions',
+      why: 'no subscription',
+    });
+  });
+
+  it('takes the last label when the evidence contains one too', () => {
+    const out = parseLaneLines('1: reads like people but sent to a list — promotions', LANES);
+    expect(out[0].lane).toBe('promotions');
+    expect(out[0].why).toBe('reads like people but sent to a list');
+  });
+
+  it('works against any vocabulary, not just lanes', () => {
+    // The Screener reuses this for approve / decline / unsure.
+    const words = ['approve', 'decline', 'unsure'] as const;
+    expect(parseLaneLines('2: mail-merged recruiter pitch — decline', words)[0]).toEqual({
+      n: 2,
+      lane: 'decline',
+      why: 'mail-merged recruiter pitch',
+    });
+  });
 });

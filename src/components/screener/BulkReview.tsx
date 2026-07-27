@@ -5,6 +5,7 @@ import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { cn } from '../../lib/cn';
 import { displayName, formatCount, plural } from '../../lib/format';
 import type { HeldSender } from '../../types';
+import type { TriageView } from '../../ai/useTriage';
 import { Checkbox } from '../primitives/Field';
 import { Button } from '../primitives/Button';
 import { Monogram } from '../primitives/Monogram';
@@ -19,6 +20,8 @@ export interface BulkReviewProps {
   status: LoadStatus;
   /** Sender id → live AI read, from `useScreenerAi().reads`. */
   reads: Record<string, string>;
+  /** What Pigeon would do with each sender. A selection, never an action. */
+  triage: TriageView;
   online: boolean;
   checked: Set<string>;
   onCheckedChange: (next: Set<string>) => void;
@@ -48,6 +51,7 @@ export function BulkReview({
   held,
   status,
   reads,
+  triage,
   online,
   checked,
   onCheckedChange,
@@ -73,6 +77,20 @@ export function BulkReview({
   useEffect(() => {
     if (!acting) setDisplayIds(held.map((h) => h.sender.id));
   }, [held, acting]);
+
+  /*
+   * One sentence per row, from one source.
+   *
+   * The read and the suggestion used to be two independent model calls, and
+   * they contradicted each other on screen: a row reading "A warm intro from
+   * Talia Brooks, who you email often" sat checked inside a selection labelled
+   * "decline 5". Whatever else that is, it is not a product anyone would trust
+   * to touch their mail. The evidence behind the suggestion is now the row's
+   * text, so the two cannot disagree — and it is one call rather than two.
+   */
+  function rowRead(id: string): string | undefined {
+    return triage.verdicts.get(id)?.why || reads[id];
+  }
 
   function rowFor(id: string): HeldSender | undefined {
     return held.find((h) => h.sender.id === id) ?? snapshot.current.get(id);
@@ -274,12 +292,54 @@ export function BulkReview({
   }
 
   const allChecked = displayIds.length > 0 && checked.size >= displayIds.length;
+
+  /*
+   * Only senders still on screen. `triage` is computed over the held list and
+   * a row mid-decision has already been removed from it optimistically, so
+   * offering to select one would be offering a moving target.
+   */
+  const onScreen = new Set(displayIds);
+  const suggested = (
+    [
+      { decision: 'decline' as const, ids: triage.decline.filter((id) => onScreen.has(id)) },
+      { decision: 'approve' as const, ids: triage.approve.filter((id) => onScreen.has(id)) },
+    ]
+  ).filter((g) => g.ids.length > 0);
   const someChecked = checked.size > 0 && !allChecked;
   const activeCount = acting ? acting.ids.length : checked.size;
 
   return (
     <>
       <div className={styles.container} role="list" aria-label="Held senders">
+        {/*
+          Pigeon's read of the whole queue, as a selection the user can accept.
+          It never decides: pressing one of these ticks the boxes and nothing
+          else, and the C-22 action bar below is still what approves or
+          declines, with the eight seconds of undo it always had.
+        */}
+        {suggested.length > 0 && (
+          <div className={styles.suggestion}>
+            <span className={cn('t-sm', styles.suggestionText)}>
+              Pigeon would{' '}
+              {suggested.map((group, i) => (
+                <span key={group.decision}>
+                  {i > 0 && ' and '}
+                  <button
+                    type="button"
+                    className={cn('t-sm', styles.suggestionLink)}
+                    onClick={() => onCheckedChange(new Set(group.ids))}
+                  >
+                    {group.decision} {formatCount(group.ids.length)}
+                  </button>
+                </span>
+              ))}
+            </span>
+            {triage.thinking && (
+              <span className={cn('t-xs', styles.suggestionBusy)}>still reading…</span>
+            )}
+          </div>
+        )}
+
         <div className={styles.header}>
           <label className={styles.selectAllLabel}>
             <Checkbox
@@ -336,7 +396,7 @@ export function BulkReview({
                 <Monogram name={row.sender.name} email={row.sender.email} size={28} />
                 <span className={cn('t-base', 'truncate', styles.name)}>{displayName(row.sender)}</span>
                 <span className={cn('t-sm', 'truncate', styles.subject)}>{first.subject}</span>
-                {reads[id] && (
+                {rowRead(id) && (
                   <span className={cn('t-xs', styles.aiRead)}>
                     {/*
                       §4.7 requires all three of tint/label, ◆ glyph and a
@@ -348,7 +408,7 @@ export function BulkReview({
                     */}
                     <span className="visually-hidden">Pigeon&apos;s read of this sender: </span>
                     <span aria-hidden="true">◆ </span>
-                    {reads[id]}
+                    {rowRead(id)}
                   </span>
                 )}
               </button>

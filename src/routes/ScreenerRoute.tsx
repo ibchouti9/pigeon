@@ -11,6 +11,7 @@ import { ScreenerDigest } from '../components/screener/ScreenerDigest';
 import { CardStack } from '../components/screener/CardStack';
 import { BulkReview } from '../components/screener/BulkReview';
 import { useScreenerAi } from '../ai/useScreenerAi';
+import { useTriage } from '../ai/useTriage';
 import { useAssistant, useBehaviour } from '../ai/useAssistant';
 import styles from './ScreenerRoute.module.css';
 
@@ -94,11 +95,17 @@ export function ScreenerRoute() {
 
   // §5.8 puts the AI read in a column on every bulk row, so the list needs a
   // read for all of them, not the stack's lookahead.
-  const { digest, digestState, retryDigest, reads } = useScreenerAi({
-    eager: view === 'list',
-  });
+  /*
+   * No eager reads any more. Bulk review used to ask for a read on every held
+   * sender at once; it now renders the evidence behind Pigeon's suggestion,
+   * which the triage pass already produced. The stack still pre-fetches a few
+   * cards ahead, because a card shows one sender at a time and that read is
+   * the longer, 18-word form.
+   */
+  const { digest, digestState, retryDigest, reads } = useScreenerAi();
   const { connected } = useAssistant();
   const { screenerReads } = useBehaviour();
+  const triage = useTriage(held);
 
   function setView(next: View) {
     const params = new URLSearchParams(searchParams);
@@ -238,6 +245,7 @@ export function ScreenerRoute() {
                   held={held}
                   status={status}
                   reads={reads}
+                  triage={triage}
                   online={online}
                   checked={checked}
                   onCheckedChange={setChecked}

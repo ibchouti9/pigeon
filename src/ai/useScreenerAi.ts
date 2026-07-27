@@ -58,14 +58,16 @@ export interface ScreenerAi {
  * error on the card (§5.7).
  */
 /**
- * @param eager request a read for every held sender rather than a lookahead.
- * Bulk review (§5.8) puts the read in a column on every row at once, so a
- * lookahead sized for the stack leaves most of the list permanently blank.
+ * How far ahead of the top card the stack pre-fetches reads.
+ *
+ * There used to be an `eager` mode that fetched a read for every held sender
+ * at once, for bulk review's read column. Bulk review renders the evidence
+ * behind Pigeon's suggestion now, which the triage pass already produced — so
+ * the only caller is the stack, and the stack shows one card at a time.
  */
-/** How far ahead of the top card the stack pre-fetches reads. */
 const STACK_LOOKAHEAD = 4;
 
-export function useScreenerAi({ eager = false }: { eager?: boolean } = {}): ScreenerAi {
+export function useScreenerAi(): ScreenerAi {
   const { client } = useAssistant();
   const { screenerReads } = useBehaviour();
   const held = useMail((s) => s.held);
@@ -120,9 +122,9 @@ export function useScreenerAi({ eager = false }: { eager?: boolean } = {}): Scre
     const pending = held.filter((h) => !readRequests.current.has(h.sender.id));
     if (pending.length === 0) return;
 
-    // In the stack, only the cards a user will actually reach soon; the rest
-    // fill in as it advances. In bulk review every row is on screen already.
-    for (const entry of eager ? pending : pending.slice(0, STACK_LOOKAHEAD)) {
+    // Only the cards the user will actually reach soon; the rest fill in as
+    // the stack advances.
+    for (const entry of pending.slice(0, STACK_LOOKAHEAD)) {
       readRequests.current.add(entry.sender.id);
       void client
         .readSender(entry, { replyCount: entry.sender.replyCount ?? 0, frequentContacts: [] })
@@ -141,7 +143,7 @@ export function useScreenerAi({ eager = false }: { eager?: boolean } = {}): Scre
           readRequests.current.delete(entry.sender.id);
         });
     }
-  }, [client, screenerReads, held, eager]);
+  }, [client, screenerReads, held]);
 
   return { digest, digestState, retryDigest: () => void runDigest(), reads };
 }
