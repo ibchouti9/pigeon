@@ -1,4 +1,13 @@
-import type { AiClient, Adapter, DraftInput, SenderContext, TestResult, Tone } from './types';
+import type {
+  AiClient,
+  Adapter,
+  DraftInput,
+  SenderContext,
+  SortAnswer,
+  SortRequest,
+  TestResult,
+  Tone,
+} from './types';
 import { AiError } from './types';
 import type { HeldSender, Thread } from '../types';
 import { type ProviderConfig, type ProviderId, useSettings } from '../store/settings';
@@ -11,11 +20,15 @@ import {
   draftSystem,
   draftUser,
   parseBullets,
+  parseLaneLines,
   parseSentence,
   readUser,
+  SORT_SYSTEM,
+  sortUser,
   summaryUser,
   toneSystem,
 } from './prompts';
+import { LANES } from '../data/lanes';
 import { anthropicAdapter, ANTHROPIC_MODELS } from './adapters/anthropic';
 import { openaiAdapter, OPENAI_MODELS } from './adapters/openai';
 import { googleAdapter, GOOGLE_MODELS } from './adapters/google';
@@ -67,7 +80,19 @@ const MAX_TOKENS = {
   read: 128,
   digest: 192,
   draft: 1024,
+  /** One short line per thread, and a batch is at most `SORT_BATCH` of them. */
+  sort: 512,
 };
+
+/**
+ * How many threads go in one sorting request.
+ *
+ * Small enough that a 3B model on a laptop keeps the line format all the way
+ * to the end — accuracy falls off a cliff somewhere past a dozen rows, and the
+ * tail of a long batch is where a model starts answering in prose. Small
+ * enough, too, that a batch that fails loses very little.
+ */
+export const SORT_BATCH = 10;
 
 function makeClient(config: ProviderConfig): AiClient {
   const adapter = ADAPTERS[config.provider as Exclude<ProviderId, 'none'>];
@@ -111,6 +136,22 @@ function makeClient(config: ProviderConfig): AiClient {
       const body = cleanCompletion(text);
       if (!body) throw new AiError('Pigeon couldn\'t write a draft. Write your reply, or try again.');
       return body;
+    },
+
+    async sortThreads(items: SortRequest[]): Promise<SortAnswer[]> {
+      if (items.length === 0) return [];
+      const text = await run(
+        SORT_SYSTEM,
+        sortUser(items.map((item, i) => ({ n: i + 1, ...item }))),
+        MAX_TOKENS.sort,
+      );
+      return parseLaneLines(text, LANES)
+        .filter((line) => line.n >= 1 && line.n <= items.length)
+        .map((line) => ({
+          threadId: items[line.n - 1].threadId,
+          lane: line.lane,
+          why: line.why,
+        }));
     },
 
     async retone(draft: string, tone: Tone) {
@@ -161,6 +202,9 @@ function failingClient(provider: ProviderId): AiClient {
     digest: fail,
     draftReply: fail,
     retone: fail,
+    // Sorting has a deterministic answer already; the failure harness only
+    // needs it to produce nothing, not to throw into a background pass.
+    sortThreads: async () => [],
   };
 }
 

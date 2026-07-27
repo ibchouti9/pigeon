@@ -75,6 +75,70 @@ const DRAFT_RULES = `Rules:
 
 Output format: the body of the reply alone. No subject, no quoted text.`;
 
+/**
+ * The sorting pass.
+ *
+ * Asked only about threads the deterministic rules were unsure of, which is
+ * why the prompt can afford to be strict: there is no cheap fallback left, and
+ * a model that invents a sixth lane produces a thread that lands nowhere.
+ *
+ * A line format rather than JSON. A 3B model running on someone's laptop is
+ * the target, and those emit `1: … — promotions` reliably and well-formed JSON
+ * about as often as they don't. The parser also has to survive a model that
+ * wraps its answer in prose, which `parseLaneLines` does by reading only the
+ * lines that match.
+ *
+ * The evidence comes *before* the lane, and that ordering is the single
+ * biggest accuracy lever in this file. Asked for the label first, llama3.2:3b
+ * answered a five-email batch by walking straight down the list of lanes in
+ * the order the prompt happened to name them — people, promotions,
+ * newsletters, receipts, notifications — while writing reasons underneath that
+ * contradicted its own labels. Made to state the evidence first, the same
+ * model on the same batch got every one right, in half the time.
+ */
+export const SORT_SYSTEM = `${UNIVERSAL}
+
+Sort each email into exactly one lane.
+
+The lanes, and what belongs in each:
+- people: a person wrote this to the reader, by hand.
+- newsletters: a publication or an author's list the reader subscribed to.
+- promotions: marketing, sales outreach, offers, product pitches.
+- receipts: orders, payments, invoices, bookings, tickets, shipping.
+- notifications: automatic mail from a service — codes, alerts, build results.
+
+Rules:
+- Use only those five words. Never invent a lane, never leave one blank.
+- Judge by who sent it and why, not by whether it looks useful.
+- Cold sales outreach written by a named human is promotions, not people.
+- A service email a human never typed is notifications, even if it is friendly.
+- Several emails in a batch often belong in the same lane. Answer each one on
+  its own evidence; never vary the answer for the sake of variety.
+
+For each email, state the evidence first, in at most 7 words, and let the lane
+follow from it.
+
+Output format: one line per email, exactly \`<number>: <evidence> — <lane>\`.
+No preamble, no numbering of your own, no blank lines.`;
+
+export interface SortItem {
+  /** Row number in the prompt, and the key the answer is matched back on. */
+  n: number;
+  from: string;
+  subject: string;
+  /** First line or two of the body. Enough to judge, cheap enough to batch. */
+  preview: string;
+}
+
+export function sortUser(items: SortItem[]): string {
+  return items
+    .map(
+      (i) =>
+        `${i.n}. from: ${i.from}\n   subject: ${i.subject}\n   preview: ${i.preview.replace(/\s+/g, ' ').slice(0, 220)}`,
+    )
+    .join('\n\n');
+}
+
 export function draftSystem(styleSamples: string[] | undefined): string {
   const register = styleSamples?.length
     ? `Match the register, greeting style, sign-off, and typical length of the reader's own sent mail, samples of which follow the thread.`
@@ -214,4 +278,67 @@ export function parseSentence(text: string, maxWords: number): string {
   const cleaned = cleanCompletion(text).split('\n')[0]?.trim() ?? '';
   const words = cleaned.split(/\s+/).filter(Boolean);
   return words.length <= maxWords ? cleaned : `${words.slice(0, maxWords).join(' ')}…`;
+}
+
+/**
+ * Reads `3: promotions — offer with a deadline` out of whatever the model
+ * actually returned, ignoring everything that isn't one of those lines.
+ *
+ * Deliberately forgiving about the separator and the reason: small models
+ * substitute a hyphen for an em dash, drop the reason entirely, or wrap the
+ * lane in asterisks. None of those are worth discarding an otherwise correct
+ * answer over. An unrecognised lane name is worth discarding, because the only
+ * alternative is filing the thread somewhere that does not exist.
+ */
+export function parseLaneLines(
+  text: string,
+  allowed: readonly string[],
+): { n: number; lane: string; why: string }[] {
+  const out: { n: number; lane: string; why: string }[] = [];
+  const seen = new Set<number>();
+
+  for (const raw of text.split('\n')) {
+    const numbered = /^\s*\**(\d+)\**\s*[.:)-]\s*(.+?)\s*$/.exec(raw.trim());
+    if (!numbered) continue;
+
+    const n = Number(numbered[1]);
+    // A model that answers row 3 twice gets its first answer taken. Later
+    // lines in these completions are where the drift is.
+    if (seen.has(n)) continue;
+
+    const body = numbered[2];
+    let lane: string | null = null;
+    let why = '';
+
+    /*
+     * The lane is at the end, which is what the prompt asks for. Read the last
+     * word rather than splitting on the dash: an evidence phrase can contain
+     * one ("Series B, remote-first") and splitting throws half of it away.
+     */
+    const tail = /(?:^|[\s—–:-])\**([A-Za-z]+)\**\s*[.]?\s*$/.exec(body);
+    if (tail && allowed.includes(tail[1].toLowerCase())) {
+      lane = tail[1].toLowerCase();
+      why = body.slice(0, tail.index).replace(/[\s—–:-]+$/, '').trim();
+    } else {
+      /*
+       * And the other way round, for a model that reverts to label-first. The
+       * prompt no longer asks for it; some of them do it anyway, and the
+       * answer is still an answer.
+       */
+      const head = /^\**([A-Za-z]+)\**\s*(?:[—–:-]\s*(.*))?$/.exec(body);
+      if (head && allowed.includes(head[1].toLowerCase())) {
+        lane = head[1].toLowerCase();
+        why = (head[2] ?? '').trim();
+      }
+    }
+
+    // An unrecognised lane is worth discarding, because the only alternative
+    // is filing the thread somewhere that does not exist.
+    if (!lane) continue;
+
+    seen.add(n);
+    out.push({ n, lane, why: why.replace(/[.]$/, '').trim() });
+  }
+
+  return out;
 }

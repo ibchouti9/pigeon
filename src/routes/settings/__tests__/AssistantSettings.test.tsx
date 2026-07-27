@@ -7,7 +7,7 @@ describe('AssistantSettings behaviour toggles', () => {
   beforeEach(() => {
     useSettings.setState({
       provider: { provider: 'none', apiKey: '', baseUrl: DEFAULT_BASE_URL, model: '' },
-      behaviour: { autoSummarize: true, screenerReads: true, matchWritingStyle: true },
+      behaviour: { autoSummarize: true, screenerReads: true, matchWritingStyle: true, sortInbox: true },
     });
   });
 
@@ -15,7 +15,7 @@ describe('AssistantSettings behaviour toggles', () => {
     render(<AssistantSettings />);
 
     const switches = screen.getAllByRole('switch');
-    expect(switches).toHaveLength(3);
+    expect(switches).toHaveLength(4);
     for (const el of switches) {
       expect(el).toHaveAttribute('aria-disabled', 'true');
       expect(el).toBeDisabled();

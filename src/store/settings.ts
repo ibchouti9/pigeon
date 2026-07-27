@@ -24,6 +24,12 @@ export interface BehaviourFlags {
   autoSummarize: boolean;
   screenerReads: boolean;
   matchWritingStyle: boolean;
+  /**
+   * Whether the assistant is asked about the inbox threads the deterministic
+   * lane rules were unsure of. Off leaves lanes working exactly as they do
+   * with no provider connected — the rules alone, which is most threads.
+   */
+  sortInbox: boolean;
 }
 
 export interface UsageStats {
@@ -93,6 +99,7 @@ export const useSettings = create<SettingsState>()(
         autoSummarize: true,
         screenerReads: true,
         matchWritingStyle: true,
+        sortInbox: true,
       },
       appearance: 'system',
       usage: { spendUsd: 0, calls: 0, month: currentMonth() },

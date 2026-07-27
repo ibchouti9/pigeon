@@ -36,6 +36,14 @@ const BEHAVIOUR_ROWS: BehaviourRow[] = [
     offCopy: 'Screener reads are off.',
   },
   {
+    key: 'sortInbox',
+    label: 'Sort the inbox lanes it is unsure about',
+    description:
+      'Pigeon sorts most mail from the headers alone. This asks your model about the rest.',
+    onCopy: 'Assisted sorting is on.',
+    offCopy: 'Assisted sorting is off.',
+  },
+  {
     key: 'matchWritingStyle',
     label: 'Match my writing style in drafts',
     description: "Pigeon looks at mail you've sent to write drafts that sound like you.",

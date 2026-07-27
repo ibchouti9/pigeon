@@ -19,6 +19,28 @@ export interface AiClient {
 
   /** D27 — three named transformations, each regenerating from the current draft. */
   retone(draft: string, tone: Tone): Promise<string>;
+
+  /**
+   * Sorts threads into lanes. Only ever handed the ones the deterministic pass
+   * was unsure of, and answers about as many as it can — a thread the model
+   * skipped or named a nonexistent lane for is simply absent from the result,
+   * and keeps the rules' verdict.
+   */
+  sortThreads(items: SortRequest[]): Promise<SortAnswer[]>;
+}
+
+export interface SortRequest {
+  threadId: string;
+  from: string;
+  subject: string;
+  preview: string;
+}
+
+export interface SortAnswer {
+  threadId: string;
+  lane: string;
+  /** At most seven words, or empty when the model gave none. */
+  why: string;
 }
 
 export type Tone = 'shorter' | 'friendlier' | 'firmer';

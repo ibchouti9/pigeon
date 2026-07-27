@@ -12,6 +12,7 @@ import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
 import { useThreadLanes } from '../../hooks/useThreadLanes';
 import { useLanes } from '../../store/lanes';
 import { LANES, LANE_KEYS } from '../../data/lanes';
+import { useLaneSort } from '../../ai/useLaneSort';
 import { ThreadReader, type ThreadReaderStatus } from './ThreadReader';
 import { useThreadReply } from './useThreadReply';
 import styles from './MailPlaceScreen.module.css';
@@ -39,6 +40,9 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const lanes = useThreadLanes(allThreads, place);
   const selectLane = useLanes((s) => s.select);
   const threads = lanes.threads;
+  // Asks the model about the threads the rules were unsure of, in the
+  // background, over the whole listing rather than the visible lane.
+  useLaneSort(allThreads, place);
   const otherPlaceHasThreads = useMail((s) =>
     place === 'inbox' ? s.archive.length > 0 : false,
   );
