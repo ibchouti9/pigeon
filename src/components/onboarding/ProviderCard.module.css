@@ -93,3 +93,26 @@
 .radioDotSelected::after {
   transform: scale(1);
 }
+
+/*
+ * "· running here" on the Local row when a probe found a runtime. The single
+ * best outcome this screen has, so it goes where the eye already is rather
+ * than in a note below five options nobody has finished reading.
+ */
+.foundHere {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.foundDot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}

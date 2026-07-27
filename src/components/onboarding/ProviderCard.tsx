@@ -37,9 +37,17 @@ const PROVIDER_OPTIONS: ProviderOption[] = [
 export function ProviderRadioGroup({
   value,
   onChange,
+  found,
 }: {
   value: SelectableProvider | null;
   onChange: (id: SelectableProvider) => void;
+  /**
+   * A runtime answering on this machine, e.g. "Ollama · 1 model". Rendered on
+   * the Local row rather than in a note under the list: this is the best
+   * outcome the screen has — no key, no account, nothing leaving the Mac — and
+   * under five options is where nobody scanning them will see it.
+   */
+  found?: string;
 }) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -79,7 +87,11 @@ export function ProviderRadioGroup({
             aria-checked={selected}
             // Without this the name is computed from contents and runs the
             // pieces together — "AnthropicClaude".
-            aria-label={`${PROVIDER_LABELS[opt.id]}, ${opt.sub}`}
+            aria-label={
+              found && opt.id === 'local'
+                ? `${PROVIDER_LABELS[opt.id]}, ${found}, already running on this machine`
+                : `${PROVIDER_LABELS[opt.id]}, ${opt.sub}`
+            }
             tabIndex={isTabbable ? 0 : -1}
             className={cn(styles.row, selected && styles.rowSelected)}
             onClick={() => onChange(opt.id)}
@@ -92,7 +104,15 @@ export function ProviderRadioGroup({
               <span className={styles.markSquare} />
             </span>
             <span className={cn('t-sm', styles.rowName)}>{PROVIDER_LABELS[opt.id]}</span>
-            <span className={cn('t-mono-sm', styles.rowSub)}>{opt.sub}</span>
+            <span className={cn('t-mono-sm', styles.rowSub)}>
+              {found && opt.id === 'local' ? found : opt.sub}
+            </span>
+            {found && opt.id === 'local' && (
+              <span className={cn('t-xs', styles.foundHere)}>
+                <span className={styles.foundDot} aria-hidden="true" />
+                running here
+              </span>
+            )}
             <span
               className={cn(styles.radioDot, selected && styles.radioDotSelected)}
               aria-hidden="true"

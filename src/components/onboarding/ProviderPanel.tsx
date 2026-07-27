@@ -305,15 +305,21 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     <div>
       <section className={styles.section}>
         <span className={cn('t-mono-sm', styles.sectionLabel)}>PROVIDER</span>
-        <ProviderRadioGroup value={providerId} onChange={selectProvider} />
+        <ProviderRadioGroup
+          value={providerId}
+          onChange={selectProvider}
+          found={
+            found
+              ? `${found.runtime} · ${found.models.length === 1 ? '1 model' : `${found.models.length} models`}`
+              : undefined
+          }
+        />
         {found && providerId !== 'local' && (
           <p className={cn('t-sm', styles.found)}>
             <span className={styles.foundDot} aria-hidden="true" />
             <span>
-              <span className={styles.foundName}>{found.runtime} is already running here</span>
-              {' '}
-              with {found.models.length === 1 ? 'one model' : `${found.models.length} models`}.
-              Choose Local to use it — no key, and nothing leaves this Mac.
+              Choose <span className={styles.foundName}>Local</span> to use the model already
+              running here. No key, and nothing leaves this Mac.
             </span>
           </p>
         )}
