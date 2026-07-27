@@ -11,9 +11,6 @@ export interface AiClient {
   /** §7.9 — exactly one sentence, max 18 words. */
   readSender(held: HeldSender, context: SenderContext): Promise<string>;
 
-  /** §7.9 — one sentence with the total, then a breakdown with counts. */
-  digest(held: HeldSender[]): Promise<string>;
-
   /** §7.9 — no new facts; anything unverifiable becomes `[confirm: …]` (D26). */
   draftReply(input: DraftInput): Promise<string>;
 

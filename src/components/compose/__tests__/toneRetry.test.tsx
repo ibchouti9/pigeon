@@ -31,7 +31,6 @@ const stub = vi.hoisted(() => {
         provider: 'anthropic',
         summarizeThread: () => Promise.resolve([]),
         readSender: () => Promise.resolve(''),
-        digest: () => Promise.resolve(''),
         draftReply: () => {
           calls.draftReply += 1;
           if (behaviour.failDraft) return Promise.reject(new Error('nope'));

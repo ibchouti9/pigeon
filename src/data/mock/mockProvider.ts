@@ -27,7 +27,6 @@ interface MockState {
   held: {
     senderId: string;
     messages: Message[];
-    category: HeldSender['category'];
     aiRead: string;
   }[];
   known: Sender[];
@@ -87,7 +86,6 @@ function freshState(): MockState {
     held: held.map((h) => ({
       senderId: h.sender.id,
       messages: h.messages,
-      category: h.category,
       aiRead: h.aiRead,
     })),
     known,
@@ -257,7 +255,6 @@ export class MockMailProvider implements MailProvider {
         sender: { ...sender },
         messages: h.messages,
         aiRead: h.aiRead,
-        category: h.category,
       });
     }
     // By each sender's *newest* held message, matching the Gmail provider.

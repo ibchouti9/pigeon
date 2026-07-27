@@ -171,7 +171,7 @@ export function StatesRoute() {
             The scenarios above swap the mail provider; the assistant is separate, and no
             provider that runs without a key ever fails. This makes every AI call reject,
             so §3.4 2b&apos;s &quot;Summary unavailable.&quot;, the omitted card read and
-            the digest fallback are all reachable. Stays on until you turn it off.
+            the Screener's read are all reachable. Stays on until you turn it off.
           </p>
           <div className={styles.grid}>
             <button

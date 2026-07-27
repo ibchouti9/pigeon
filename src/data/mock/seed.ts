@@ -6,7 +6,7 @@
  * so the inbox always looks current.
  */
 
-import type { Address, DigestCategory, KnownReason, Message, Sender, Thread } from '../../types';
+import type { Address, KnownReason, Message, Sender, Thread } from '../../types';
 
 export const DEMO_ACCOUNT = {
   email: 'marc@ferrum.dev',
@@ -607,13 +607,19 @@ export function buildArchiveThreads(): Thread[] {
 
 // ---------------------------------------------------------------------------
 // The Screener — 12 senders held.
-// Categories total to the digest sentence: 9 junk, 2 recruiters, 1 client inquiry.
+//
+// These used to carry a hand-written category each, so the demo's digest
+// sentence would add up. The digest is gone: the Screener says what Pigeon
+// would do with each sender now, and that comes from reading them rather than
+// from a fixture. The variety of senders is still deliberate — a warm intro,
+// two recruiters (one personal, one mail-merged), three newsletters, cold
+// sales, and outright junk — because that spread is what the triage pass has
+// to get right.
 // ---------------------------------------------------------------------------
 
 interface HeldSeed {
   name: string;
   email: string;
-  category: DigestCategory;
   aiRead: string;
   messages: { subject: string; body: string; daysAgo: number; hour: number }[];
 }
@@ -622,7 +628,6 @@ const HELD_SEEDS: HeldSeed[] = [
   {
     name: 'Sana Sethi',
     email: 'sana@northbound.io',
-    category: 'client inquiry',
     aiRead: 'A warm intro from Dana Whitlock, who you email often.',
     messages: [
       {
@@ -638,7 +643,6 @@ We're standing up a connection between Atlas and our billing side and it's squar
   {
     name: 'Talia Brooks',
     email: 'talia.brooks@vertexsearch.com',
-    category: 'recruiters',
     aiRead: 'A recruiter with a staff engineer role at a company you have no history with.',
     messages: [
       {
@@ -662,7 +666,6 @@ Your background in integration work is exactly what they've been struggling to f
   {
     name: 'Devon Ricci',
     email: 'devon@harborlane-talent.com',
-    category: 'recruiters',
     aiRead: 'Cold recruiter mail from a list — no reply history.',
     messages: [
       {
@@ -678,7 +681,6 @@ Are you available? Day rate is negotiable for the right person.`,
   {
     name: 'Northbound Digest',
     email: 'digest@northbound-media.com',
-    category: 'newsletters',
     aiRead: 'A weekly newsletter you have never opened or replied to.',
     messages: [
       {
@@ -694,7 +696,6 @@ Read the full issue online.`,
   {
     name: 'QuickPitch',
     email: 'hello@quickpitch.io',
-    category: 'sales',
     aiRead: 'Cold sales mail from a list — no reply history.',
     messages: [
       {
@@ -710,7 +711,6 @@ Fifteen minutes is all it takes. Here are three times that work this week.`,
   {
     name: 'Meridian Cloud',
     email: 'billing-notice@meridian-cloud-services.net',
-    category: 'junk',
     aiRead: 'A billing notice from a service that does not appear in your sent mail.',
     messages: [
       {
@@ -726,7 +726,6 @@ Click the link below to confirm your payment method.`,
   {
     name: 'The Founder Letter',
     email: 'letters@founderletter.co',
-    category: 'newsletters',
     aiRead: 'A subscription newsletter with no reply history.',
     messages: [
       {
@@ -740,7 +739,6 @@ Click the link below to confirm your payment method.`,
   {
     name: 'DevTools Weekly',
     email: 'noreply@devtoolsweekly.com',
-    category: 'newsletters',
     aiRead: 'A tooling newsletter you have not replied to.',
     messages: [
       {
@@ -754,7 +752,6 @@ Click the link below to confirm your payment method.`,
   {
     name: 'Apex Growth',
     email: 'growth@apex-outbound.com',
-    category: 'sales',
     aiRead: 'Cold outbound sales mail with no reply history.',
     messages: [
       {
@@ -782,7 +779,6 @@ Worth a chat?`,
   {
     name: 'Prize Notification',
     email: 'winner-notice@promo-rewards-intl.biz',
-    category: 'junk',
     aiRead: 'Bulk mail from an address with no history and no unsubscribe link.',
     messages: [
       {
@@ -796,7 +792,6 @@ Worth a chat?`,
   {
     name: 'SEO Partners',
     email: 'outreach@seopartners-global.com',
-    category: 'junk',
     aiRead: 'Unsolicited outreach about a website you have not asked anyone to work on.',
     messages: [
       {
@@ -812,7 +807,6 @@ I can send the full report free of charge. Just reply "yes".`,
   {
     name: 'Conference Alerts',
     email: 'alerts@techsummit-invites.com',
-    category: 'junk',
     aiRead: 'Bulk event mail from an address with no reply history.',
     messages: [
       {
@@ -825,7 +819,7 @@ I can send the full report free of charge. Just reply "yes".`,
   },
 ];
 
-export function buildHeldMessages(): { sender: Sender; messages: Message[]; category: DigestCategory; aiRead: string }[] {
+export function buildHeldMessages(): { sender: Sender; messages: Message[]; aiRead: string }[] {
   return HELD_SEEDS.map((seed, si) => {
     const sender: Sender = {
       id: `s-held-${si}`,
@@ -846,7 +840,7 @@ export function buildHeldMessages(): { sender: Sender; messages: Message[]; cate
       attachments: [],
       isFromUser: false,
     }));
-    return { sender, messages, category: seed.category, aiRead: seed.aiRead };
+    return { sender, messages, aiRead: seed.aiRead };
   });
 }
 

@@ -292,54 +292,12 @@ export function BulkReview({
   }
 
   const allChecked = displayIds.length > 0 && checked.size >= displayIds.length;
-
-  /*
-   * Only senders still on screen. `triage` is computed over the held list and
-   * a row mid-decision has already been removed from it optimistically, so
-   * offering to select one would be offering a moving target.
-   */
-  const onScreen = new Set(displayIds);
-  const suggested = (
-    [
-      { decision: 'decline' as const, ids: triage.decline.filter((id) => onScreen.has(id)) },
-      { decision: 'approve' as const, ids: triage.approve.filter((id) => onScreen.has(id)) },
-    ]
-  ).filter((g) => g.ids.length > 0);
   const someChecked = checked.size > 0 && !allChecked;
   const activeCount = acting ? acting.ids.length : checked.size;
 
   return (
     <>
       <div className={styles.container} role="list" aria-label="Held senders">
-        {/*
-          Pigeon's read of the whole queue, as a selection the user can accept.
-          It never decides: pressing one of these ticks the boxes and nothing
-          else, and the C-22 action bar below is still what approves or
-          declines, with the eight seconds of undo it always had.
-        */}
-        {suggested.length > 0 && (
-          <div className={styles.suggestion}>
-            <span className={cn('t-sm', styles.suggestionText)}>
-              Pigeon would{' '}
-              {suggested.map((group, i) => (
-                <span key={group.decision}>
-                  {i > 0 && ' and '}
-                  <button
-                    type="button"
-                    className={cn('t-sm', styles.suggestionLink)}
-                    onClick={() => onCheckedChange(new Set(group.ids))}
-                  >
-                    {group.decision} {formatCount(group.ids.length)}
-                  </button>
-                </span>
-              ))}
-            </span>
-            {triage.thinking && (
-              <span className={cn('t-xs', styles.suggestionBusy)}>still reading…</span>
-            )}
-          </div>
-        )}
-
         <div className={styles.header}>
           <label className={styles.selectAllLabel}>
             <Checkbox

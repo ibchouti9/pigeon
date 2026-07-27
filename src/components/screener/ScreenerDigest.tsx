@@ -1,40 +1,45 @@
 import { useNavigate } from 'react-router-dom';
-import type { Digest } from '../../types';
+import { cn } from '../../lib/cn';
 import { AiBlock, DegradedAiBlock } from '../primitives/AiBlock';
 import { Button } from '../primitives/Button';
 import { Chip } from '../primitives/Controls';
-import { plural } from '../../lib/format';
-import { CATEGORY_LABEL } from './digest';
+import { formatCount, plural } from '../../lib/format';
+import type { TriageView } from '../../ai/useTriage';
 import styles from './ScreenerDigest.module.css';
 
 export interface ScreenerDigestProps {
   heldCount: number;
-  digest?: Digest;
-  state: 'loading' | 'ready' | 'failed';
+  triage: TriageView;
   /** A provider is connected at all (§5.13c Provider block). */
   hasProvider: boolean;
   /** The "Read new senders for the Screener" toggle (§5.13c Behaviour block). */
   readsEnabled: boolean;
-  onRetry: () => void;
-  /** A grouping chip was clicked — switch to Bulk review with those senders checked. */
+  /** A group chip was clicked — switch to Bulk review with those senders checked. */
   onSelectGroup: (senderIds: string[]) => void;
 }
 
 /**
- * §5.7 digest block (C-10 `AiBlock kind="digest"`). Degrades per C-28 when no
- * provider is connected, and to a bare count (no body/action) when the user
- * has switched the Screener-reads toggle off (§5.13c) — both distinct from
- * the "Digest failed" state, which keeps the same plain count plus
- * [Try again] (§7.6). The AI call itself lives in `src/ai/useScreenerAi`;
- * this component only renders what it's given.
+ * §5.7's block above the Screener, saying what Pigeon would do with the queue.
+ *
+ * It used to hold a model-written digest sentence — "12 senders held: 9 junk,
+ * 2 recruiters" — and that call is gone. The prompt handed the model a user
+ * message opening "12 senders are waiting:" and got back a completion of that
+ * exact line with everyone listed underneath, so the block rendered a dangling
+ * colon and nothing else. More to the point, a sentence was a worse answer
+ * than a count you can act on.
+ *
+ * The counts are arithmetic over per-sender verdicts, so they cannot
+ * contradict the rows below and cost no call of their own. The model's work is
+ * in the verdicts; this adds them up.
+ *
+ * The chips select. They do not decide — that is still the action bar in bulk
+ * review, with the eight seconds of undo it always had.
  */
 export function ScreenerDigest({
   heldCount,
-  digest,
-  state,
+  triage,
   hasProvider,
   readsEnabled,
-  onRetry,
   onSelectGroup,
 }: ScreenerDigestProps) {
   const navigate = useNavigate();
@@ -45,7 +50,7 @@ export function ScreenerDigest({
       <DegradedAiBlock
         className={styles.wrap}
         headline={plainCount}
-        body="Connect a provider to get a weekly read on who's waiting."
+        body="Connect a provider and Pigeon will say what it would do with each of them."
         action={
           <Button variant="tertiary" size="sm" onClick={() => navigate('/settings/assistant')}>
             Connect a provider
@@ -59,40 +64,53 @@ export function ScreenerDigest({
     return <DegradedAiBlock className={styles.wrap} headline={plainCount} />;
   }
 
-  if (state === 'failed') {
+  const groups = [
+    { key: 'decline' as const, label: 'Decline', ids: triage.decline },
+    { key: 'approve' as const, label: 'Approve', ids: triage.approve },
+  ].filter((g) => g.ids.length > 0);
+
+  /*
+   * Nothing suggested is not a failure, and gets no [Try again]: the model was
+   * asked and preferred to say nothing, which is what the triage prompt is
+   * written to prefer. A plain count is the honest surface for that.
+   */
+  if (groups.length === 0) {
     return (
       <DegradedAiBlock
         className={styles.wrap}
         headline={plainCount}
-        action={
-          <Button variant="tertiary" size="sm" onClick={onRetry}>
-            Try again
-          </Button>
-        }
+        body={triage.thinking ? 'Reading them now.' : 'None of them are an obvious call.'}
       />
     );
   }
+
+  const sentence = `${plainCount} Pigeon would ${groups
+    .map((g) => `${g.label.toLowerCase()} ${formatCount(g.ids.length)}`)
+    .join(' and ')}.`;
 
   return (
     <AiBlock
       className={styles.wrap}
       kind="digest"
-      state={state}
-      content={digest?.sentence}
+      state={triage.thinking ? 'loading' : 'ready'}
+      content={sentence}
       footer={
-        state === 'ready' && digest && digest.groups.length > 0 ? (
-          <div className={styles.chips} role="group" aria-label="Filter by category">
-            {digest.groups.map((g) => (
-              <Chip
-                key={g.category}
-                kind="filter"
-                label={CATEGORY_LABEL[g.category]}
-                count={g.count}
-                onClick={() => onSelectGroup(g.senderIds)}
-              />
-            ))}
-          </div>
-        ) : undefined
+        <div className={styles.chips} role="group" aria-label="Select a group">
+          {groups.map((g) => (
+            <Chip
+              key={g.key}
+              kind="filter"
+              label={g.label}
+              count={g.ids.length}
+              onClick={() => onSelectGroup(g.ids)}
+            />
+          ))}
+          {/*
+            Spelled out, because a chip reading "Decline (5)" could otherwise
+            be taken for the action rather than the selection it is.
+          */}
+          <span className={cn('t-xs', styles.note)}>Selects them. Nothing is decided yet.</span>
+        </div>
       }
     />
   );

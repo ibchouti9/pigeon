@@ -24,7 +24,6 @@ const stub = vi.hoisted(() => {
         provider: 'anthropic',
         summarizeThread: reject,
         readSender: reject,
-        digest: reject,
         draftReply: reject,
         retone: reject,
       },

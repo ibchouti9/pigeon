@@ -19,11 +19,9 @@ import {
   ANSWER_SYSTEM,
   answerUser,
   citedSources,
-  DIGEST_SYSTEM,
   READ_SYSTEM,
   SUMMARY_SYSTEM,
   cleanCompletion,
-  digestUser,
   draftSystem,
   draftUser,
   parseBullets,
@@ -89,7 +87,6 @@ export async function testConnection(config: ProviderConfig): Promise<TestResult
 const MAX_TOKENS = {
   summary: 256,
   read: 128,
-  digest: 192,
   draft: 1024,
   /** One short line per thread, and a batch is at most `SORT_BATCH` of them. */
   sort: 512,
@@ -177,13 +174,6 @@ function makeClient(config: ProviderConfig): AiClient {
       const text = await run(READ_SYSTEM, readUser(held, context), MAX_TOKENS.read);
       const sentence = parseSentence(text, 18);
       if (!sentence) throw new AiError('Read unavailable.');
-      return sentence;
-    },
-
-    async digest(held: HeldSender[]) {
-      const text = await run(DIGEST_SYSTEM, digestUser(held), MAX_TOKENS.digest);
-      const sentence = parseSentence(text, 40);
-      if (!sentence) throw new AiError('Digest unavailable.');
       return sentence;
     },
 
@@ -309,7 +299,6 @@ function failingClient(provider: ProviderId): AiClient {
     provider,
     summarizeThread: fail,
     readSender: fail,
-    digest: fail,
     draftReply: fail,
     retone: fail,
     // Sorting has a deterministic answer already; the failure harness only

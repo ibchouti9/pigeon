@@ -112,26 +112,8 @@ export interface HeldSender {
   messages: Message[];
   /** One sentence, <= 18 words (§7.9). Absent when no provider is connected. */
   aiRead?: string;
-  /** Category assigned by the digest pass, used by the grouping chips. */
-  category?: DigestCategory;
 }
 
-export type DigestCategory =
-  | 'junk'
-  | 'newsletters'
-  | 'recruiters'
-  | 'sales'
-  | 'support'
-  | 'client inquiry'
-  | 'personal'
-  | 'unclear'
-  | 'other';
-
-export interface Digest {
-  /** "12 senders held: 9 junk, 2 recruiters, 1 looks like a client inquiry." */
-  sentence: string;
-  groups: { category: DigestCategory; count: number; senderIds: string[] }[];
-}
 
 export interface Account {
   email: string;

@@ -1,69 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Digest, DigestCategory, HeldSender } from '../types';
+import { useEffect, useRef, useState } from 'react';
 import { useAssistant, useBehaviour } from './useAssistant';
 import { useMail } from '../store/mail';
 
-export type AiState = 'idle' | 'loading' | 'ready' | 'failed';
-
-/** The fixed category vocabulary from §7.9. */
-const CATEGORIES: DigestCategory[] = [
-  'junk',
-  'newsletters',
-  'recruiters',
-  'sales',
-  'support',
-  'client inquiry',
-  'personal',
-  'unclear',
-  'other',
-];
-
-/**
- * Turns the model's one-sentence digest back into chips. The sentence is the
- * product surface; the chips are derived from it so the two can never disagree.
- */
-function parseGroups(sentence: string, held: HeldSender[]): Digest['groups'] {
-  const groups: Digest['groups'] = [];
-  const claimed = new Set<string>();
-
-  for (const category of CATEGORIES) {
-    const match = sentence.match(new RegExp(`(\\d+)\\s+(?:looks like an?\\s+)?${category}`, 'i'));
-    if (!match) continue;
-    const count = Number(match[1]);
-    if (!count) continue;
-
-    const senderIds = held
-      .filter((h) => h.category === category && !claimed.has(h.sender.id))
-      .map((h) => h.sender.id);
-    senderIds.forEach((id) => claimed.add(id));
-
-    groups.push({ category, count, senderIds });
-  }
-
-  return groups;
-}
-
 export interface ScreenerAi {
-  digest: Digest | null;
-  digestState: AiState;
-  retryDigest: () => void;
   /** Sender id → one-sentence read. Absent means the card omits the section. */
   reads: Record<string, string>;
 }
 
 /**
- * The Screener's two AI surfaces: the weekly digest and the per-sender read.
- * Both are governed by the "Read new senders for the Screener" toggle, and both
- * fail quietly — a failed read omits the card section rather than showing an
- * error on the card (§5.7).
- */
-/**
- * How far ahead of the top card the stack pre-fetches reads.
+ * The per-sender read behind each Screener card.
  *
- * There used to be an `eager` mode that fetched a read for every held sender
- * at once, for bulk review's read column. Bulk review renders the evidence
- * behind Pigeon's suggestion now, which the triage pass already produced — so
- * the only caller is the stack, and the stack shows one card at a time.
+ * This used to also produce the weekly digest — one model call for a sentence
+ * summarising the queue. It was removed rather than fixed. The prompt handed
+ * the model a user message opening "12 senders are waiting:" and the model
+ * answered by completing that line and listing everyone underneath, so the
+ * digest block rendered "12 senders are waiting:" with a dangling colon and
+ * nothing after it.
+ *
+ * It could have been fixed. It was deleted because `useTriage` answers the
+ * same question better: a count per outcome, derived from per-sender verdicts
+ * the Screener already has, that cannot disagree with the rows below it and
+ * costs no extra call.
+ *
+ * How far ahead of the top card the stack pre-fetches reads: the stack shows
+ * one sender at a time, and bulk review renders triage evidence rather than
+ * these.
  */
 const STACK_LOOKAHEAD = 4;
 
@@ -72,40 +33,9 @@ export function useScreenerAi(): ScreenerAi {
   const { screenerReads } = useBehaviour();
   const held = useMail((s) => s.held);
 
-  const [digest, setDigest] = useState<Digest | null>(null);
-  const [digestState, setDigestState] = useState<AiState>('idle');
   const [reads, setReads] = useState<Record<string, string>>({});
   const readRequests = useRef(new Set<string>());
   const mounted = useRef(true);
-
-  const runDigest = useCallback(async () => {
-    if (!client || held.length === 0) return;
-    setDigestState('loading');
-    try {
-      const sentence = await client.digest(held);
-      setDigest({ sentence, groups: parseGroups(sentence, held) });
-      setDigestState('ready');
-    } catch {
-      setDigestState('failed');
-    }
-  }, [client, held]);
-
-  useEffect(() => {
-    if (!client || !screenerReads) {
-      setDigest(null);
-      setDigestState('idle');
-      return;
-    }
-    if (held.length === 0) {
-      setDigest(null);
-      setDigestState('idle');
-      return;
-    }
-    void runDigest();
-    // Re-running on every held change would burn a call per decision; the digest
-    // describes the queue as it stood when the Screener was opened.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, screenerReads, held.length === 0]);
 
   useEffect(() => {
     mounted.current = true;
@@ -145,5 +75,5 @@ export function useScreenerAi(): ScreenerAi {
     }
   }, [client, screenerReads, held]);
 
-  return { digest, digestState, retryDigest: () => void runDigest(), reads };
+  return { reads };
 }

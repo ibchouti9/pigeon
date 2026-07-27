@@ -102,7 +102,7 @@ export function ScreenerRoute() {
    * cards ahead, because a card shows one sender at a time and that read is
    * the longer, 18-word form.
    */
-  const { digest, digestState, retryDigest, reads } = useScreenerAi();
+  const { reads } = useScreenerAi();
   const { connected } = useAssistant();
   const { screenerReads } = useBehaviour();
   const triage = useTriage(held);
@@ -220,11 +220,9 @@ export function ScreenerRoute() {
           <>
             <ScreenerDigest
               heldCount={held.length}
-              digest={digest ?? undefined}
-              state={digestState === 'idle' ? 'loading' : digestState}
+              triage={triage}
               hasProvider={connected}
               readsEnabled={screenerReads}
-              onRetry={retryDigest}
               onSelectGroup={selectGroup}
             />
 

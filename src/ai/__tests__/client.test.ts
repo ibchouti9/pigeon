@@ -95,7 +95,7 @@ describe('the dev-only assistant failure switch', () => {
     expect(client).not.toBeNull();
 
     await expect(client!.summarizeThread({ messages: [] } as never, 'a@b.c')).rejects.toThrow();
-    await expect(client!.digest([])).rejects.toThrow();
+    await expect(client!.summarizeThread({ id: 't', subject: '', place: 'inbox', unread: false, messages: [], lastMessageAt: '' }, 'a@b.c')).rejects.toThrow();
     await expect(
       client!.draftReply({ messages: [], subject: '', recipients: [], userName: '' }),
     ).rejects.toThrow();
@@ -112,6 +112,6 @@ describe('the dev-only assistant failure switch', () => {
     setAiFailureForDev(true);
     setAiFailureForDev(false);
     const client = getAiClient(demo());
-    await expect(client!.digest([])).resolves.toBeTruthy();
+    await expect(client!.sortThreads([])).resolves.toEqual([]);
   });
 });

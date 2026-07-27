@@ -31,7 +31,8 @@ const BEHAVIOUR_ROWS: BehaviourRow[] = [
   {
     key: 'screenerReads',
     label: 'Read new senders for the Screener',
-    description: "Pigeon adds a one-line read to each sender card and writes the weekly digest.",
+    description:
+      'Pigeon reads each held sender and says whether it would approve or decline them.',
     onCopy: 'Screener reads are on.',
     offCopy: 'Screener reads are off.',
   },

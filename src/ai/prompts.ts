@@ -52,20 +52,6 @@ Rules:
 
 Output format: the sentence alone. Nothing else.`;
 
-export const DIGEST_SYSTEM = `${UNIVERSAL}
-
-Write one sentence summarizing everyone waiting in the Screener.
-
-Rules:
-- One sentence with the total, then a breakdown by category with counts.
-- Categories come from this fixed vocabulary only: junk, newsletters,
-  recruiters, sales, support, client inquiry, personal, unclear.
-- Format: "12 senders held: 9 junk, 2 recruiters, 1 looks like a client inquiry."
-- Hedge only on the smallest, most consequential group, using "looks like".
-- Never more than four categories; the remainder folds into "other".
-
-Output format: the sentence alone. Nothing else.`;
-
 const DRAFT_RULES = `Rules:
 - No new facts. Every claim must be traceable to the thread.
 - Any date, time, price, quantity, commitment, or attachment reference that is
@@ -369,13 +355,6 @@ ${history}
 ${contacts}
 
 ${first.body.slice(0, MAX_MESSAGE_CHARS)}`;
-}
-
-export function digestUser(held: HeldSender[]): string {
-  const lines = held.map(
-    (h) => `- ${h.sender.name} <${h.sender.email}> — "${h.messages[0].subject}"`,
-  );
-  return `${held.length} senders are waiting:\n\n${lines.join('\n')}`;
 }
 
 export function draftUser(input: DraftInput): string {
