@@ -114,10 +114,11 @@ export function useLaneSort(threads: Thread[], place: 'inbox' | 'archive'): void
 
           try {
             const answers = await client.sortThreads(batch);
-            for (const answer of answers) {
-              if (!LANES.includes(answer.lane as Lane)) continue;
-              recordAssisted(answer.threadId, answer.lane as Lane, answer.why);
-            }
+            recordAssisted(
+              answers
+                .filter((a) => LANES.includes(a.lane as Lane))
+                .map((a) => ({ threadId: a.threadId, lane: a.lane as Lane, why: a.why })),
+            );
           } catch {
             /*
              * One dead batch stops the pass rather than marching through the

@@ -41,7 +41,13 @@ interface LaneState {
   /** Records a correction and forgets any assistant verdict it contradicts. */
   correct: (email: string, lane: Lane) => void;
   clearCorrection: (email: string) => void;
-  recordAssisted: (threadId: string, lane: Lane, why: string) => void;
+  /**
+   * One write per batch, not per answer. Every write re-runs the classifier
+   * over the whole listing, which on a crowded mailbox is 25ms — forty of
+   * those, one per answer, is a second of jank for a background pass nobody
+   * asked for.
+   */
+  recordAssisted: (entries: { threadId: string; lane: Lane; why: string }[]) => void;
 }
 
 export const useLanes = create<LaneState>()(
@@ -65,8 +71,13 @@ export const useLanes = create<LaneState>()(
           return { overrides };
         }),
 
-      recordAssisted: (threadId, lane, why) =>
-        set((s) => ({ assisted: { ...s.assisted, [threadId]: { lane, why } } })),
+      recordAssisted: (entries) =>
+        set((s) => {
+          if (entries.length === 0) return s;
+          const assisted = { ...s.assisted };
+          for (const e of entries) assisted[e.threadId] = { lane: e.lane, why: e.why };
+          return { assisted };
+        }),
     }),
     {
       name: 'pigeon.lanes',

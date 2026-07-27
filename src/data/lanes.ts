@@ -333,6 +333,9 @@ export function threadSender(thread: Thread): Address {
  * line, and this is written to work on exactly that much. Bodies sharpen the
  * verdict; they were never required for one.
  */
+/** How many of a thread's newest messages the classifier reads. */
+const TEXT_MESSAGES = 6;
+
 export function threadSignals(
   thread: Thread,
   hasReplied: (email: string) => boolean,
@@ -342,9 +345,14 @@ export function threadSignals(
   return {
     from,
     subject: thread.subject ?? '',
-    // Newest first: a long thread's oldest message is the least useful 4k.
+    /*
+     * The newest few, newest first. A long thread's oldest message is the
+     * least useful 4k, and on the crowded scenario — 800 threads, 40 messages
+     * each — joining every body only to slice the first 4,000 characters off
+     * the result was most of the 25ms this pass cost.
+     */
     text: messages
-      .slice()
+      .slice(-TEXT_MESSAGES)
       .reverse()
       .map((m) => m.body ?? '')
       .join('\n')
