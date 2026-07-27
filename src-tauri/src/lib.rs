@@ -1,3 +1,4 @@
+mod machine;
 mod mail;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -28,6 +29,7 @@ pub fn run() {
             mail::mail_send,
             mail::mail_sent_recipients,
             mail::mail_attachment,
+            machine::machine_memory,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,0 +1,174 @@
+/* The hardware-ranked model list, in place of a free-text model field. */
+
+.picker {
+  margin-top: var(--space-2);
+}
+
+.header {
+  color: var(--color-text-tertiary);
+}
+
+.otherHeader {
+  margin-top: var(--space-4);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  /* Long enough to show the curated picks whole; scrolls once expanded. */
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--color-surface-hover);
+}
+
+.rowSelected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+/*
+ * Listed, and visibly out of reach. Hiding a model this Mac cannot run would
+ * leave someone wondering later why Pigeon never mentioned it.
+ */
+.rowTooLarge {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rowTooLarge:hover {
+  background: transparent;
+}
+
+.top {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.name {
+  font-weight: 500;
+}
+
+.size,
+.description {
+  color: var(--color-text-tertiary);
+}
+
+.badge {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-weight: 500;
+}
+
+.installed {
+  color: var(--color-accent);
+}
+
+.download {
+  color: var(--color-text-tertiary);
+}
+
+.fit {
+  margin-left: auto;
+}
+
+.comfortable {
+  color: var(--color-accent);
+}
+
+.tight,
+.tradeoff {
+  color: var(--color-text-secondary);
+}
+
+.too-large {
+  color: var(--color-destructive);
+}
+
+.toggle {
+  margin-top: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--color-text-primary);
+}
+
+/* Download progress, inside the row being downloaded. */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.bar {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  /*
+   * No width until Ollama has named a layer size. A bar sitting at zero while
+   * it resolves the manifest is honest; one animating from nowhere is not.
+   */
+  width: 0;
+  background: var(--color-accent);
+  transition: width var(--duration-base) linear;
+}
+
+.progressText,
+.cancel {
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+.cancel {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.cancel:hover {
+  color: var(--color-text-primary);
+}
+
+.error {
+  margin-top: var(--space-2);
+  color: var(--color-destructive);
+}

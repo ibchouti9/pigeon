@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';
 import { CURATED_MODELS, testConnection } from '../../ai/client';
 import { detectLocalEndpoint, preferredModel, type LocalEndpoint } from '../../ai/detectLocal';
+import { buildCatalog, uncuratedInstalled, type Catalog } from '../../ai/catalog';
+import { usableMemory } from '../../ai/machine';
+import { ModelPicker } from './ModelPicker';
 import {
   DEFAULT_BASE_URL,
   PROVIDER_LABELS,
@@ -144,6 +147,12 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
    * Local and still presses Test.
    */
   const [found, setFound] = useState<LocalEndpoint | null>(null);
+  /**
+   * How much of this Mac a model may have, surveyed once. Zero in the web
+   * build, which cannot ask — the picker then ranks by size and says so
+   * rather than guessing at what fits.
+   */
+  const [machine, setMachine] = useState<{ gb: number; chip?: string }>({ gb: 0 });
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
   const revealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -157,6 +166,9 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
 
   useEffect(() => {
     let live = true;
+    void usableMemory().then((m) => {
+      if (live) setMachine(m);
+    });
     void detectLocalEndpoint().then((endpoint) => {
       if (!live || !endpoint) return;
       setFound(endpoint);
@@ -301,6 +313,17 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
   const modelOptions: string[] =
     providerId && !isLocal ? MODEL_OPTIONS[providerId as RemoteProvider] : (localModels ?? []);
 
+  /*
+   * The local model list is a recommendation, not an inventory. A remote
+   * provider's is genuinely a fixed menu of four names and stays a `<select>`;
+   * the local one has to answer "which of these should I run on this
+   * machine", which a dropdown of whatever happens to be pulled cannot.
+   */
+  const catalog: Catalog | null = isLocal
+    ? buildCatalog(machine.gb, localModels ?? [], machine.chip)
+    : null;
+  const otherInstalled = isLocal ? uncuratedInstalled(localModels ?? []) : [];
+
   return (
     <div>
       <section className={styles.section}>
@@ -394,6 +417,18 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
             <label htmlFor="provider-model" className={cn('t-mono-sm', styles.sectionLabel)}>
               MODEL
             </label>
+            {catalog ? (
+              <ModelPicker
+                catalog={catalog}
+                other={otherInstalled}
+                selected={model}
+                onSelect={setModel}
+                baseUrl={baseUrl.trim() || undefined}
+                onPulled={(name) =>
+                  setLocalModels((prev) => (prev?.includes(name) ? prev : [...(prev ?? []), name]))
+                }
+              />
+            ) : (
             <div className={styles.modelWrap}>
               <select
                 id="provider-model"
@@ -416,6 +451,7 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
               </span>
               <Icon name="chevron-down" size={16} className={styles.modelChevron} />
             </div>
+            )}
           </section>
         </>
       )}
