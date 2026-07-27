@@ -27,6 +27,8 @@ import { groupedWindow, rowOffset } from '../../lib/groupedWindow';
 import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { ThreadRow } from './ThreadRow';
 import { RevokedState } from './RevokedState';
+import { LaneBar } from './LaneBar';
+import type { LaneView } from '../../hooks/useThreadLanes';
 import styles from './MailListColumn.module.css';
 
 /** Matches --duration-base; reduced motion shortens the CSS, not this. */
@@ -67,6 +69,12 @@ export interface MailListColumnProps {
   onLoadOlder?: () => void;
   /** Narrow tablet (720–879px) — the list is the whole single column. */
   fullWidth?: boolean;
+  /**
+   * Inbox only. `threads` is already the selected lane's slice; this is what
+   * draws the chips and what a row asks for its badge.
+   */
+  lanes?: LaneView;
+  onSelectLane?: (lane: LaneView['selected']) => void;
 }
 
 /**
@@ -115,6 +123,8 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
       loadingOlder,
       onLoadOlder,
       fullWidth,
+      lanes,
+      onSelectLane,
     },
     ref,
   ) {
@@ -417,6 +427,14 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
             </>
           )}
         </div>
+        {lanes?.enabled && onSelectLane && checked.size === 0 && (
+          <LaneBar
+            selected={lanes.selected}
+            counts={lanes.counts}
+            unread={lanes.unread}
+            onSelect={onSelectLane}
+          />
+        )}
 
         {revoked ? (
           <RevokedState onConnectGmail={onConnectGmail} />

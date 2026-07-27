@@ -18,7 +18,7 @@
  * unsure of, never about the ones where the evidence already decided.
  */
 
-import type { Address } from '../types';
+import type { Address, Thread } from '../types';
 
 export type Lane = 'people' | 'newsletters' | 'promotions' | 'receipts' | 'notifications';
 
@@ -107,8 +107,20 @@ const RE = {
     /(\b\d{1,3}\s?% ?off\b|\bsave (up to )?[$£€]?\d|\bsales?\b|\bdeals?\b|\bdiscount|\bcoupon|\bpromo code\b|\bfree shipping\b|\blimited time\b|\blast chance\b|\bends (today|tonight|soon)\b|\bexclusive offer\b|\bshop now\b|\bbuy now\b|\bblack friday\b|\bcyber monday\b|\bflash sale\b|\bclearance\b|\bnew arrivals\b|\bback in stock\b|\bupgrade to (pro|premium|plus)\b|\btry .{0,20}free\b)/i,
   notification:
     /\b(security alert|new sign-?in|signed in|log ?in from|verify your|verification code|confirm your (email|address)|password (reset|changed)|two-?factor|2fa|one-?time (code|password)|your code is|build (failed|passed|succeeded)|deploy(ed|ment)|pipeline|workflow run|pull request|merge request|(opened|closed|reopened|new|comment(ed)? on) issue #\d|commented on|mentioned you|assigned (you|to you)|review requested|calendar|invitation:|declined:|accepted:|reminder:|expires? (in|on|soon)|has expired|action required|usage (limit|alert)|quota|downtime|incident|status update|backup (complete|failed)|storage (is )?(almost )?full)/i,
+  /*
+   * An edition. Deliberately *not* "unsubscribe": every marketing email carries
+   * one, and treating it as newsletter evidence filed a cold sales pitch under
+   * Reading. Unsubscribe wording says the mail was sent to a list — which is a
+   * reason it is not from a person, and no reason at all to think you read it.
+   */
   newsletter:
-    /\b(newsletter|this week|weekly (digest|roundup|edition|briefing)|daily (digest|briefing|brief)|issue #?\d|vol\.? ?\d|edition|roundup|digest|read (more|online)|view (this|in) (email )?(in your )?browser|forwarded this|unsubscrib|manage (your )?(email )?preferences|you (are|'re) receiving this)/i,
+    /\b(newsletter|weekly (digest|roundup|edition|briefing|read)|daily (digest|briefing|brief)|issue #?\d|vol\.? ?\d|this week'?s? (edition|issue|picks|links)|roundup|digest|latest (issue|edition)|read (it )?online|view (this|in) (email )?(in your )?browser|forwarded this|in this (issue|edition))/i,
+  /** Marks of mail sent to a list, whatever the list is for. */
+  bulkMarks:
+    /\b(unsubscrib|manage (your )?(email )?(preferences|subscription)|update your preferences|you (are|'re) receiving this|opt ?out|sent to you because|no longer wish to receive)/i,
+  /** Someone is selling to you personally: outreach, not a campaign. */
+  pitch:
+    /\b(book (a|some) (call|time|demo)|schedule a (call|demo)|15[- ]minute|quick (call|chat|question)|hop on a call|worth a (chat|conversation)|reaching out (to|about)|following up on my (last )?(email|note)|circling back|touch base|our (platform|solution) (can|helps)|invited to a .{0,20}demo|see it in action|start your (free )?trial|pricing (options|plans))/i,
   /** Marketing writes like this and people do not. */
   shouting: /[A-Z]{4,}|[!]{2,}|[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u,
 };
@@ -161,7 +173,7 @@ function humanEvidence(s: LaneSignals): { score: number; why: string } | null {
   const machine = RE.machineLocal.test(local) || RE.roleLocal.test(local) || RE.campaignLocal.test(local);
   if (machine) return null;
 
-  if (s.listUnsubscribe || s.bulk) return null;
+  if (s.listUnsubscribe || s.bulk || RE.bulkMarks.test(s.text)) return null;
 
   if (s.hasReplied) return { score: 0.9, why: 'You have written to them before' };
   if (PERSONAL_HOSTS.has(domain)) return { score: 0.8, why: 'A personal address, written by hand' };
@@ -208,16 +220,17 @@ export function classify(s: LaneSignals): LaneVerdict {
     };
   }
 
-  const promo = hit(RE.promo, subject, text);
-  const news = hit(RE.newsletter, subject, text) || s.listUnsubscribe === true;
+  const promo = hit(RE.promo, subject, text) || hit(RE.pitch, subject, text);
+  const news = hit(RE.newsletter, subject, text);
+  const bulk = s.listUnsubscribe === true || s.bulk === true || RE.bulkMarks.test(text);
 
-  if (promo && !hit(RE.promo, subject) && news) {
-    // Offer wording buried in the footer of something that is a newsletter.
+  if (promo && !hit(RE.promo, subject) && !hit(RE.pitch, subject) && news) {
+    // Offer wording buried in the footer of something that is an edition.
     return { lane: 'newsletters', confidence: 0.7, why: 'A subscription you read, with an offer at the bottom' };
   }
 
   if (promo) {
-    const strong = hit(RE.promo, subject) || RE.shouting.test(subject);
+    const strong = hit(RE.promo, subject) || hit(RE.pitch, subject) || RE.shouting.test(subject);
     return {
       lane: 'promotions',
       confidence: strong ? 0.86 : 0.64,
@@ -230,8 +243,33 @@ export function classify(s: LaneSignals): LaneVerdict {
     return {
       lane: 'newsletters',
       confidence: strong ? 0.82 : 0.64,
-      why: s.listUnsubscribe ? 'Sent to a mailing list you are on' : 'Reads like a regular edition',
+      why: strong ? 'Reads like a regular edition' : 'Mentions an edition somewhere in it',
     };
+  }
+
+  /*
+   * Sent to a list, and nothing in it says what kind of list.
+   *
+   * Who signed it is the tiebreak. A person's name in the local part, writing
+   * at length, is how every independent newsletter on the internet arrives —
+   * Substack, Ghost, a `mailto:` and a text file. A role address with no
+   * edition wording is a campaign.
+   *
+   * Offers, not Alerts, when it falls through: Alerts is where you go for a
+   * sign-in code at the moment you need one, and it is worth more kept clean
+   * than kept complete. Low confidence either way, which is exactly what makes
+   * these the threads an assistant pass is asked about.
+   */
+  if (bulk) {
+    const authored = !RE.roleLocal.test(local) && !RE.campaignLocal.test(local);
+    if (authored || text.length > 1200) {
+      return {
+        lane: 'newsletters',
+        confidence: 0.62,
+        why: authored ? 'A person writing to a list they run' : 'Long enough to be something you read',
+      };
+    }
+    return { lane: 'promotions', confidence: 0.45, why: 'Sent to a list, with nothing saying what for' };
   }
 
   if (RE.machineLocal.test(local)) {
@@ -256,4 +294,50 @@ export function isGuess(v: LaneVerdict): boolean {
 export interface LaneAssignment extends LaneVerdict {
   /** Where the verdict came from. A user's own choice is never overwritten. */
   source: 'rules' | 'assistant' | 'user';
+}
+
+/**
+ * Who a row is from. The newest message is very often the user's own reply, so
+ * the newest message that *isn't* is the one that names the conversation —
+ * the same rule the engine's `preview_uid` follows.
+ */
+export function threadSender(thread: Thread): Address {
+  const messages = thread.messages ?? [];
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (!messages[i].isFromUser) return messages[i].from;
+  }
+  return messages[messages.length - 1]?.from ?? { name: '', email: '' };
+}
+
+/**
+ * A thread's evidence, in the shape `classify` reads.
+ *
+ * `hasReplied` comes from outside because a thread does not know it: the user
+ * may have written to this address for a decade in conversations that aren't
+ * this one, and that is the single strongest people signal there is.
+ *
+ * A listing's `preview` row carries one synthetic message holding the preview
+ * line, and this is written to work on exactly that much. Bodies sharpen the
+ * verdict; they were never required for one.
+ */
+export function threadSignals(
+  thread: Thread,
+  hasReplied: (email: string) => boolean,
+): LaneSignals {
+  const messages = thread.messages ?? [];
+  const from = threadSender(thread);
+  return {
+    from,
+    subject: thread.subject ?? '',
+    // Newest first: a long thread's oldest message is the least useful 4k.
+    text: messages
+      .slice()
+      .reverse()
+      .map((m) => m.body ?? '')
+      .join('\n')
+      .slice(0, 4000),
+    hasReplied: hasReplied(from.email),
+    userInThread: messages.some((m) => m.isFromUser),
+    messageCount: thread.messageCount ?? messages.length,
+  };
 }

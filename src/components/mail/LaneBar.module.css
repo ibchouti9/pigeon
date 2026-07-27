@@ -1,0 +1,31 @@
+/* The lane chips, directly under the list header. */
+
+.bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--border-hairline);
+  /*
+   * The row scrolls rather than wraps: five chips at the 380px column width is
+   * two lines, and a header that changes height as mail arrives moves the list
+   * under the pointer.
+   */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.bar::-webkit-scrollbar {
+  display: none;
+}
+
+.bar > * {
+  flex: none;
+}
+
+/* A lane with unread in it reads a shade stronger than one without. */
+.hasUnread {
+  color: var(--color-text-primary);
+}

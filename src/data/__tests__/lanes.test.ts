@@ -146,11 +146,32 @@ describe('newsletters', () => {
     );
   });
 
-  it('a List-Unsubscribe header alone puts it in reading', () => {
+  it('a person writing to their own list is reading, on the header alone', () => {
     const v = classify(
       signals({ subject: 'Thoughts on caching', from: { email: 'ada@blog.com' }, listUnsubscribe: true }),
     );
     expect(v.lane).toBe('newsletters');
+  });
+
+  it('a role address on a list, with no edition wording, is an offer instead', () => {
+    const v = classify(
+      signals({ subject: 'Introducing our new look', from: { email: 'marketing@shop.com' }, listUnsubscribe: true }),
+    );
+    expect(v.lane).toBe('promotions');
+    expect(isGuess(v)).toBe(true);
+  });
+
+  it('an unsubscribe footer is a bulk mark, not evidence of an edition', () => {
+    // The exact bug this split fixes: cold outreach carrying an unsubscribe
+    // link used to file itself under things the user reads.
+    const v = classify(
+      signals({
+        subject: "You're invited to a 15-minute demo",
+        text: 'Our platform helps teams ship faster. Unsubscribe here.',
+        from: { name: 'Devon Marsh', email: 'devon@quickpitch.io' },
+      }),
+    );
+    expect(v.lane).toBe('promotions');
   });
 
   it('an offer in the footer of an edition stays an edition', () => {

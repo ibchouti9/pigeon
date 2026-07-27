@@ -9,6 +9,8 @@ import type { Place, Thread } from '../../types';
 import { useAssistant } from '../../ai/useAssistant';
 import { useThreadSummary } from '../../ai/useThreadSummary';
 import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
+import { useThreadLanes } from '../../hooks/useThreadLanes';
+import { useLanes } from '../../store/lanes';
 import { ThreadReader, type ThreadReaderStatus } from './ThreadReader';
 import { useThreadReply } from './useThreadReply';
 import styles from './MailPlaceScreen.module.css';
@@ -25,7 +27,17 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const bp = useBreakpoint();
   const online = useOnline();
 
-  const threads = useMail((s) => (place === 'inbox' ? s.inbox : s.archive));
+  const allThreads = useMail((s) => (place === 'inbox' ? s.inbox : s.archive));
+  /*
+   * Lanes are a read over the listing, not a filter the provider knows about.
+   * `threads` below is the selected lane's slice and everything downstream —
+   * the cursor, `j`/`k`, the archive-advances-to-next rule — operates on it, so
+   * the keyboard stays inside the lane you are looking at rather than jumping
+   * into mail the column isn't showing.
+   */
+  const lanes = useThreadLanes(allThreads, place);
+  const selectLane = useLanes((s) => s.select);
+  const threads = lanes.threads;
   const otherPlaceHasThreads = useMail((s) =>
     place === 'inbox' ? s.archive.length > 0 : false,
   );
@@ -302,6 +314,8 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           hasOlder={hasOlder}
           loadingOlder={loadingOlder}
           onLoadOlder={() => void loadOlder(place)}
+          lanes={lanes}
+          onSelectLane={selectLane}
         />
       )}
       {showReader && (
