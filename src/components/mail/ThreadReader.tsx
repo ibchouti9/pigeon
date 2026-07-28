@@ -3,7 +3,7 @@ import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { defaultCollapse, firstExpandedId, readerStartOffset } from './readerLayout';
 import { cn } from '../../lib/cn';
 import { displayName, joinNames, plural } from '../../lib/format';
-import type { Address, Message, Place, Thread } from '../../types';
+import type { Address, MailView, Message, Thread } from '../../types';
 import type { Breakpoint } from '../../hooks/useBreakpoint';
 import { AiBlock, type AiBlockState } from '../primitives/AiBlock';
 import { Button } from '../primitives/Button';
@@ -21,7 +21,7 @@ export type ThreadReaderStatus = 'none' | 'loading' | 'error' | 'ready';
 export interface ThreadReaderProps {
   status: ThreadReaderStatus;
   thread?: Thread;
-  place: Place;
+  place: MailView;
   selfEmail: string;
   online: boolean;
   breakpoint: Breakpoint;

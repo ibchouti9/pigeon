@@ -3,9 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useCompose } from '../../store/compose';
-import { useHeldCount, useMail, useUnreadCount } from '../../store/mail';
+import { LOCAL_DRAFT_ID, useHeldCount, useMail, useUnreadCount } from '../../store/mail';
 import { isTypingTarget, shortcutsBlocked } from '../../store/ui';
-import type { Place, Thread } from '../../types';
+import type { MailView, Place, Thread } from '../../types';
 import { useAssistant } from '../../ai/useAssistant';
 import { useThreadSummary } from '../../ai/useThreadSummary';
 import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
@@ -23,14 +23,22 @@ import styles from './MailPlaceScreen.module.css';
  * (Inbox or Archive), wired to `useMail` with the URL selecting the open
  * thread. Archive differs from Inbox only in the four ways listed in §5.10.
  */
-export function MailPlaceScreen({ place }: { place: Place }) {
+/** §5.5/§5.10's screen titles, plus the two views that were never built. */
+const VIEW_TITLES: Record<MailView, string> = {
+  inbox: 'Inbox',
+  archive: 'Archive',
+  sent: 'Sent',
+  drafts: 'Drafts',
+};
+
+export function MailPlaceScreen({ place }: { place: MailView }) {
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const bp = useBreakpoint();
   const online = useOnline();
 
-  const allThreads = useMail((s) => (place === 'inbox' ? s.inbox : s.archive));
+  const allThreads = useMail((s) => s[place]);
   /*
    * Lanes are a read over the listing, not a filter the provider knows about.
    * `threads` below is the selected lane's slice and everything downstream —
@@ -38,14 +46,14 @@ export function MailPlaceScreen({ place }: { place: Place }) {
    * the keyboard stays inside the lane you are looking at rather than jumping
    * into mail the column isn't showing.
    */
-  const lanes = useThreadLanes(allThreads, place);
+  const lanes = useThreadLanes(allThreads, place === 'inbox' ? 'inbox' : 'archive');
   const selectLane = useLanes((s) => s.select);
   const correctLane = useLanes((s) => s.correct);
   const clearLaneCorrection = useLanes((s) => s.clearCorrection);
   const threads = lanes.threads;
   // Asks the model about the threads the rules were unsure of, in the
   // background, over the whole listing rather than the visible lane.
-  useLaneSort(allThreads, place);
+  useLaneSort(allThreads, place === 'inbox' ? 'inbox' : 'archive');
   const otherPlaceHasThreads = useMail((s) =>
     place === 'inbox' ? s.archive.length > 0 : false,
   );
@@ -69,7 +77,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   const listRef = useRef<MailListColumnHandle>(null);
   const cursorThreadIdRef = useRef<string | null>(null);
 
-  const title = place === 'inbox' ? 'Inbox' : 'Archive';
+  const title = VIEW_TITLES[place];
   const otherPlace: Place = place === 'inbox' ? 'archive' : 'inbox';
   const selfEmail = account?.email ?? '';
 
@@ -181,6 +189,15 @@ export function MailPlaceScreen({ place }: { place: Place }) {
   }
 
   function goTo(id: string) {
+    /*
+     * The local draft is a composition, not a conversation. Opening it in the
+     * reader would show a one-message thread the user cannot edit — the whole
+     * point of the row is to get back to writing it.
+     */
+    if (id === LOCAL_DRAFT_ID) {
+      openCompose();
+      return;
+    }
     navigate(pathIn(`/t/${id}`));
   }
 

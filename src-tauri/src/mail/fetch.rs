@@ -110,11 +110,21 @@ pub fn quote_imap(text: &str) -> String {
 
 /// The Gmail query for a place. Mirrors the REST provider it replaced, which
 /// mirrors §2.1: the archive is everything that is in no other place.
+/// The Gmail search behind each list the user can open.
+///
+/// Sent and Drafts are reads over labels rather than §2.1 places: a
+/// conversation you replied to is in your inbox *and* in your sent mail, and
+/// the archive query below excludes both precisely so that a thread has one
+/// place and one only. Widening `Place` to hold them would have made that
+/// false everywhere §2.3 relies on it.
 fn place_query(place: &str) -> &'static str {
-    if place == "inbox" {
-        "in:inbox"
-    } else {
-        "-in:inbox -in:sent -in:drafts -in:chats"
+    match place {
+        "inbox" => "in:inbox",
+        "sent" => "in:sent",
+        "drafts" => "in:drafts",
+        // The archive is everything with no other home. Unchanged, and it is
+        // what keeps sent mail and drafts from appearing there twice.
+        _ => "-in:inbox -in:sent -in:drafts -in:chats",
     }
 }
 

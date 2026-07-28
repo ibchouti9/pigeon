@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/cn';
-import type { Place } from '../../types';
+import { isPlace, type MailView } from '../../types';
 import { Button } from '../primitives/Button';
 import { Checkbox } from '../primitives/Field';
 import { Icon } from '../primitives/Icon';
@@ -32,7 +32,7 @@ export interface ThreadRowProps {
   checked: boolean;
   cursor: boolean;
   open: boolean;
-  place: Place;
+  place: MailView;
   online: boolean;
   /** Playing the §4.6 row-depart animation before it leaves the list. */
   departing?: boolean;
@@ -78,6 +78,12 @@ export function ThreadRow({
 }: ThreadRowProps) {
   const accessibleName = `${sender}, ${subject}, ${timestampSpoken}${unread ? ', unread' : ''}`;
   const archiveLabel = place === 'inbox' ? 'Archive' : 'Move to inbox';
+  /*
+   * Sent and Drafts are reads over labels, not §2.1 places, so there is
+   * nowhere for a row to be moved *to*. Offering the control anyway would be
+   * an affordance that says it works and doesn't.
+   */
+  const movable = isPlace(place);
 
   return (
     <div
@@ -139,6 +145,7 @@ export function ThreadRow({
           <span className={cn('t-mono-sm', styles.timestampText)}>{timestamp}</span>
         </span>
       </button>
+      {movable && (
       <span className={styles.archiveHover}>
         <Tooltip label={archiveLabel}>
           <Button
@@ -158,6 +165,7 @@ export function ThreadRow({
           </Button>
         </Tooltip>
       </span>
+      )}
     </div>
   );
 }

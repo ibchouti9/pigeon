@@ -94,6 +94,8 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
     { to: '/inbox', icon: 'inbox', label: 'Inbox', count: unread, countVariant: 'plain', countNoun: 'unread' },
     { to: '/screener', icon: 'screener-ring', label: 'Screener', count: heldCount, countVariant: 'ring', countNoun: 'waiting' },
     { to: '/archive', icon: 'archive', label: 'Archive' },
+    { to: '/sent', icon: 'sent', label: 'Sent' },
+    { to: '/drafts', icon: 'drafts', label: 'Drafts' },
   ];
 
   return (

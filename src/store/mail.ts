@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import type { Account, Address, HeldSender, Sender, Thread } from '../types';
+import type { Account, Address, HeldSender, MailView, Sender, Thread } from '../types';
 import type { MailProvider, SearchResults } from '../data/provider';
 import { MailError } from '../data/provider';
 import { MockMailProvider } from '../data/mock/mockProvider';
 import { toast } from './toast';
+import { useCompose } from './compose';
 import { displayName, plural } from '../lib/format';
 
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -14,12 +15,16 @@ interface MailState {
 
   inbox: Thread[];
   archive: Thread[];
+  /** Mail the user sent. A read over `in:sent`, not a §2.1 place. */
+  sent: Thread[];
+  /** Unsent compositions on the server, plus the local one (D13). */
+  drafts: Thread[];
   held: HeldSender[];
   approved: Sender[];
   declined: Sender[];
   contacts: Address[];
 
-  status: Record<'account' | 'inbox' | 'archive' | 'held' | 'senders', LoadStatus>;
+  status: Record<'account' | MailView | 'held' | 'senders', LoadStatus>;
   /**
    * Bumped whenever the provider is swapped. A load started against the old
    * provider must not apply its result afterwards — signing out of Gmail back
@@ -36,13 +41,13 @@ interface MailState {
    * mailbox can hold tens of thousands of threads and drawing the first screen
    * must not depend on reaching the last one.
    */
-  hasOlder: Record<'inbox' | 'archive', boolean>;
-  loadingOlder: Record<'inbox' | 'archive', boolean>;
+  hasOlder: Record<MailView, boolean>;
+  loadingOlder: Record<MailView, boolean>;
 
   setProvider: (p: MailProvider) => void;
   loadAccount: () => Promise<void>;
-  loadThreads: (place: 'inbox' | 'archive') => Promise<void>;
-  loadOlder: (place: 'inbox' | 'archive') => Promise<void>;
+  loadThreads: (view: MailView) => Promise<void>;
+  loadOlder: (view: MailView) => Promise<void>;
   loadHeld: () => Promise<void>;
   loadSenders: () => Promise<void>;
   loadContacts: () => Promise<void>;
@@ -136,12 +141,62 @@ function isRevoked(error: unknown): boolean {
   return error instanceof MailError && error.code === 'revoked';
 }
 
+/** The id the local draft is listed under. Never a real thread's. */
+export const LOCAL_DRAFT_ID = 'local-draft';
+
+/**
+ * D13's one open draft, as a row in Drafts.
+ *
+ * The draft lives in `useCompose` and now survives a restart, which fixed
+ * losing it — but it was still reachable only from whatever screen happened to
+ * have the composer open. A Drafts list that cannot show the one draft the
+ * product allows would be a folder that is always empty.
+ *
+ * Server-side drafts are a separate thing and not implemented: writing one
+ * needs an IMAP APPEND to the \Drafts folder. The provider returns whatever it
+ * has and this is merged on top.
+ */
+function localDraftRow(): Thread | null {
+  const { draft } = useCompose.getState();
+  if (!draft) return null;
+  const written = draft.body.trim() || draft.subject.trim() || draft.to.length > 0;
+  if (!written) return null;
+
+  const now = new Date().toISOString();
+  return {
+    id: LOCAL_DRAFT_ID,
+    subject: draft.subject.trim() || '(no subject)',
+    // Drafts are not in a §2.1 place; the field is required, and this row is
+    // never listed anywhere that reads it.
+    place: 'archive',
+    unread: false,
+    lastMessageAt: now,
+    messageCount: 1,
+    messages: [
+      {
+        id: LOCAL_DRAFT_ID,
+        threadId: LOCAL_DRAFT_ID,
+        subject: draft.subject.trim() || '(no subject)',
+        from: { name: 'You', email: '' },
+        to: draft.to,
+        cc: draft.cc,
+        body: draft.body,
+        date: now,
+        attachments: [],
+        isFromUser: true,
+      },
+    ],
+  };
+}
+
 export const useMail = create<MailState>((set, get) => ({
   provider: new MockMailProvider(),
   account: null,
 
   inbox: [],
   archive: [],
+  sent: [],
+  drafts: [],
   held: [],
   approved: [],
   declined: [],
@@ -151,11 +206,13 @@ export const useMail = create<MailState>((set, get) => ({
     account: 'idle',
     inbox: 'idle',
     archive: 'idle',
+    sent: 'idle',
+    drafts: 'idle',
     held: 'idle',
     senders: 'idle',
   },
-  hasOlder: { inbox: false, archive: false },
-  loadingOlder: { inbox: false, archive: false },
+  hasOlder: { inbox: false, archive: false, sent: false, drafts: false },
+  loadingOlder: { inbox: false, archive: false, sent: false, drafts: false },
   revoked: false,
   providerEpoch: 0,
   deciding: 0,
@@ -168,6 +225,8 @@ export const useMail = create<MailState>((set, get) => ({
       account: null,
       inbox: [],
       archive: [],
+      sent: [],
+      drafts: [],
       held: [],
       approved: [],
       declined: [],
@@ -176,11 +235,13 @@ export const useMail = create<MailState>((set, get) => ({
         account: 'idle',
         inbox: 'idle',
         archive: 'idle',
+        sent: 'idle',
+        drafts: 'idle',
         held: 'idle',
         senders: 'idle',
       },
-      hasOlder: { inbox: false, archive: false },
-      loadingOlder: { inbox: false, archive: false },
+      hasOlder: { inbox: false, archive: false, sent: false, drafts: false },
+      loadingOlder: { inbox: false, archive: false, sent: false, drafts: false },
       revoked: false,
     })),
 
@@ -228,7 +289,9 @@ export const useMail = create<MailState>((set, get) => ({
         publish(partial, false),
       );
       if (get().providerEpoch !== epoch) return;
-      publish(threads, true);
+      // Newest first, and nothing the user has typed is newer than now.
+      const local = place === 'drafts' ? localDraftRow() : null;
+      publish(local ? [local, ...threads] : threads, true);
       set((s) => ({
         hasOlder: { ...s.hasOlder, [place]: get().provider.hasOlder(place) },
       }));

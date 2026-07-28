@@ -71,6 +71,26 @@ export interface Message {
 /** Where a thread lives. Every thread is in exactly one place (§2.1). */
 export type Place = 'inbox' | 'archive';
 
+/**
+ * A list the user can open.
+ *
+ * Deliberately not the same type as `Place`, and the difference is §2.1's
+ * invariant: a thread is in exactly one *place*, which is what makes archiving
+ * a move and what every §2.3 rule is written against. Sent and Drafts are not
+ * locations in that sense — a conversation you replied to is in your inbox and
+ * in your sent mail at the same time, and widening `Place` to hold them would
+ * quietly make "exactly one" false everywhere it is relied on.
+ *
+ * So: `Thread.place` stays inbox-or-archive, and this is what a screen, a
+ * listing and the store's per-list state are keyed on.
+ */
+export type MailView = Place | 'sent' | 'drafts';
+
+/** The two views a thread can be moved between. Everything else is a read. */
+export function isPlace(view: MailView): view is Place {
+  return view === 'inbox' || view === 'archive';
+}
+
 export interface Thread {
   id: string;
   subject: string;

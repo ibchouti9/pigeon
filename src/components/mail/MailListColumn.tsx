@@ -15,7 +15,7 @@ import {
   plural,
   relativeTime,
 } from '../../lib/format';
-import type { Place, Thread } from '../../types';
+import type { MailView, Thread } from '../../types';
 import type { LoadStatus } from '../../store/mail';
 import { useUi } from '../../store/ui';
 import { useCompose } from '../../store/compose';
@@ -40,7 +40,7 @@ export interface MailListColumnHandle {
 }
 
 export interface MailListColumnProps {
-  place: Place;
+  place: MailView;
   title: string;
   threads: Thread[];
   status: LoadStatus;
@@ -582,7 +582,7 @@ function EmptyListState({
   onOpenScreener,
   onSendTest,
 }: {
-  place: Place;
+  place: MailView;
   heldCount: number;
   hasArchivedAny: boolean;
   onOpenScreener: () => void;
@@ -593,6 +593,24 @@ function EmptyListState({
       <EmptyState
         headline="Nothing archived yet."
         body="Threads you archive from your inbox end up here. Nothing is ever deleted."
+      />
+    );
+  }
+
+  if (place === 'sent') {
+    return (
+      <EmptyState
+        headline="Nothing sent yet."
+        body="Messages you send show up here, alongside the conversations they belong to."
+      />
+    );
+  }
+
+  if (place === 'drafts') {
+    return (
+      <EmptyState
+        headline="No drafts."
+        body="A message you start and don't send waits here until you come back to it."
       />
     );
   }

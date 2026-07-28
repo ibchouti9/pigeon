@@ -2,8 +2,10 @@ import type {
   Account,
   Address,
   HeldSender,
+  MailView,
   Message,
   OutgoingAttachment,
+  Place,
   Sender,
   SyncProgress,
   Thread,
@@ -37,10 +39,7 @@ export interface MailProvider {
    * for minutes. The inbox has §5.2b's progress bar behind it during
    * onboarding; the Archive has nothing but this.
    */
-  listThreads(
-    place: 'inbox' | 'archive',
-    onPage?: (threads: Thread[]) => void,
-  ): Promise<Thread[]>;
+  listThreads(view: MailView, onPage?: (threads: Thread[]) => void): Promise<Thread[]>;
 
   /**
    * Whether the place holds conversations older than the ones already listed.
@@ -49,10 +48,10 @@ export interface MailProvider {
    * thousands of threads, and fetching all of them to draw the first screen is
    * how the Gmail path once spent hours before showing a single row.
    */
-  hasOlder(place: 'inbox' | 'archive'): boolean;
+  hasOlder(view: MailView): boolean;
 
   /** The next window of older conversations, appended to what is listed. */
-  listOlder(place: 'inbox' | 'archive'): Promise<Thread[]>;
+  listOlder(view: MailView): Promise<Thread[]>;
 
   /**
    * A conversation with its bodies. `listThreads` may return rows that carry a
@@ -63,7 +62,7 @@ export interface MailProvider {
   markRead(threadId: string, read: boolean): Promise<void>;
 
   /** Archive is the only removal action (D8). */
-  setPlace(threadId: string, place: 'inbox' | 'archive'): Promise<void>;
+  setPlace(threadId: string, place: Place): Promise<void>;
 
   listHeld(): Promise<HeldSender[]>;
 

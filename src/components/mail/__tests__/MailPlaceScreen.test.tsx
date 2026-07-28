@@ -94,7 +94,15 @@ function renderInbox(threads: Thread[]) {
     account: { email: 'marc@ferrum.dev', name: 'Marc Ferrum', connectedAt: new Date().toISOString() },
     inbox: threads,
     archive: [],
-    status: { account: 'ready', inbox: 'ready', archive: 'ready', held: 'ready', senders: 'ready' },
+    status: {
+      account: 'ready',
+      inbox: 'ready',
+      archive: 'ready',
+      sent: 'ready',
+      drafts: 'ready',
+      held: 'ready',
+      senders: 'ready',
+    },
     revoked: false,
   });
 

@@ -2,6 +2,7 @@ import type {
   Account,
   Address,
   HeldSender,
+  MailView,
   Message,
   OutgoingAttachment,
   Sender,
@@ -108,6 +109,20 @@ function load(): MockState {
  * The demo account. Backs the app when no Google account is connected, and
  * every test. State persists to localStorage so decisions survive a reload.
  */
+/**
+ * Which list a thread belongs in.
+ *
+ * Inbox and Archive read `place`, because §2.1 puts a thread in exactly one of
+ * them. Sent and Drafts are reads over the messages instead — a conversation
+ * you replied to is in your inbox *and* in your sent mail, which is precisely
+ * why they are views rather than places.
+ */
+function matchesView(thread: Thread, view: MailView): boolean {
+  if (view === 'sent') return thread.messages.some((m) => m.isFromUser);
+  if (view === 'drafts') return false; // The demo has no server-side drafts.
+  return thread.place === view;
+}
+
 export class MockMailProvider implements MailProvider {
   readonly kind = 'mock' as const;
 
@@ -192,11 +207,11 @@ export class MockMailProvider implements MailProvider {
   }
 
   async listThreads(
-    place: 'inbox' | 'archive',
+    view: MailView,
     onPage?: (threads: Thread[]) => void,
   ): Promise<Thread[]> {
     const threads = this.state.threads
-      .filter((t) => t.place === place)
+      .filter((t) => matchesView(t, view))
       .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
       .map((t) => ({ ...t }));
 
@@ -217,8 +232,8 @@ export class MockMailProvider implements MailProvider {
     return false;
   }
 
-  listOlder(place: 'inbox' | 'archive'): Promise<Thread[]> {
-    return this.listThreads(place);
+  listOlder(view: MailView): Promise<Thread[]> {
+    return this.listThreads(view);
   }
 
   async getThread(threadId: string): Promise<Thread> {

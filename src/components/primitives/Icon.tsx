@@ -7,6 +7,8 @@ export type IconName =
   | 'inbox'
   | 'screener-ring'
   | 'archive'
+  | 'sent'
+  | 'drafts'
   | 'search'
   | 'compose'
   | 'settings'
@@ -34,6 +36,18 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M3 13h4l1.5 2.5h7L17 13h4" />
       <path d="M3 13 5.5 4.5h13L21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    </>
+  ),
+  sent: (
+    <>
+      <path d="M21.5 2.5 10.5 13.5" />
+      <path d="M21.5 2.5 14.5 21.5l-4-8-8-4z" />
+    </>
+  ),
+  drafts: (
+    <>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <path d="M17.5 2.5a2.1 2.1 0 0 1 3 3L13 13l-4 1 1-4z" />
     </>
   ),
   'screener-ring': (

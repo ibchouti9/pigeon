@@ -13,6 +13,8 @@ import { ScreenerIntroRoute } from './routes/onboarding/ScreenerIntroRoute';
 
 import { InboxRoute } from './routes/InboxRoute';
 import { ArchiveRoute } from './routes/ArchiveRoute';
+import { SentRoute } from './routes/SentRoute';
+import { DraftsRoute } from './routes/DraftsRoute';
 import { ScreenerRoute } from './routes/ScreenerRoute';
 import { SearchRoute } from './routes/SearchRoute';
 import { SettingsRoute } from './routes/settings/SettingsRoute';
@@ -111,6 +113,10 @@ export default function App() {
         <Route path="/inbox/t/:threadId" element={<InboxRoute />} />
         <Route path="/archive" element={<ArchiveRoute />} />
         <Route path="/archive/t/:threadId" element={<ArchiveRoute />} />
+        <Route path="/sent" element={<SentRoute />} />
+        <Route path="/sent/t/:threadId" element={<SentRoute />} />
+        <Route path="/drafts" element={<DraftsRoute />} />
+        <Route path="/drafts/t/:threadId" element={<DraftsRoute />} />
         <Route path="/screener" element={<ScreenerRoute />} />
         <Route path="/screener/s/:senderId" element={<ScreenerRoute />} />
         <Route path="/search" element={<SearchRoute />} />

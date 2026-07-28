@@ -68,7 +68,15 @@ function renderAt(threadId: string) {
     account: { email: 'marc@ferrum.dev', name: 'Marc Ferrum', connectedAt: '2026-07-01T00:00:00.000Z' },
     inbox: [],
     archive: [],
-    status: { account: 'ready', inbox: 'ready', archive: 'ready', held: 'ready', senders: 'ready' },
+    status: {
+      account: 'ready',
+      inbox: 'ready',
+      archive: 'ready',
+      sent: 'ready',
+      drafts: 'ready',
+      held: 'ready',
+      senders: 'ready',
+    },
     revoked: false,
   });
 

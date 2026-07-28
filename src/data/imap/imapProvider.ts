@@ -2,8 +2,10 @@ import type {
   Account,
   Address,
   HeldSender,
+  MailView,
   Message,
   OutgoingAttachment,
+  Place,
   Sender,
   SyncProgress,
   Thread,
@@ -278,12 +280,20 @@ export class ImapMailProvider implements MailProvider {
   }
 
   /** §2.3 — unknown senders belong in the Screener, declined ones nowhere. */
-  private visible(threads: Thread[], place: 'inbox' | 'archive'): Thread[] {
+  private visible(threads: Thread[], view: MailView): Thread[] {
+    /*
+     * Sent and Drafts are the user's own writing, and §2.3 governs who may
+     * reach *them*. Filtering these would mean a reply vanishing from your own
+     * sent mail because you later declined the person you sent it to — the
+     * record of what you wrote is not the sender's to affect.
+     */
+    if (view === 'sent' || view === 'drafts') return threads;
+
     return threads.filter((thread) => {
       const sender = this.threadSender(thread);
       if (!sender) return true; // A thread the user started stays visible.
       if (this.decisions.hidden(thread, sender.email)) return false;
-      return place === 'archive' || !this.heldInScreener(sender.email, thread);
+      return view === 'archive' || !this.heldInScreener(sender.email, thread);
     });
   }
 
@@ -303,7 +313,7 @@ export class ImapMailProvider implements MailProvider {
    * shell fires loadThreads, loadHeld and loadSenders together on mount.
    */
   private hydrate(
-    place: 'inbox' | 'archive',
+    place: MailView,
     onProgress?: (done: number, listed?: number) => void,
     onPage?: (threads: Thread[]) => void,
   ): Promise<Thread[]> {
@@ -346,7 +356,7 @@ export class ImapMailProvider implements MailProvider {
    * else appends, which is what "Show older" does.
    */
   private async listWindow(
-    place: 'inbox' | 'archive',
+    place: MailView,
     offset: number,
     limit: number = PAGE_SIZE,
   ): Promise<Window> {
@@ -379,7 +389,7 @@ export class ImapMailProvider implements MailProvider {
   }
 
   /** Drops rows from a place's listing without re-fetching it. */
-  private dropRows(place: 'inbox' | 'archive', threadIds: string[]): void {
+  private dropRows(place: MailView, threadIds: string[]): void {
     const window = this.windows.get(place);
     if (!window) return;
     const gone = new Set(threadIds);
@@ -435,7 +445,7 @@ export class ImapMailProvider implements MailProvider {
   }
 
   async listThreads(
-    place: 'inbox' | 'archive',
+    place: MailView,
     onPage?: (threads: Thread[]) => void,
   ): Promise<Thread[]> {
     const all = await this.hydrate(
@@ -446,12 +456,12 @@ export class ImapMailProvider implements MailProvider {
     return this.visible(all, place);
   }
 
-  hasOlder(place: 'inbox' | 'archive'): boolean {
+  hasOlder(place: MailView): boolean {
     const window = this.windows.get(place);
     return window ? window.threads.length < window.total : false;
   }
 
-  async listOlder(place: 'inbox' | 'archive'): Promise<Thread[]> {
+  async listOlder(place: MailView): Promise<Thread[]> {
     const window = this.windows.get(place);
     if (!window || window.threads.length >= window.total) {
       return this.visible(window?.threads ?? [], place);
@@ -544,7 +554,7 @@ export class ImapMailProvider implements MailProvider {
     this.updateRow(threadId, (row) => ({ ...row, unread: !read }));
   }
 
-  async setPlace(threadId: string, place: 'inbox' | 'archive'): Promise<void> {
+  async setPlace(threadId: string, place: Place): Promise<void> {
     await this.call('mail_set_place', { threadId, place });
     const cached = this.threads.get(threadId);
     if (cached) cached.place = place;
