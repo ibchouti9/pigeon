@@ -37,6 +37,14 @@ const BEHAVIOUR_ROWS: BehaviourRow[] = [
     offCopy: 'Screener reads are off.',
   },
   {
+    key: 'answerQuestions',
+    label: 'Answer questions I type into search',
+    description:
+      'A search that reads as a question is answered from the results, with every claim linked to the message it came from.',
+    onCopy: 'Search answers are on.',
+    offCopy: 'Search answers are off.',
+  },
+  {
     key: 'sortInbox',
     label: 'Sort the inbox lanes it is unsure about',
     description:

@@ -23,6 +23,17 @@ export interface ProviderConfig {
 export interface BehaviourFlags {
   autoSummarize: boolean;
   screenerReads: boolean;
+  /**
+   * Whether a question typed into search is answered without being asked
+   * twice.
+   *
+   * `parseQuery` has already decided the query *is* a question before the
+   * offer appears — it wants a question mark, or a question word and four
+   * words — so the button was a second confirmation of something Pigeon had
+   * settled. The other three assistant surfaces all run on their own; this
+   * one was the exception.
+   */
+  answerQuestions: boolean;
   matchWritingStyle: boolean;
   /**
    * Whether the assistant is asked about the inbox threads the deterministic
@@ -107,6 +118,7 @@ export const useSettings = create<SettingsState>()(
       behaviour: {
         autoSummarize: true,
         screenerReads: true,
+        answerQuestions: true,
         matchWritingStyle: true,
         sortInbox: true,
       },
@@ -147,7 +159,32 @@ export const useSettings = create<SettingsState>()(
       setSkippedProvider: (skippedProvider) => set({ skippedProvider }),
       dismissAssistantOffer: () => set({ dismissedAssistantOffer: true }),
     }),
-    { name: 'pigeon.provider' },
+    {
+      name: 'pigeon.provider',
+      /*
+       * Deep-merge the nested groups, rather than letting stored state replace
+       * them wholesale.
+       *
+       * zustand's default merge is shallow, so a `behaviour` object written
+       * before a flag existed replaces the defaults entirely and the new flag
+       * arrives `undefined` — which reads as off. Adding
+       * `answerQuestions` was the first time that showed: the setting
+       * defaulted to on, and every existing install had it silently off with
+       * no way to tell from the settings screen, which renders a switch from
+       * the same undefined value.
+       *
+       * Every future flag would have had the same problem.
+       */
+      merge: (persisted, current) => {
+        const stored = (persisted ?? {}) as Partial<SettingsState>;
+        return {
+          ...current,
+          ...stored,
+          behaviour: { ...current.behaviour, ...(stored.behaviour ?? {}) },
+          provider: { ...current.provider, ...(stored.provider ?? {}) },
+        };
+      },
+    },
   ),
 );
 

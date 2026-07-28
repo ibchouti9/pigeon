@@ -44,9 +44,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  /* Hugs its digit. A 16px box around a single character put visible air
+     between the marker and the full stop that follows it: "€248.00 1 ." */
+  min-width: 13px;
+  height: 15px;
+  padding: 0 2px;
   /* Attaches to the word before it; punctuation follows with no gap, the way
      a footnote marker does. A symmetric margin left "€248.00 4 ." on screen. */
   margin: 0 0 0 2px;

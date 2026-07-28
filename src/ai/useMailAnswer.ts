@@ -56,6 +56,7 @@ export function useMailAnswer(
   const client = getAiClient(provider);
   const offerable =
     parsed.isQuestion && resultsReady && results.length > 0 && client !== null;
+  const autoAnswer = useSettings((s) => s.behaviour.answerQuestions);
 
   /*
    * A new question is a new answer. Without this, editing the query left the
@@ -124,6 +125,24 @@ export function useMailAnswer(
         setState('failed');
       });
   }, [query, results]);
+
+  /*
+   * Asked without being asked for, when the setting allows it.
+   *
+   * `parseQuery` has already decided this reads as a question before anything
+   * here runs, so the button was a second confirmation of a call Pigeon had
+   * made. The other three assistant surfaces — summaries, Screener reads, lane
+   * sorting — all run on their own and are switched off in the same place.
+   *
+   * Still nothing to undo and nothing sent anywhere the results did not
+   * already come from: the answer reads the threads on screen, and dismissing
+   * it leaves them.
+   */
+  useEffect(() => {
+    if (!autoAnswer || !offerable) return;
+    if (state !== 'idle' || dismissed === query) return;
+    ask();
+  }, [autoAnswer, offerable, state, dismissed, query, ask]);
 
   const dismiss = useCallback(() => {
     setDismissed(query);
