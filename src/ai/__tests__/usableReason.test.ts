@@ -115,3 +115,70 @@ describe('the §7.9 word ceiling', () => {
     expect(out.endsWith('…')).toBe(true);
   });
 });
+
+/**
+ * The ledger reads a batch of conversations in one request, and a model that
+ * loses track of which row it is on carries a detail from one onto another.
+ * Measured against qwen2.5:32b: "decide the liability cap" — real, and
+ * correctly found in Dana's contract thread — was also attached to a thread
+ * about a different clause that never mentions a cap.
+ *
+ * A missed obligation costs the user nothing they did not already have. An
+ * invented one is a lie about a person, and one they may act on.
+ */
+describe('an obligation has to be supported by its own conversation', () => {
+  const originalFetch = globalThis.fetch;
+  const originalSettings = useSettings.getState();
+
+  afterAll(() => {
+    globalThis.fetch = originalFetch;
+    useSettings.setState(originalSettings);
+  });
+
+  async function ledgerFor(completion: string, transcript: string) {
+    respond(completion);
+    const client = getAiClient(CONFIG);
+    return client!.extractObligations([
+      {
+        threadId: 't1',
+        counterparty: 'Lena Fischer',
+        subject: 'Question about clause 7',
+        transcript,
+        readerSpokeLast: false,
+        ageDays: 1,
+      },
+    ]);
+  }
+
+  it('keeps one the conversation actually supports', async () => {
+    const found = await ledgerFor(
+      '1: decide the liability cap — needs-you — Friday',
+      'them: any movement on the liability cap? I need an answer before Friday.',
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].what).toBe('decide the liability cap');
+  });
+
+  it('drops one carried over from another conversation in the batch', async () => {
+    const found = await ledgerFor(
+      '1: decide the liability cap — needs-you — Friday',
+      'them: clause 7 says the tooling stays with us. Is that still your reading?',
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('survives the wording drifting between mail and obligation', async () => {
+    const found = await ledgerFor(
+      '1: send the phase two scoping notes — needs-you — no date',
+      'them: could you send over the scope for phase two when you get a moment?',
+    );
+    expect(found).toHaveLength(1);
+  });
+
+  it('keeps a vague one rather than second-guessing it', async () => {
+    // Nothing distinctive to check. Vague is not the same as invented, and the
+    // thread is one click away.
+    const found = await ledgerFor('1: reply to them — needs-you — no date', 'them: thoughts?');
+    expect(found).toHaveLength(1);
+  });
+});

@@ -137,8 +137,12 @@ export const SORT_BATCH = 10;
  * than a preview line, and this pass has to hold the *whole* conversation in
  * mind to know whether a request was already answered — which is the one
  * judgement it exists to make.
+ *
+ * Four rather than six after watching qwen2.5:32b attach one conversation's
+ * obligation to another's row in a batch of six. `groundedInThread` catches
+ * that afterwards; this makes it rarer in the first place.
  */
-export const OBLIGATION_BATCH = 6;
+export const OBLIGATION_BATCH = 4;
 
 /** How much of one conversation the ledger pass reads. */
 const OBLIGATION_TRANSCRIPT_CHARS = 2400;
@@ -188,6 +192,54 @@ function usableReason(why: string, item: { from: string; subject: string }): str
    */
   const spoken = trimmed.split(/\s+/);
   return spoken.length <= 18 ? trimmed : `${spoken.slice(0, 18).join(' ')}…`;
+}
+
+/**
+ * Whether an obligation is actually supported by the conversation it is
+ * attached to.
+ *
+ * The ledger pass reads a batch of conversations in one request, and a model
+ * that loses track of which row it is on carries a detail from one onto
+ * another. Measured against qwen2.5:32b on the demo mailbox: "decide the
+ * liability cap" — a real obligation, correctly found in Dana Whitlock's
+ * contract thread — was also attached to Lena Fischer, whose conversation is
+ * about a different clause entirely and never mentions a cap.
+ *
+ * That failure is worse than a missed obligation. A ledger that omits
+ * something costs the user nothing they did not already have; a ledger that
+ * says Lena asked for something she never asked for is a lie about a person,
+ * and one they may act on.
+ *
+ * So the words have to be in the transcript. Content words only, and a
+ * majority rather than all of them — the model is asked to phrase the
+ * obligation as an imperative, so "decide the liability cap" against a thread
+ * that says "any movement on the cap" should survive on "cap" and "liability"
+ * while "phase two scope" against Dana's thread should not.
+ */
+const OBLIGATION_STOPWORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'to', 'for', 'of', 'on', 'in', 'with', 'from',
+  'send', 'give', 'get', 'make', 'take', 'reply', 'respond', 'confirm', 'decide',
+  'about', 'that', 'this', 'them', 'their', 'it', 'is', 'are', 'be',
+]);
+
+function groundedInThread(what: string, transcript: string): boolean {
+  const haystack = transcript.toLowerCase();
+  const words = (what.toLowerCase().match(/\p{L}{3,}/gu) ?? []).filter(
+    (w) => !OBLIGATION_STOPWORDS.has(w),
+  );
+  // Nothing distinctive left to check — a bare "reply to them". The verb-only
+  // case is vague rather than wrong, and the thread is one click away.
+  if (words.length === 0) return true;
+
+  /*
+   * Prefix matching, not equality: mail says "scoping" where an obligation
+   * says "scope", and "invoices" where it says "invoice". The lane pass learned
+   * the same lesson from the other direction — see `usableReason`.
+   */
+  const present = words.filter((w) =>
+    haystack.includes(w.length > 5 ? w.slice(0, 5) : w),
+  );
+  return present.length * 2 >= words.length;
 }
 
 function makeClient(config: ProviderConfig): AiClient {
@@ -326,7 +378,11 @@ function makeClient(config: ProviderConfig): AiClient {
             due: line.due,
           };
         })
-        .filter((o) => Boolean(o.what));
+        .filter((o) => Boolean(o.what))
+        .filter((o) => {
+          const item = items.find((i) => i.threadId === o.threadId);
+          return item ? groundedInThread(o.what, item.transcript) : false;
+        });
     },
 
     async triageSenders(items: TriageRequest[]): Promise<TriageAnswer[]> {

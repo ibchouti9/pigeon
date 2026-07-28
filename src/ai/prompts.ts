@@ -227,6 +227,9 @@ The three kinds:
   a reply.
 
 Rules:
+- Answer each conversation from its own text alone. Never carry a name, a
+  deadline or a detail from one conversation onto another's line — they are
+  numbered so that each answer stays with the conversation it came from.
 - One line per conversation. A conversation that requires nothing of anybody is
   answered \`none\` and is the most common answer — most mail is finished, or
   was never a request.
