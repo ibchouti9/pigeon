@@ -39,15 +39,6 @@ fn data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("No data directory: {e}"))
 }
 
-/// [`background::Arrivals`], on its way to the webview.
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArrivalsJson {
-    pub count: u32,
-    pub names: Vec<String>,
-    pub subject: Option<String>,
-}
-
 /// Runs blocking IMAP work off the main thread.
 async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
@@ -102,15 +93,11 @@ pub fn mail_set_notify_allowlist(app: tauri::AppHandle, emails: Vec<String>) -> 
 /// watch it on. It moves the UID mark like any other run, so calling it twice
 /// answers twice only if mail arrived in between.
 #[tauri::command]
-pub async fn mail_check_arrivals(app: tauri::AppHandle) -> Result<Option<ArrivalsJson>, String> {
+pub async fn mail_check_arrivals(
+    app: tauri::AppHandle,
+) -> Result<Option<background::Arrivals>, String> {
     let dir = data_dir(&app)?;
-    blocking(move || background::check(&dir)).await.map(|found| {
-        found.map(|a| ArrivalsJson {
-            count: a.count,
-            names: a.names,
-            subject: a.subject,
-        })
-    })
+    blocking(move || background::check(&dir)).await
 }
 
 #[tauri::command]
@@ -126,6 +113,18 @@ pub async fn mail_disconnect(app: tauri::AppHandle) {
         Ok(())
     })
     .await;
+}
+
+/// The background check, for a caller with no Tauri app to resolve paths with.
+///
+/// `mail::background` is private, and the iOS entry point is not part of the
+/// mail engine — it is one C symbol that happens to need this. Re-exported by
+/// hand rather than making the module public, so this stays the only way in.
+#[cfg(target_os = "ios")]
+pub fn background_check(
+    dir: &std::path::Path,
+) -> Result<Option<background::Arrivals>, String> {
+    background::check(dir)
 }
 
 /// Starts the inbox watch for an account that was already connected.

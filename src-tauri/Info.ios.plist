@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Merged into the generated iOS Info.plist by Tauri, which looks for this file
+  beside `tauri.conf.json` (see `IosConfig::info_plist`).
+
+  Two keys, and iOS enforces both at launch rather than at use:
+
+  `UIBackgroundModes` must contain `fetch`, or `BGTaskScheduler.submit` refuses
+  every request — silently, in the sense that the app runs fine and simply
+  never wakes.
+
+  `BGTaskSchedulerPermittedIdentifiers` must list the identifier before
+  `register` is called with it. An identifier that is missing here is not a
+  warning; it terminates the app on launch. It has to match `taskIdentifier`
+  in `ios/PigeonBackground.swift`.
+-->
+<plist version="1.0">
+<dict>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.pigeonmail.pigeon.refresh</string>
+    </array>
+</dict>
+</plist>

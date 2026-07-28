@@ -236,12 +236,44 @@ provider is not offered: iOS suspends every app that is not in front, so
 nothing can be listening on loopback for Pigeon to talk to. Bring a key from
 Anthropic, OpenAI or Google, or run the demo.
 
-**What is not built.** Nothing fetches mail while the app is closed. iOS
-suspends the process and the IMAP connection dies with it; Pigeon reconnects
-when you come back, so new mail arrives when you open the app rather than
-before. Real background delivery needs either `BGAppRefresh` — best-effort,
-minutes to hours — or a push proxy, and Gmail's IMAP offers no push a client
-can consume directly.
+### Background mail on the phone
+
+iOS suspends every app that is not in front, and takes the IMAP connection
+with it — so the live watch the Mac keeps cannot run here. What iOS offers
+instead is `BGAppRefreshTask`: it wakes the app when it judges you are likely
+to want it, and gives about thirty seconds.
+
+**Be honest about what that is.** It is not push. A message may be announced
+fifteen minutes after it arrives or several hours later; iOS decides, from how
+you actually use the app. It stops entirely if you force-quit Pigeon or turn
+on Low Power Mode. Real push would need a server holding IMAP IDLE and
+forwarding to APNs, and there is deliberately no Pigeon server.
+
+The Rust half is built and tested: `mail::background` opens a connection, asks
+what arrived since the last UID it saw, keeps the senders you approved, and
+returns one line to notify with. `src-tauri/src/ios_ffi.rs` exposes it as a C
+symbol.
+
+**The Swift half is written and not yet in the build**, because generating the
+Xcode project needs full Xcode. After `npm run tauri ios init`, three steps
+put it in:
+
+1. Add `src-tauri/ios/PigeonBackground.swift` to the generated Xcode project
+   (`src-tauri/gen/apple/`), in the app target.
+2. Call `PigeonBackground.register()` before the app finishes launching, and
+   `PigeonBackground.schedule()` after — both in the generated app delegate.
+   Registration has to happen on *every* launch, including the ones iOS makes
+   in the background to run the task.
+3. Ask for notification permission once from the app, which the foreground
+   already does the first time mail arrives.
+
+`Info.ios.plist` is already in place and Tauri merges it: `UIBackgroundModes`
+needs `fetch` or every scheduling request is refused, and the task identifier
+must appear in `BGTaskSchedulerPermittedIdentifiers` or iOS terminates the app
+at launch rather than warning.
+
+To watch the logic work before any of that, call `mail_check_arrivals` from
+the running app — it is the same function the background task calls.
 
 ## Scripts
 

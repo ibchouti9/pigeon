@@ -1,4 +1,5 @@
 mod badge;
+mod ios_ffi;
 mod machine;
 mod mail;
 mod tray;

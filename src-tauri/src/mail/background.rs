@@ -27,7 +27,11 @@ use super::session;
 const HEADER_CAP: usize = 40;
 
 /// What one wake-up found. `None` from [`check`] means nothing to say.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Serialized straight to both callers — the webview through a command, and
+/// Swift through the FFI as JSON — because a second struct that mirrors this
+/// one is a second struct to forget to update.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct Arrivals {
     /// How many messages arrived from allowed senders.
     pub count: u32,
