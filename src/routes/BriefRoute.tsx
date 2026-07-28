@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useMail, useHeldCount } from '../store/mail';
-import { useLedger } from '../ai/useLedger';
+import { useLedger, useMailboxThreads } from '../ai/useLedger';
 import { useAssistant } from '../ai/useAssistant';
 import { EmptyState } from '../components/primitives/Feedback';
 import { cn } from '../lib/cn';
@@ -39,13 +39,10 @@ function today(): string {
 export function BriefRoute() {
   const navigate = useNavigate();
   const inbox = useMail((s) => s.inbox);
-  const sent = useMail((s) => s.sent);
   const held = useHeldCount();
   const { connected } = useAssistant();
 
-  const threads = [...inbox, ...sent].filter(
-    (t, i, all) => all.findIndex((o) => o.id === t.id) === i,
-  );
+  const threads = useMailboxThreads();
   const ledger = useLedger(threads);
 
   const fresh = inbox.filter(arrivedRecently);

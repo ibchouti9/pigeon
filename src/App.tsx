@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { useTheme } from './hooks/useTheme';
@@ -5,11 +6,11 @@ import { useScenario } from './hooks/useScenario';
 import { useRestoreProvider } from './hooks/useRestoreProvider';
 import { useSettings } from './store/settings';
 
-import { WelcomeRoute } from './routes/onboarding/WelcomeRoute';
-import { ProviderSetupRoute } from './routes/onboarding/ProviderSetupRoute';
-import { SyncRoute } from './routes/onboarding/SyncRoute';
-import { KnownSendersRoute } from './routes/onboarding/KnownSendersRoute';
-import { ScreenerIntroRoute } from './routes/onboarding/ScreenerIntroRoute';
+const WelcomeRoute = lazy(() => import('./routes/onboarding/WelcomeRoute').then((m) => ({ default: m.WelcomeRoute })));
+const ProviderSetupRoute = lazy(() => import('./routes/onboarding/ProviderSetupRoute').then((m) => ({ default: m.ProviderSetupRoute })));
+const SyncRoute = lazy(() => import('./routes/onboarding/SyncRoute').then((m) => ({ default: m.SyncRoute })));
+const KnownSendersRoute = lazy(() => import('./routes/onboarding/KnownSendersRoute').then((m) => ({ default: m.KnownSendersRoute })));
+const ScreenerIntroRoute = lazy(() => import('./routes/onboarding/ScreenerIntroRoute').then((m) => ({ default: m.ScreenerIntroRoute })));
 
 import { InboxRoute } from './routes/InboxRoute';
 import { ArchiveRoute } from './routes/ArchiveRoute';
@@ -19,11 +20,11 @@ import { BriefRoute } from './routes/BriefRoute';
 import { DraftsRoute } from './routes/DraftsRoute';
 import { ScreenerRoute } from './routes/ScreenerRoute';
 import { SearchRoute } from './routes/SearchRoute';
-import { SettingsRoute } from './routes/settings/SettingsRoute';
-import { AccountSettings } from './routes/settings/AccountSettings';
-import { SendersSettings } from './routes/settings/SendersSettings';
-import { AssistantSettings } from './routes/settings/AssistantSettings';
-import { AboutSettings } from './routes/settings/AboutSettings';
+const SettingsRoute = lazy(() => import('./routes/settings/SettingsRoute').then((m) => ({ default: m.SettingsRoute })));
+const AccountSettings = lazy(() => import('./routes/settings/AccountSettings').then((m) => ({ default: m.AccountSettings })));
+const SendersSettings = lazy(() => import('./routes/settings/SendersSettings').then((m) => ({ default: m.SendersSettings })));
+const AssistantSettings = lazy(() => import('./routes/settings/AssistantSettings').then((m) => ({ default: m.AssistantSettings })));
+const AboutSettings = lazy(() => import('./routes/settings/AboutSettings').then((m) => ({ default: m.AboutSettings })));
 import { StatesRoute } from './routes/dev/StatesRoute';
 
 /**
@@ -66,6 +67,14 @@ export default function App() {
   useScenario();
 
   return (
+    /*
+     * Onboarding runs once per account and Settings is opened rarely, so
+     * neither belongs in the chunk that has to arrive before the first screen
+     * paints. `null` rather than a spinner: these resolve from cache in a
+     * frame or two, and a flash of a loading state is worse than a frame of
+     * the screen the user was already on.
+     */
+    <Suspense fallback={null}>
     <Routes>
       {/* §8.5 item 1's dev harness. Dev builds only. */}
       {import.meta.env.DEV && <Route path="/dev/states" element={<StatesRoute />} />}
@@ -136,5 +145,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/inbox" replace />} />
     </Routes>
+    </Suspense>
   );
 }

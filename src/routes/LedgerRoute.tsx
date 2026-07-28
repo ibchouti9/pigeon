@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useMail } from '../store/mail';
-import { useLedger } from '../ai/useLedger';
+import { useLedger, useMailboxThreads } from '../ai/useLedger';
 import { useLedger as useLedgerStore, type Obligation } from '../store/ledger';
 import { useAssistant } from '../ai/useAssistant';
 import { Checkbox } from '../components/primitives/Field';
@@ -77,19 +76,9 @@ function Row({ item, onOpen }: { item: Obligation; onOpen: () => void }) {
 
 export function LedgerRoute() {
   const navigate = useNavigate();
-  const inbox = useMail((s) => s.inbox);
-  const sent = useMail((s) => s.sent);
   const { connected } = useAssistant();
 
-  /*
-   * Both directions, deduplicated. "What did I promise" lives in sent mail and
-   * "what was I asked" lives in the inbox, and a conversation you replied to
-   * is in both — which is exactly why Sent is a view rather than a place.
-   */
-  const threads = [...inbox, ...sent].filter(
-    (t, i, all) => all.findIndex((o) => o.id === t.id) === i,
-  );
-
+  const threads = useMailboxThreads();
   const ledger = useLedger(threads);
   const total = ledger.needsYou.length + ledger.youPromised.length + ledger.waitingOn.length;
 
