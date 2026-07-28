@@ -15,11 +15,11 @@ const ScreenerIntroRoute = lazy(() => import('./routes/onboarding/ScreenerIntroR
 import { InboxRoute } from './routes/InboxRoute';
 import { ArchiveRoute } from './routes/ArchiveRoute';
 import { SentRoute } from './routes/SentRoute';
-import { LedgerRoute } from './routes/LedgerRoute';
-import { BriefRoute } from './routes/BriefRoute';
+const LedgerRoute = lazy(() => import('./routes/LedgerRoute').then((m) => ({ default: m.LedgerRoute })));
+const BriefRoute = lazy(() => import('./routes/BriefRoute').then((m) => ({ default: m.BriefRoute })));
 import { DraftsRoute } from './routes/DraftsRoute';
-import { ScreenerRoute } from './routes/ScreenerRoute';
-import { SearchRoute } from './routes/SearchRoute';
+const ScreenerRoute = lazy(() => import('./routes/ScreenerRoute').then((m) => ({ default: m.ScreenerRoute })));
+const SearchRoute = lazy(() => import('./routes/SearchRoute').then((m) => ({ default: m.SearchRoute })));
 const SettingsRoute = lazy(() => import('./routes/settings/SettingsRoute').then((m) => ({ default: m.SettingsRoute })));
 const AccountSettings = lazy(() => import('./routes/settings/AccountSettings').then((m) => ({ default: m.AccountSettings })));
 const SendersSettings = lazy(() => import('./routes/settings/SendersSettings').then((m) => ({ default: m.SendersSettings })));
