@@ -73,6 +73,29 @@ describe('useRowSwipe', () => {
     expect(commit).not.toHaveBeenCalled();
   });
 
+  /*
+   * The bug this guards, and it took a device to find: the release decided
+   * from the `offset` state variable, which is the value from the render that
+   * installed the handler. A gesture whose last move and release arrive in one
+   * turn — which is what a quick flick delivers — released against a stale
+   * zero and archived nothing.
+   *
+   * Every other test here hid it, because `act()` forces a render between each
+   * event and a real device promises no such thing.
+   */
+  it('commits on a move and release that never render in between', () => {
+    const commit = vi.fn();
+    const { result } = renderHook(() => useRowSwipe(commit, true));
+
+    act(() => {
+      result.current.handlers.onTouchStart(touchEvent([{ x: 300, y: 100 }]));
+      result.current.handlers.onTouchMove(touchEvent([{ x: 180, y: 100 }]));
+      result.current.handlers.onTouchEnd();
+    });
+
+    expect(commit).toHaveBeenCalledOnce();
+  });
+
   /* A right swipe here would promise a second action that does not exist. */
   it('does not travel right', () => {
     const { result } = renderHook(() => useRowSwipe(vi.fn(), true));

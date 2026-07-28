@@ -45,10 +45,29 @@ export function useRowSwipe(onCommit: () => void, enabled: boolean): RowSwipe {
   const start = useRef<{ x: number; y: number } | null>(null);
   const axis = useRef<'undecided' | 'x' | 'y'>('undecided');
 
+  /*
+   * The same number as `offset`, kept where the release can read it.
+   *
+   * `onTouchEnd` decided from the state variable, which is the value from the
+   * render that installed the handler — so a gesture whose last `touchmove`
+   * and `touchend` arrive in one turn, with no render between, released
+   * against a stale zero and archived nothing. React is free to batch those; a
+   * ref is not.
+   *
+   * The tests did not catch it because `act()` forces a render between every
+   * event, which is exactly what a real device does not promise.
+   */
+  const travelled = useRef(0);
+
+  function slide(next: number) {
+    travelled.current = next;
+    setOffset(next);
+  }
+
   function reset() {
     start.current = null;
     axis.current = 'undecided';
-    setOffset(0);
+    slide(0);
     setActive(false);
   }
 
@@ -86,10 +105,10 @@ export function useRowSwipe(onCommit: () => void, enabled: boolean): RowSwipe {
         // which is what makes the limit read as resistance rather than a stop.
         const eased =
           travel > -MAX_PX ? travel : -MAX_PX + (travel + MAX_PX) / 3;
-        setOffset(Math.max(eased, -MAX_PX - 24));
+        slide(Math.max(eased, -MAX_PX - 24));
       },
       onTouchEnd() {
-        const committed = axis.current === 'x' && offset <= -COMMIT_PX;
+        const committed = axis.current === 'x' && travelled.current <= -COMMIT_PX;
         reset();
         if (committed) onCommit();
       },

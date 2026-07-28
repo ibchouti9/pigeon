@@ -116,6 +116,20 @@ describe('usePullToRefresh', () => {
     expect(result.current.distance).toBe(0);
   });
 
+  /* The same batching hazard `useRowSwipe` carries: one turn, no render. */
+  it('refreshes on a pull and release that never render in between', () => {
+    const onRefresh = vi.fn(async () => {});
+    const { result } = renderHook(() => usePullToRefresh(scroller(), onRefresh));
+
+    act(() => {
+      result.current.handlers.onTouchStart(touchEvent([{ x: 200, y: 100 }]));
+      result.current.handlers.onTouchMove(touchEvent([{ x: 200, y: 300 }]));
+      result.current.handlers.onTouchEnd();
+    });
+
+    expect(onRefresh).toHaveBeenCalledOnce();
+  });
+
   it('does nothing at all when disabled', () => {
     const onRefresh = vi.fn(async () => {});
     const { result } = renderHook(() => usePullToRefresh(scroller(), onRefresh, false));

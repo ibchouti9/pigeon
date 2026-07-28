@@ -58,10 +58,24 @@ export function usePullToRefresh(
   const start = useRef<{ x: number; y: number } | null>(null);
   const axis = useRef<'undecided' | 'pull' | 'other'>('undecided');
 
+  /*
+   * The same number as `distance`, kept where the release can read it. React
+   * may batch the last `touchmove` with the `touchend` that follows it, and a
+   * release that reads the state variable then reads the value from before the
+   * gesture — zero — and decides nothing happened. `useRowSwipe` carries the
+   * same guard for the same reason.
+   */
+  const pulled = useRef(0);
+
+  function pull(next: number) {
+    pulled.current = next;
+    setDistance(next);
+  }
+
   function reset() {
     start.current = null;
     axis.current = 'undecided';
-    setDistance(0);
+    pull(0);
   }
 
   return {
@@ -92,10 +106,10 @@ export function usePullToRefresh(
         }
         if (axis.current !== 'pull') return;
 
-        setDistance(Math.min(MAX, dy * FOLLOW));
+        pull(Math.min(MAX, dy * FOLLOW));
       },
       onTouchEnd() {
-        const armed = axis.current === 'pull' && distance >= THRESHOLD;
+        const armed = axis.current === 'pull' && pulled.current >= THRESHOLD;
         if (!armed) {
           reset();
           return;
@@ -110,7 +124,7 @@ export function usePullToRefresh(
         start.current = null;
         axis.current = 'undecided';
         setRefreshing(true);
-        setDistance(THRESHOLD);
+        pull(THRESHOLD);
 
         void Promise.resolve(onRefresh())
           .catch(() => {
@@ -120,7 +134,7 @@ export function usePullToRefresh(
           })
           .finally(() => {
             setRefreshing(false);
-            setDistance(0);
+            pull(0);
           });
       },
       onTouchCancel: reset,
