@@ -49,6 +49,12 @@ pub struct MessageJson {
     /// RFC 5322 Message-ID, for reply threading.
     pub message_id: Option<String>,
     pub unread: bool,
+    /// Whether the message carries a `List-Unsubscribe` header.
+    ///
+    /// The single strongest "this is bulk" signal there is, and the lane
+    /// classifier has always read it — from a field nothing ever set, so it
+    /// was permanently absent and lanes ran on body regexes alone.
+    pub list_unsubscribe: bool,
     /// Gmail says this is the user's own send (`in:sent` membership). Real
     /// accounts send from aliases and "send mail as" identities, so matching
     /// the From address alone reads the user's own mail as incoming — which
@@ -115,6 +121,10 @@ pub struct ThreadStub {
     /// html" and tests it there.
     pub snippet_text: Option<String>,
     pub snippet_html: Option<String>,
+    /// `List-Unsubscribe` on the row's own message. The enrichment pass
+    /// already fetches the whole header block, so this costs nothing on the
+    /// wire — and lanes sort *rows*, which is where it has to be available.
+    pub list_unsubscribe: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

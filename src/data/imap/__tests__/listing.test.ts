@@ -49,6 +49,7 @@ function stub(t: FakeThread, index: number): BridgeStub {
     firstMessageAt: t.startedAt,
     unread: false,
     messageCount: 2,
+    listUnsubscribe: false,
     inInbox: true,
     lastUid: index + 100,
     previewUid: index + 100,

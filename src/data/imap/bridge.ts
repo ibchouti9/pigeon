@@ -32,6 +32,8 @@ export interface BridgeMessage {
   attachments: BridgeAttachment[];
   messageId: string | null;
   unread: boolean;
+  /** RFC 2369 `List-Unsubscribe` — the strongest bulk signal there is. */
+  listUnsubscribe: boolean;
   /** Gmail says this is the user's own send (`in:sent` membership). */
   fromUser: boolean;
 }
@@ -67,6 +69,8 @@ export interface BridgeStub {
   subject: string | null;
   snippetText: string | null;
   snippetHtml: string | null;
+  /** `List-Unsubscribe` on the row's own message. Lanes sort rows. */
+  listUnsubscribe: boolean;
 }
 
 export interface BridgeListPage {

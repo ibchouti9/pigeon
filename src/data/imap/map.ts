@@ -23,6 +23,7 @@ function mapMessage(raw: BridgeMessage, userEmail: string): Message {
     body: split.body,
     quoted: split.quoted,
     date: raw.date,
+    listUnsubscribe: raw.listUnsubscribe,
     attachments: raw.attachments.map((a) => ({
       // downloadAttachment gets (messageId, attachmentId) and nothing else,
       // so the id carries what the engine needs: which message, which part.
@@ -101,6 +102,9 @@ export function mapStub(raw: BridgeStub): Thread {
         threadId: raw.id,
         subject,
         from: raw.from ?? { name: '', email: '' },
+        // Lanes sort rows, so the row's own preview message has to carry the
+        // evidence — the enrichment pass reads the header block anyway.
+        listUnsubscribe: raw.listUnsubscribe,
         to: [],
         cc: [],
         body,

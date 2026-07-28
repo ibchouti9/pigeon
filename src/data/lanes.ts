@@ -360,5 +360,16 @@ export function threadSignals(
     hasReplied: hasReplied(from.email),
     userInThread: messages.some((m) => m.isFromUser),
     messageCount: thread.messageCount ?? messages.length,
+    /*
+     * The signal this classifier was designed around, finally supplied.
+     *
+     * `LaneSignals.listUnsubscribe` has been read at both of the decisions
+     * that matter since lanes were written, and no provider ever set it — so
+     * it was `undefined` on every thread and the whole sort fell through to
+     * matching words in the body. Any message in the conversation carrying it
+     * is enough: a bulk sender's thread is bulk even once it has a reply on
+     * it.
+     */
+    listUnsubscribe: messages.some((m) => m.listUnsubscribe),
   };
 }

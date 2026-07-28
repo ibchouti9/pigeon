@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { classify, isGuess, LANES, LANE_BLURBS, LANE_LABELS, type LaneSignals } from '../lanes';
+import {
+  classify,
+  isGuess,
+  LANES,
+  LANE_BLURBS,
+  LANE_LABELS,
+  threadSignals,
+  type LaneSignals,
+} from '../lanes';
+import type { Thread } from '../../types';
 
 type Over = Omit<Partial<LaneSignals>, 'from'> & { from?: Partial<LaneSignals['from']> };
 
@@ -210,5 +219,51 @@ describe('confidence', () => {
       expect(why).toMatch(/^[A-Z]/);
       expect(why).not.toMatch(/[.]$/);
     }
+  });
+});
+
+/**
+ * `LaneSignals.listUnsubscribe` was read at both of the classifier's bulk
+ * decisions and written by nothing, so it was `undefined` on every thread in
+ * the product and the sort ran on body regexes alone. These pin the wiring
+ * rather than the rule — the rule already had tests, against a field only the
+ * tests ever set.
+ */
+describe('the List-Unsubscribe signal reaches the classifier', () => {
+  function threadWith(listUnsubscribe: boolean): Thread {
+    return {
+      id: 't1',
+      subject: 'A perfectly ordinary subject',
+      place: 'inbox',
+      unread: false,
+      lastMessageAt: '2026-07-20T10:00:00.000Z',
+      messages: [
+        {
+          id: 'm1',
+          threadId: 't1',
+          from: { name: 'Rivet', email: 'hello@rivet.app' },
+          to: [],
+          cc: [],
+          subject: 'A perfectly ordinary subject',
+          body: 'Nothing here says bulk in words.',
+          date: '2026-07-20T10:00:00.000Z',
+          attachments: [],
+          isFromUser: false,
+          listUnsubscribe,
+        },
+      ],
+    };
+  }
+
+  it('surfaces the header from the messages', () => {
+    expect(threadSignals(threadWith(true), () => false).listUnsubscribe).toBe(true);
+    expect(threadSignals(threadWith(false), () => false).listUnsubscribe).toBe(false);
+  });
+
+  it('keeps a thread bulk once it carries the header, whatever the body says', () => {
+    const bulk = threadSignals(threadWith(true), () => false);
+    const plain = threadSignals(threadWith(false), () => false);
+    // Same words, same sender, same everything but the header.
+    expect(classify(bulk).lane).not.toBe(classify(plain).lane);
   });
 });

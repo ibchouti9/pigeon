@@ -170,6 +170,8 @@ pub fn group_stubs(
                 subject: None,
                 snippet_text: None,
                 snippet_html: None,
+                // Filled by the enrichment pass, which reads the header block.
+                list_unsubscribe: false,
             }
         })
         .collect();
@@ -307,6 +309,7 @@ fn enrich(session: &mut ImapSession, stubs: &mut [ThreadStub]) -> Result<(), ima
                 stubs[i].subject = Some(parsed.subject.clone());
                 stubs[i].snippet_text = text.clone();
                 stubs[i].snippet_html = html.clone();
+                stubs[i].list_unsubscribe = parsed.list_unsubscribe;
             }
         }
     }

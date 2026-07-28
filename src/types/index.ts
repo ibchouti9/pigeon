@@ -47,6 +47,14 @@ export interface Message {
    * to build those from and every reply starts its own thread.
    */
   messageId?: string;
+  /**
+   * Whether the message carries `List-Unsubscribe`.
+   *
+   * `LaneSignals` has read this since the classifier was written, from a field
+   * no provider ever set — so the strongest evidence a lane has was
+   * permanently absent and the sort ran on body regexes alone.
+   */
+  listUnsubscribe?: boolean;
 }
 
 /** Where a thread lives. Every thread is in exactly one place (§2.1). */

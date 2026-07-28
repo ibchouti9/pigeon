@@ -118,6 +118,12 @@ interface MessageSeed {
   body: string;
   quoted?: string;
   date: string;
+  /**
+   * RFC 2369 `List-Unsubscribe`. Set on the senders that would really carry
+   * it, so the demo exercises the same evidence the lane classifier uses on a
+   * real account rather than falling through to matching words in the body.
+   */
+  listUnsubscribe?: boolean;
   attachments?: { filename: string; size: number; mimeType: string }[];
 }
 
@@ -142,6 +148,7 @@ function thread(
     body: s.body.trim(),
     quoted: s.quoted?.trim(),
     date: s.date,
+    listUnsubscribe: s.listUnsubscribe,
     attachments: (s.attachments ?? []).map((a, i) => ({
       id: `a${messageCounter}-${i}`,
       ...a,
@@ -426,6 +433,7 @@ Show this email or your reference at the barrier.`,
       {
         from: theDiff,
         date: at(0, 7, 5),
+        listUnsubscribe: true,
         body: `In this issue: why three of the four big cloud vendors quietly repriced cold storage in the same quarter, and what that says about where the margin actually is.
 
 The short version is that the tier was never about storage. It was about the egress you pay to find out what is in it.
@@ -438,6 +446,7 @@ Read online. Unsubscribe at any time.`,
       {
         from: benKuhn,
         date: at(2, 20, 15),
+        listUnsubscribe: true,
         body: `I wrote last year that the hard part of caching is invalidation. Having spent a year on it, I think that framing is wrong, or at least badly incomplete.
 
 The hard part is that a cache is a second source of truth you did not mean to create, and every bug you will have is really a disagreement between the two.
@@ -453,6 +462,7 @@ You are receiving this because you subscribed. Unsubscribe.`,
       {
         from: rivet,
         date: at(0, 8, 30),
+        listUnsubscribe: true,
         body: `Last chance. 30% off every annual plan, until midnight.
 
 Upgrade to Pro and keep your current seat count.
@@ -465,6 +475,7 @@ Unsubscribe | Manage your preferences`,
       {
         from: kavelle,
         date: at(3, 11, 0),
+        listUnsubscribe: true,
         body: `A quick look at what shipped.
 
 Faster exports, a rebuilt settings screen, and a new keyboard layer.

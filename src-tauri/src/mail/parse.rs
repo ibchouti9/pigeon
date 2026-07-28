@@ -5,7 +5,7 @@
 //! `html` side by side — because the webview already owns "prefer text, strip
 //! html" and its tests, and owning it twice is how the two builds drift.
 
-use mail_parser::{Address as MpAddress, MessageParser, MimeHeaders, PartType};
+use mail_parser::{Address as MpAddress, Message, MessageParser, MimeHeaders, PartType};
 
 use super::types::{AddressJson, AttachmentJson, MessageJson};
 
@@ -40,6 +40,19 @@ fn addresses(addr: Option<&MpAddress>) -> Vec<AddressJson> {
 /// the handle every later action needs, and INTERNALDATE is when the server
 /// received the mail — the Date header lies often enough that Gmail itself
 /// sorts by the server's clock.
+/// Whether the message offers a one-click way off whatever list sent it.
+///
+/// RFC 2369's `List-Unsubscribe`, which mail-parser has no typed accessor for
+/// — it is not one of the addressing headers — so this walks the header names.
+/// Presence is the whole signal; the value is a mailto or an https endpoint
+/// and Pigeon never follows either.
+fn has_list_unsubscribe(message: &Message<'_>) -> bool {
+    message
+        .headers()
+        .iter()
+        .any(|h| h.name().eq_ignore_ascii_case("List-Unsubscribe"))
+}
+
 pub fn parse_message(
     raw: &[u8],
     uid: u32,
@@ -66,6 +79,8 @@ pub fn parse_message(
             attachments: Vec::new(),
             message_id: None,
             unread,
+            // A message the parser could not read is not evidence of bulk.
+            list_unsubscribe: false,
             from_user,
         };
     };
@@ -130,6 +145,7 @@ pub fn parse_message(
         attachments,
         message_id: message.message_id().map(|id| id.to_string()),
         unread,
+        list_unsubscribe: has_list_unsubscribe(&message),
         from_user,
     }
 }
@@ -144,6 +160,29 @@ pub fn attachment_bytes(raw: &[u8], index: usize) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The lane classifier reads this and nothing ever set it, so every
+    /// message looked like personal mail and lanes ran on body regexes alone.
+    #[test]
+    fn reads_the_list_unsubscribe_header() {
+        let bulk: &[u8] = b"From: Rivet <news@rivet.io>\r\n\
+Subject: 30% off annual\r\n\
+List-Unsubscribe: <https://rivet.io/u/abc>, <mailto:u@rivet.io>\r\n\
+\r\n\
+Last chance.\r\n";
+        assert!(parse_message(bulk, 1, None, None, false, false).list_unsubscribe);
+        assert!(!parse_message(PLAIN, 1, None, None, false, false).list_unsubscribe);
+    }
+
+    /// Header names are case-insensitive, and senders spell this one every way.
+    #[test]
+    fn the_header_name_is_matched_without_regard_to_case() {
+        let bulk: &[u8] = b"From: A <a@b.com>\r\n\
+list-unsubscribe: <mailto:u@b.com>\r\n\
+\r\n\
+Body\r\n";
+        assert!(parse_message(bulk, 1, None, None, false, false).list_unsubscribe);
+    }
 
     const PLAIN: &[u8] = b"From: Dana Lumen <dana@lumen.com>\r\n\
 To: Me <me@example.com>\r\n\
