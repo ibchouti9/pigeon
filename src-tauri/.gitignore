@@ -2,12 +2,3 @@
 # will have compiled files and executables
 /target/
 /gen/schemas
-
-# The generated Xcode project. `tauri ios init` writes it and adds its own
-# .gitignore inside for Pods/, build/ and xcuserdata/; the project itself is
-# meant to be committed, since signing config and Info.plist keys are edited
-# there by hand.
-#
-# Not committed here yet: generating it needs full Xcode, which this machine
-# does not have. Remove this line once `npm run tauri ios init` has been run.
-/gen/apple
