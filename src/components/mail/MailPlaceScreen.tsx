@@ -12,6 +12,7 @@ import { MailListColumn, type MailListColumnHandle } from './MailListColumn';
 import { useThreadLanes } from '../../hooks/useThreadLanes';
 import { useLanes } from '../../store/lanes';
 import { LANES, LANE_KEYS, LANE_LABELS, threadSender } from '../../data/lanes';
+import { displayName } from '../../lib/format';
 import { toast } from '../../store/toast';
 import { useLaneSort } from '../../ai/useLaneSort';
 import { ThreadReader, type ThreadReaderStatus } from './ThreadReader';
@@ -401,6 +402,24 @@ export function MailPlaceScreen({ place }: { place: MailView }) {
           breakpoint={bp}
           backLabel={title}
           onBack={() => closeThread(true)}
+          /*
+           * The row after this one in the lane on screen, not in the whole
+           * mailbox — `threads` is already the selected lane's slice, so
+           * "next" stays inside whatever the user is actually working
+           * through.
+           */
+          nextInList={(() => {
+            if (!threadId) return undefined;
+            const index = threads.findIndex((t) => t.id === threadId);
+            const next = index === -1 ? undefined : threads[index + 1];
+            if (!next) return undefined;
+            const sender = threadSender(next);
+            return {
+              sender: displayName(sender),
+              subject: next.subject,
+              onOpen: () => goTo(next.id),
+            };
+          })()}
           onRetryLoad={() => {
             // Clearing this re-runs the single-thread fetch. Reloading only the
             // list would retry the thing that already succeeded.

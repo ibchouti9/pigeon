@@ -215,3 +215,46 @@
   gap: var(--space-3);
   padding-top: 4px;
 }
+
+/*
+ * "Next in Inbox", at the foot of a thread on a phone.
+ *
+ * A card rather than a link, because it is carrying three lines of its own
+ * content — who and what — and a link that says "Next" alone would make
+ * somebody tap it to find out.
+ */
+.next {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  max-width: var(--measure-read);
+  margin-top: var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.next:active {
+  background: var(--color-surface-active);
+}
+
+.nextLabel {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+}
+
+.nextSender {
+  max-width: 100%;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.nextSubject {
+  max-width: 100%;
+  color: var(--color-text-secondary);
+}

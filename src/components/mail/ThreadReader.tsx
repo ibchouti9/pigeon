@@ -38,6 +38,19 @@ export interface ThreadReaderProps {
    */
   replySlot?: ReactNode;
   /**
+   * What to read after this one, on a phone.
+   *
+   * The list and the reader share a column there, so finishing a conversation
+   * means going back and finding your place again — several times over, for
+   * the one activity a phone inbox is mostly used for. Saying what is next
+   * turns that into one tap, at the point your thumb has already reached.
+   *
+   * Next only, no previous. Mail is read downward, and a control for going
+   * back up the list is a second row of chrome for a direction almost nobody
+   * travels.
+   */
+  nextInList?: { sender: string; subject: string; onOpen: () => void };
+  /**
    * The subject from the list row, for the states where the thread itself
    * hasn't arrived. §5.6 asks the header to show it rather than a skeleton.
    */
@@ -111,6 +124,7 @@ export function ThreadReader({
   onArchive,
   onReply,
   replySlot,
+  nextInList,
   pendingSubject,
   summary,
   summaryState,
@@ -442,6 +456,22 @@ export function ThreadReader({
             }}
           >
             Reply to {replyToName}
+          </button>
+        )}
+
+        {/*
+          Below the reply, not above it: answering is what you came to do and
+          moving on is what you do when you have decided not to.
+        */}
+        {showBack && nextInList && (
+          <button type="button" className={styles.next} onClick={nextInList.onOpen}>
+            <span className={cn('t-xs', styles.nextLabel)}>NEXT IN {backLabel?.toUpperCase()}</span>
+            <span className={cn('t-base', 'truncate', styles.nextSender)}>
+              {nextInList.sender}
+            </span>
+            <span className={cn('t-sm', 'truncate', styles.nextSubject)}>
+              {nextInList.subject || '(no subject)'}
+            </span>
           </button>
         )}
       </div>
