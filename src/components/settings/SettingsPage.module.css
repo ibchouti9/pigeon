@@ -23,6 +23,21 @@
 .innerNoScroll {
   flex: 1;
   min-height: 0;
+  /* A flex child's default `min-width: auto` is its content, so the Senders
+     list pushed its own column wider than the screen instead of truncating
+     inside it — and took the row's action button off the right edge with it. */
+  min-width: 0;
   height: 100%;
   padding-bottom: var(--space-8);
+}
+
+/* 32px gutters either side of a 375px screen is a fifth of it. */
+@media (max-width: 719px) {
+  .inner {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .innerNoScroll {
+    padding-bottom: var(--space-5);
+  }
 }

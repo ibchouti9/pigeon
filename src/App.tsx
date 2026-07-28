@@ -26,6 +26,7 @@ const ScreenerRoute = lazy(() => import('./routes/ScreenerRoute').then((m) => ({
 const MoreRoute = lazy(() => import('./routes/MoreRoute').then((m) => ({ default: m.MoreRoute })));
 const SearchRoute = lazy(() => import('./routes/SearchRoute').then((m) => ({ default: m.SearchRoute })));
 const SettingsRoute = lazy(() => import('./routes/settings/SettingsRoute').then((m) => ({ default: m.SettingsRoute })));
+const SettingsIndex = lazy(() => import('./routes/settings/SettingsRoute').then((m) => ({ default: m.SettingsIndex })));
 const AccountSettings = lazy(() => import('./routes/settings/AccountSettings').then((m) => ({ default: m.AccountSettings })));
 const SendersSettings = lazy(() => import('./routes/settings/SendersSettings').then((m) => ({ default: m.SendersSettings })));
 const AssistantSettings = lazy(() => import('./routes/settings/AssistantSettings').then((m) => ({ default: m.AssistantSettings })));
@@ -156,7 +157,11 @@ export default function App() {
         <Route path="/more" element={<MoreRoute />} />
         <Route path="/search/t/:threadId" element={<SearchRoute />} />
         <Route path="/settings" element={<SettingsRoute />}>
-          <Route index element={<Navigate to="/settings/account" replace />} />
+          {/*
+            Not a bare `<Navigate>`: on a phone the sub-nav is the screen, so
+            `/settings` has somewhere to be rather than somewhere to leave.
+          */}
+          <Route index element={<SettingsIndex />} />
           <Route path="account" element={<AccountSettings />} />
           <Route path="senders" element={<SendersSettings />} />
           <Route path="assistant" element={<AssistantSettings />} />

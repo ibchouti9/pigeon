@@ -39,6 +39,22 @@
   border-color: var(--color-accent);
 }
 
+/*
+ * The two segmented tabs and a fixed 240px filter do not share 375px, and
+ * `flex: none` on the filter meant it did not shrink — it ran off the right
+ * edge instead. Below 720px the filter takes its own line at full width.
+ */
+@media (max-width: 719px) {
+  .toolbar {
+    flex-wrap: wrap;
+    row-gap: var(--space-3);
+  }
+
+  .filter {
+    width: 100%;
+  }
+}
+
 .panel {
   flex: 1;
   min-height: 0;
@@ -82,9 +98,17 @@
   max-width: 60%;
 }
 
+/*
+ * `min-width: 0` alone lets the box shrink; it does not make the text inside
+ * it stop at the box's edge. Without the three lines below, a long address
+ * simply drew past the row and pushed the Decline button off the screen.
+ */
 .address {
   color: var(--color-text-tertiary);
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .actionButton {

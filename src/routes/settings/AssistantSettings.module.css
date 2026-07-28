@@ -171,3 +171,67 @@
 .autonomyRow {
   margin-top: var(--space-3);
 }
+
+/* ---------- phone ---------- */
+/*
+ * Four of these blocks are label-and-value rows sized for a 680px settings
+ * column. At 375px an endpoint URL and a monospace "This browser · never sent
+ * to Pigeon" both ran off the right edge, and the provider header put a name,
+ * a model, a status pill and a Change button on one 375px line — which
+ * rendered as "qwen2." overlapping "Not connected".
+ *
+ * Each becomes a stack. Nothing is dropped: a settings screen is where you go
+ * to read exactly these values, so hiding one to make the row fit would defeat
+ * the screen.
+ */
+@media (max-width: 719px) {
+  .header {
+    height: auto;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+    padding: var(--space-1) 0;
+  }
+
+  /* The pill and the Change button drop to their own line together. */
+  .pill {
+    order: 3;
+  }
+
+  .header > :global(button) {
+    order: 4;
+    margin-left: auto;
+  }
+
+  .metaRow {
+    height: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+    padding: var(--space-3) 0;
+  }
+
+  .metaLabel {
+    width: auto;
+  }
+
+  .metaValue {
+    overflow-wrap: anywhere;
+  }
+
+  .actionRow {
+    flex-wrap: wrap;
+  }
+
+  /* `margin-left: auto` pushed this into a four-word-tall column beside the
+     buttons. On its own line it is a sentence again. */
+  .note {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .toggleRow {
+    height: auto;
+    padding: var(--space-3) 0;
+  }
+}

@@ -58,3 +58,80 @@
   display: flex;
   flex-direction: column;
 }
+
+/* ---------- phone: a stack, not a split ---------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
+
+.stackHeader {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: var(--layout-header-height);
+  padding: 0 var(--space-2);
+  border-bottom: var(--border-hairline);
+}
+
+.stackBack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--layout-touch-target);
+  padding: 0 var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.sectionList {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: var(--layout-header-height);
+  padding: 0 var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.sectionRow {
+  display: flex;
+  align-items: center;
+  min-height: var(--layout-touch-target);
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  background: var(--color-surface);
+  border-bottom: var(--border-hairline);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sectionRow:first-child {
+  border-top: var(--border-hairline);
+}
+
+.sectionRow:hover {
+  text-decoration: none;
+}
+
+.sectionRow:active {
+  background: var(--color-surface-active);
+}
+
+.sectionLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The set's only chevron points left; a disclosure points right. */
+.sectionChevron {
+  flex: none;
+  color: var(--color-text-tertiary);
+  transform: rotate(180deg);
+}
