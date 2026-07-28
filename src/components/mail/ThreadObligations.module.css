@@ -1,0 +1,68 @@
+/*
+ * The AI family's tint, because this is the model's reading — the same ink the
+ * summary block and the Screener's triage use, so nothing here is mistaken for
+ * something the mail itself said.
+ */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: var(--measure-read);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-ai);
+  border-radius: var(--radius-lg);
+}
+
+.label {
+  color: var(--color-text-ai);
+  letter-spacing: 0.08em;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.tick {
+  flex: none;
+  /* Nudged to sit on the first line's cap height rather than its box. */
+  margin-top: 2px;
+}
+
+/* Waiting-on has no tick, and the row still needs its left edge to line up. */
+.bullet {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  border-radius: var(--radius-full);
+  border: var(--border-width-emphasis) solid var(--color-text-ai);
+  opacity: 0.4;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.what {
+  color: var(--color-text-primary);
+}
+
+/*
+ * "You said you would" is the frame, not the fact. Quieter than what follows
+ * it, so the eye lands on the thing to be done.
+ */
+.lead {
+  color: var(--color-text-ai);
+}
+
+.due {
+  color: var(--color-text-ai);
+  font-weight: 500;
+}

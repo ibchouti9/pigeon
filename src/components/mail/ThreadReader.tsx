@@ -11,6 +11,7 @@ import { Icon, type IconName } from '../primitives/Icon';
 import { PostmarkRing } from '../primitives/Postmark';
 import { SkeletonBar, SkeletonCircle, Tooltip } from '../primitives/Feedback';
 import { MessageBlock } from './MessageBlock';
+import { ThreadObligations } from './ThreadObligations';
 import { LaneTag } from './LaneTag';
 import type { Lane, LaneAssignment } from '../../data/lanes';
 import styles from './ThreadReader.module.css';
@@ -401,6 +402,15 @@ export function ThreadReader({
       </header>
 
       <div className={styles.body} ref={bodyRef}>
+        {/*
+          Above the summary, because they answer different questions and only
+          one of them is a question you asked. The summary is what this
+          conversation *said*; this is what it still wants — and somebody who
+          opens a thread they promised something in should not have to read
+          three bullets to be reminded of it.
+        */}
+        <ThreadObligations threadId={thread.id} />
+
         {showSummaryBlock && (
           <AiBlock
             kind="summary"
