@@ -87,3 +87,31 @@ describe('the reason a sorting pass is allowed to show', () => {
     expect(answer.lane).toBe('promotions');
   });
 });
+
+/**
+ * §7.9 caps the Screener read at 18 words. Nothing enforced it while the
+ * prompt asked for an 8-word fragment; asking for a sentence — which is what
+ * the card actually shows — made the ceiling reachable.
+ */
+describe('the §7.9 word ceiling', () => {
+  const originalFetch = globalThis.fetch;
+  const originalSettings = useSettings.getState();
+
+  afterAll(() => {
+    globalThis.fetch = originalFetch;
+    useSettings.setState(originalSettings);
+  });
+
+  it('keeps a sentence that fits', async () => {
+    const why = 'a warm intro from someone the reader emails often';
+    expect(await reasonFor(`1: ${why} — people`, 'Intro')).toBe(why);
+  });
+
+  it('cuts one that does not, rather than overflowing the card', async () => {
+    const long = Array.from({ length: 25 }, (_, i) => `word${i}`).join(' ');
+    const out = await reasonFor(`1: ${long} — people`, 'Intro');
+    // Eighteen words, and the ellipsis rides on the last of them.
+    expect(out.split(/\s+/)).toHaveLength(18);
+    expect(out.endsWith('…')).toBe(true);
+  });
+});

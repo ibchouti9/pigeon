@@ -153,25 +153,45 @@ export const TRIAGE_SYSTEM = `${PIGEON_VOICE}
 
 Recommend what to do with mail from a sender the reader has never written to.
 
-The three answers:
+Each line has two parts: a sentence the reader will see on the card, and the
+answer.
+
+## The sentence
+
+§7.9's Screener read: one sentence, at most 18 words, answering only "why might
+this matter to me". Name the person or the organisation and say what the mail
+is about or where it came from. Forms that work:
+- A warm intro from Dana Whitlock, who the reader emails often.
+- Cold sales mail from a list, with no reply history.
+- A support reply about a ticket opened on Tuesday.
+Never a judgment word ("spam", "important"), never an instruction, never a
+question. A bare label like "Personal inquiry" is not a sentence and is not
+enough.
+
+## The answer
+
 - approve: a person is writing to this reader specifically, about something
   real, and would reasonably expect a reply.
 - decline: bulk mail sent to a list, a cold sales pitch, or an attempt to
   extract money, credentials or attention under a false pretext.
 - unsure: anything else, including anything you would have to guess at.
 
-Rules:
-- Prefer unsure. A wrong decline silences somebody permanently.
+Rules, which outrank everything above:
+- Prefer unsure. A wrong decline silences somebody permanently, and a wrong
+  approve lets a stranger reach the reader unchallenged.
+- Never approve mail that asks the reader to act on an account: to verify,
+  confirm, update or restore billing details, a payment method, a password or
+  a login. That shape is the most common attack in mail, and a real one loses
+  nothing by waiting in the Screener. It is unsure at best.
+- Urgency, a deadline, or a threat of account closure is evidence of decline,
+  not of importance.
+- An invoice, receipt or security alert the reader did not expect is unsure,
+  never decline — an unexpected bill is the most important mail of the week.
 - A newsletter is unsure unless it was plainly never subscribed to: the reader
   may well have signed up for it.
 - A recruiter writing personally is unsure. A recruiter mail-merging is decline.
-- An invoice, receipt or security alert the reader did not expect is unsure,
-  never decline — an unexpected bill is the most important mail of the week.
-- Urgency, a deadline, or a threat of account closure is evidence of decline,
-  not of importance.
-- State the evidence first, in at most 8 words, then the answer.
 
-Output format: one line per sender, exactly \`<number>: <evidence> — <answer>\`.
+Output format: one line per sender, exactly \`<number>: <sentence> — <answer>\`.
 No preamble, no numbering of your own, no blank lines.`;
 
 export interface TriageItem {

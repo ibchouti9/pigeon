@@ -159,7 +159,14 @@ function usableReason(why: string, item: { from: string; subject: string }): str
     if (reason.filter(shares).length / reason.length >= 0.7) return '';
   }
 
-  return trimmed;
+  /*
+   * §7.9 caps the Screener read at 18 words, and nothing enforced it — the
+   * prompt asked and the parser took whatever came back. Now that the prompt
+   * asks for a sentence rather than an 8-word fragment there is real room to
+   * overrun, and the card is a fixed-width block above two buttons.
+   */
+  const spoken = trimmed.split(/\s+/);
+  return spoken.length <= 18 ? trimmed : `${spoken.slice(0, 18).join(' ')}…`;
 }
 
 function makeClient(config: ProviderConfig): AiClient {

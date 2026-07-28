@@ -84,9 +84,21 @@ export function ScreenerDigest({
     );
   }
 
+  /*
+   * The remainder, named rather than left to arithmetic.
+   *
+   * "12 senders waiting. Pigeon would decline 5 and approve 1." accounts for
+   * six of twelve and says nothing about the rest, which is the majority — and
+   * the triage prompt is written to *prefer* unsure, so the majority is the
+   * normal case rather than a bad run. Leaving it out reads as the model
+   * having failed on them instead of having declined to guess.
+   */
+  const suggested = groups.reduce((n, g) => n + g.ids.length, 0);
+  const unsure = Math.max(0, heldCount - suggested);
+
   const sentence = `${plainCount} Pigeon would ${groups
     .map((g) => `${g.label.toLowerCase()} ${formatCount(g.ids.length)}`)
-    .join(' and ')}.`;
+    .join(' and ')}${unsure > 0 ? `, and isn't sure about ${formatCount(unsure)}` : ''}.`;
 
   return (
     <AiBlock
