@@ -59,13 +59,22 @@ export function TabBar({ locked = false }: { locked?: boolean }) {
     <nav className={styles.bar} aria-label="Mail" data-testid="tab-bar">
       {TABS.map((tab) => {
         const count = counts[tab.to];
+        /*
+         * §5.5's revoked state locks the shell, and "only Settings and this
+         * action remain interactive". Settings lives behind More on a phone,
+         * so locking all five tabs left the user with exactly one way out —
+         * the Connect Gmail button on the screen in front of them — and no way
+         * to reach the account they might want to disconnect instead. The
+         * rail's own footer link stays live for the same reason.
+         */
+        const tabLocked = locked && tab.to !== '/more';
         return (
           <NavLink
             key={tab.to}
             to={tab.to}
-            aria-disabled={locked || undefined}
+            aria-disabled={tabLocked || undefined}
             onClick={(e) => {
-              if (locked) e.preventDefault();
+              if (tabLocked) e.preventDefault();
             }}
             aria-label={
               count?.value ? `${tab.label}, ${formatCount(count.value)} ${count.noun}` : tab.label

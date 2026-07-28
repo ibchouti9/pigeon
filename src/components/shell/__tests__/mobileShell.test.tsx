@@ -114,15 +114,30 @@ describe('MobileShell', () => {
   });
 
   /*
-   * §5.5's revoked state "locks the whole shell", and on a phone the tab bar is
-   * the whole of the navigation — so it has to lock with everything else.
+   * §5.5's revoked state "locks the whole shell" but leaves Settings live. On
+   * a phone Settings is behind More, so locking all five tabs left exactly one
+   * way out — the Connect Gmail button on the screen in front of you — and no
+   * route to the account you might want to disconnect instead.
    */
-  it('disables the tabs when the token is revoked', () => {
-    useMail.setState({ revoked: true });
-    renderAt('/inbox');
-    for (const link of screen.getByTestId('tab-bar').querySelectorAll('a')) {
-      expect(link).toHaveAttribute('aria-disabled', 'true');
-    }
-    useMail.setState({ revoked: false });
+  describe('when the token is revoked', () => {
+    it('disables the mail destinations', () => {
+      useMail.setState({ revoked: true });
+      renderAt('/inbox');
+      // No counts yet in this render, so the names are the bare labels.
+      for (const label of ['Today', 'Inbox', 'Screener', 'Ledger']) {
+        expect(screen.getByRole('link', { name: label })).toHaveAttribute(
+          'aria-disabled',
+          'true',
+        );
+      }
+      useMail.setState({ revoked: false });
+    });
+
+    it('leaves More reachable, because Settings is behind it', () => {
+      useMail.setState({ revoked: true });
+      renderAt('/inbox');
+      expect(screen.getByRole('link', { name: 'More' })).not.toHaveAttribute('aria-disabled');
+      useMail.setState({ revoked: false });
+    });
   });
 });
