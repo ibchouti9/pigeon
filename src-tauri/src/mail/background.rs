@@ -41,6 +41,45 @@ pub struct Arrivals {
     pub subject: Option<String>,
 }
 
+/// The most names a summary lists before it counts the rest instead.
+const NAME_LIMIT: usize = 3;
+
+impl Arrivals {
+    /// The two lines to notify with.
+    ///
+    /// Here rather than at each call site because there are three of them —
+    /// the desktop watcher, the iOS wake-up, and the foreground hook's own
+    /// copy in TypeScript — and mail that reads "Dana Whitlock" on a Mac and
+    /// "1 new messages" on a phone is one sentence written twice.
+    pub fn headline(&self) -> (String, String) {
+        if self.count == 1 {
+            if let Some(name) = self.names.first() {
+                return (
+                    name.clone(),
+                    self.subject.clone().unwrap_or_else(|| "(no subject)".into()),
+                );
+            }
+        }
+
+        let shown = self
+            .names
+            .iter()
+            .take(NAME_LIMIT)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ");
+        let rest = self.names.len().saturating_sub(NAME_LIMIT);
+        (
+            format!("{} new messages", self.count),
+            if rest > 0 {
+                format!("{shown} and {rest} more")
+            } else {
+                shown
+            },
+        )
+    }
+}
+
 fn mark_path(dir: &Path) -> Result<PathBuf, String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     Ok(dir.join("last-seen-uid"))
@@ -223,6 +262,52 @@ mod tests {
     #[test]
     fn an_empty_subject_is_none_rather_than_an_empty_line() {
         assert_eq!(subject_of(b"From: a@b.com\r\nSubject:  \r\n\r\n"), None);
+    }
+
+    fn arrivals(count: u32, names: &[&str], subject: Option<&str>) -> Arrivals {
+        Arrivals {
+            count,
+            names: names.iter().map(|n| n.to_string()).collect(),
+            subject: subject.map(|s| s.to_string()),
+        }
+    }
+
+    #[test]
+    fn one_message_is_named_and_quoted() {
+        let (title, body) = arrivals(1, &["Dana Whitlock"], Some("Contract redlines")).headline();
+        assert_eq!(title, "Dana Whitlock");
+        assert_eq!(body, "Contract redlines");
+    }
+
+    #[test]
+    fn one_message_with_no_subject_still_says_something() {
+        let (_, body) = arrivals(1, &["Dana Whitlock"], None).headline();
+        assert_eq!(body, "(no subject)");
+    }
+
+    #[test]
+    fn several_are_counted_and_the_senders_listed() {
+        let (title, body) = arrivals(3, &["Dana", "Priya", "Jae"], None).headline();
+        assert_eq!(title, "3 new messages");
+        assert_eq!(body, "Dana, Priya, Jae");
+    }
+
+    /// Matches the foreground hook's wording exactly — the same sentence is
+    /// written twice, once here and once in TypeScript.
+    #[test]
+    fn past_three_senders_the_rest_are_counted() {
+        let (title, body) = arrivals(9, &["Dana", "Priya", "Jae", "Ellis", "Ines"], None).headline();
+        assert_eq!(title, "9 new messages");
+        assert_eq!(body, "Dana, Priya, Jae and 2 more");
+    }
+
+    /// Two messages from one person: the count leads, because "Dana Whitlock"
+    /// over a subject would imply there is only the one.
+    #[test]
+    fn two_from_the_same_person_still_counts() {
+        let (title, body) = arrivals(2, &["Dana"], Some("Contract redlines")).headline();
+        assert_eq!(title, "2 new messages");
+        assert_eq!(body, "Dana");
     }
 
     #[test]

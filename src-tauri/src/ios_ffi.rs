@@ -36,9 +36,14 @@ use super::mail;
 /// check reads an empty allowlist and says nothing, which is quiet rather than
 /// wrong.
 ///
-/// Returns JSON — `{"count":2,"names":["Dana Whitlock"],"subject":null}` — or
-/// null for "nothing to say", which covers both no mail and any failure. The
-/// caller must free a non-null result with [`pigeon_string_free`].
+/// Returns `{"title":"Dana Whitlock","body":"Contract redlines"}`, or null for
+/// "nothing to say", which covers both no mail and any failure.
+///
+/// The finished wording rather than the raw counts, so Swift posts what it is
+/// given instead of writing the sentence a second time. `Arrivals::headline`
+/// is where it is decided, once, for the Mac and the phone alike.
+///
+/// The caller must free a non-null result with [`pigeon_string_free`].
 ///
 /// # Safety
 ///
@@ -52,7 +57,8 @@ pub unsafe extern "C" fn pigeon_background_check(dir: *const c_char) -> *mut c_c
         }
         let path = CStr::from_ptr(dir).to_str().ok()?;
         let arrivals = mail::background_check(Path::new(path)).ok()??;
-        let json = serde_json::to_string(&arrivals).ok()?;
+        let (title, body) = arrivals.headline();
+        let json = serde_json::json!({ "title": title, "body": body }).to_string();
         CString::new(json).ok()
     }));
 

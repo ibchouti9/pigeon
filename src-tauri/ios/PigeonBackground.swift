@@ -36,10 +36,12 @@ func pigeon_background_check(_ dir: UnsafePointer<CChar>) -> UnsafeMutablePointe
 @_silgen_name("pigeon_string_free")
 func pigeon_string_free(_ text: UnsafeMutablePointer<CChar>?)
 
-private struct Arrivals: Decodable {
-    let count: UInt32
-    let names: [String]
-    let subject: String?
+/// What Rust decided to say. The wording is `Arrivals::headline` in
+/// `src-tauri/src/mail/background.rs` — one sentence, written once, so mail
+/// that reads "Dana Whitlock" on a Mac does not read "1 new messages" here.
+private struct Notice: Decodable {
+    let title: String
+    let body: String
 }
 
 enum PigeonBackground {
@@ -128,7 +130,7 @@ enum PigeonBackground {
 
             guard
                 let json,
-                let arrivals = try? JSONDecoder().decode(Arrivals.self, from: Data(json.utf8))
+                let notice = try? JSONDecoder().decode(Notice.self, from: Data(json.utf8))
             else {
                 // No mail, or a connection that failed. Both are a successful
                 // wake-up: it ran, it found nothing to say, and iOS should go
@@ -137,7 +139,7 @@ enum PigeonBackground {
                 return
             }
 
-            post(arrivals)
+            post(notice)
             task.setTaskCompleted(success: true)
         }
 
@@ -154,19 +156,10 @@ enum PigeonBackground {
         DispatchQueue.global(qos: .utility).async(execute: work)
     }
 
-    private static func post(_ arrivals: Arrivals) {
+    private static func post(_ notice: Notice) {
         let content = UNMutableNotificationContent()
-
-        if arrivals.count == 1, let name = arrivals.names.first {
-            content.title = name
-            content.body = arrivals.subject ?? "(no subject)"
-        } else {
-            content.title = "\(arrivals.count) new messages"
-            // Same shape the desktop notice uses: three names, then a count.
-            let shown = arrivals.names.prefix(3).joined(separator: ", ")
-            let rest = arrivals.names.count - 3
-            content.body = rest > 0 ? "\(shown) and \(rest) more" : shown
-        }
+        content.title = notice.title
+        content.body = notice.body
         content.sound = .default
 
         // Immediate: the trigger is that mail has already arrived.

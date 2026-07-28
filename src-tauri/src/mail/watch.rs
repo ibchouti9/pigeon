@@ -10,6 +10,14 @@
 //! no payload. Who the mail is from, whether that sender is approved, and
 //! whether any of it is worth interrupting someone over are product rules, and
 //! product rules live in TypeScript. Rust owns the socket.
+//!
+//! With one exception, and it is the case the whole feature exists for. When
+//! the window is hidden the webview is throttled — on macOS an occluded one
+//! may stop running script at all — so the notification you most want, the one
+//! that arrives while you are doing something else, is exactly the one a
+//! TypeScript hook cannot be relied on to post. So this posts it, using the
+//! same `background::check` the iPhone wake-up runs. The hook skips whenever
+//! the document is hidden; the two never both fire.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
@@ -17,8 +25,10 @@ use std::time::Duration;
 
 use imap::extensions::idle::WaitOutcome;
 use imap::types::UnsolicitedResponse;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_notification::NotificationExt;
 
+use super::background;
 use super::session;
 
 /// The event the webview listens for.
@@ -117,6 +127,7 @@ fn watch(app: &AppHandle, epoch: u64) -> Result<(), String> {
                 // announce mail on its way out.
                 if live(epoch) {
                     let _ = app.emit(INBOX_CHANGED, ());
+                    announce_if_unwatched(app);
                 }
             }
             Ok(WaitOutcome::TimedOut) => {}
@@ -124,6 +135,44 @@ fn watch(app: &AppHandle, epoch: u64) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Whether anyone is actually looking at Pigeon.
+///
+/// A window that is hidden, minimized, or simply not there — the close button
+/// hides rather than quits, so "no main window" is an ordinary state rather
+/// than a broken one.
+fn window_is_watched(app: &AppHandle) -> bool {
+    app.get_webview_window("main")
+        .and_then(|w| w.is_visible().ok().zip(w.is_minimized().ok()))
+        .map(|(visible, minimized)| visible && !minimized)
+        .unwrap_or(false)
+}
+
+/// Posts the notification the webview cannot be trusted to post.
+///
+/// Runs `background::check` unconditionally so the UID mark stays current
+/// whether or not anything is announced — a mark left behind while the window
+/// was open would make the next hidden wake-up re-announce everything the user
+/// had already read on screen.
+fn announce_if_unwatched(app: &AppHandle) {
+    let Ok(dir) = app.path().app_data_dir() else {
+        return;
+    };
+    let Ok(Some(arrivals)) = background::check(&dir) else {
+        return;
+    };
+    if window_is_watched(app) {
+        return;
+    }
+
+    let (title, body) = arrivals.headline();
+    let _ = app
+        .notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show();
 }
 
 /// Whether an untagged response means the inbox is no longer what we listed.

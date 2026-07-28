@@ -141,6 +141,38 @@ describe('useNewMailNotice', () => {
     expect(notify).not.toHaveBeenCalled();
   });
 
+  /*
+   * With the window hidden the engine posts instead, because a throttled
+   * webview cannot be relied on to. If this hook posted too, every arrival
+   * while you were elsewhere would be announced twice.
+   */
+  it('leaves a hidden window to the engine', async () => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get');
+    renderHook(() => useNewMailNotice());
+    listing([thread('t1', 'Dana Whitlock', 'Contract redlines')]);
+
+    visibility.mockReturnValue('hidden');
+    listing([
+      thread('t1', 'Dana Whitlock', 'Contract redlines'),
+      thread('t2', 'Priya Raman', 'Reconcile'),
+    ]);
+    await settle();
+    expect(notify).not.toHaveBeenCalled();
+
+    /*
+     * And does not announce it late. The thread was recorded as seen while
+     * hidden, so coming back to the window is not a second arrival.
+     */
+    visibility.mockReturnValue('visible');
+    listing([
+      thread('t1', 'Dana Whitlock', 'Contract redlines'),
+      thread('t2', 'Priya Raman', 'Reconcile'),
+    ]);
+    await settle();
+    expect(notify).not.toHaveBeenCalled();
+    visibility.mockRestore();
+  });
+
   it('posts nothing when permission is refused', async () => {
     mayNotify.mockResolvedValueOnce(false);
     renderHook(() => useNewMailNotice());

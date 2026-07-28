@@ -19,6 +19,10 @@ import type { Thread } from '../types';
  * Notifying about five arrivals with five notifications is how a mail client
  * teaches someone to turn its notifications off. Past this many, they are
  * summarised into one.
+ *
+ * `Arrivals::headline` in `src-tauri/src/mail/background.rs` writes the same
+ * two lines for the hidden-window and iPhone paths. One sentence in two
+ * languages: if the wording changes here, change it there.
  */
 const NAME_LIMIT = 3;
 
@@ -74,7 +78,23 @@ export function useNewMailNotice(): void {
 
     const known = seen.current;
     const arrived = inbox.filter((t) => !known.has(t.id));
+    // Recorded before the visibility check below, not after: a thread that
+    // arrives while the window is hidden has been announced by the engine, and
+    // must not be announced again the moment the window comes back.
     for (const thread of inbox) known.add(thread.id);
+
+    /*
+     * With the window hidden the engine does this instead (`mail::watch`), for
+     * a reason this hook cannot do anything about: a webview in a hidden
+     * window is throttled, and on macOS an occluded one may stop running
+     * script altogether. The notification that matters most is the one you get
+     * when you are not looking, so it cannot be the one that depends on a
+     * screen being on.
+     *
+     * The two are mutually exclusive on exactly this test, which is what keeps
+     * a message from being announced twice.
+     */
+    if (document.visibilityState !== 'visible') return;
 
     /*
      * Unread, and not the user's own. A thread Pigeon itself just moved back
