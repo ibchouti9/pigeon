@@ -48,5 +48,7 @@
 	<array>
 		<string>com.pigeonmail.pigeon.refresh</string>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Pigeon connects to a language model running on your own network, so your mail is never sent to anyone else&apos;s server.</string>
 </dict>
 </plist>

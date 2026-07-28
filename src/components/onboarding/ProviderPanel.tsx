@@ -124,11 +124,18 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
   );
   /*
    * Blank on a phone rather than pre-filled with `localhost`, which is the
-   * phone itself and answers nothing. There is no address to guess at, so the
-   * field asks instead of pretending to know.
+   * phone itself and answers nothing.
+   *
+   * `|| DEFAULT_BASE_URL` was not enough: the store *initialises* `baseUrl` to
+   * that value, so it is never falsy and the phone got the Mac's default
+   * anyway. The question is whether anyone chose it — an address that came
+   * with the store rather than from a person is worth discarding here, and one
+   * saved alongside `provider: 'local'` never is.
    */
+  const inheritedDefault =
+    savedProvider.provider !== 'local' && savedProvider.baseUrl === DEFAULT_BASE_URL;
   const [baseUrl, setBaseUrl] = useState(
-    savedProvider.baseUrl || (localModelNeedsAddress() ? '' : DEFAULT_BASE_URL),
+    localModelNeedsAddress() && inheritedDefault ? '' : savedProvider.baseUrl || DEFAULT_BASE_URL,
   );
   const [model, setModel] = useState(
     initialProviderId && initialProviderId !== 'local' ? savedProvider.model : '',

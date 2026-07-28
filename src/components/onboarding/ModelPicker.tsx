@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { localModelNeedsAddress } from '../../lib/desktop';
 import { cn } from '../../lib/cn';
 import { FIT_LABEL, type Catalog, type CatalogEntry } from '../../ai/catalog';
 import { progressLabel, pullModel, type PullProgress } from '../../ai/pull';
@@ -102,7 +103,16 @@ export function ModelPicker({
           ? `Ranked for this Mac — ${catalog.chip ? `${catalog.chip}, ` : ''}${Math.round(
               catalog.usableGb,
             )} GB usable for a model`
-          : 'Ranked by size. The macOS app also says which of these fit this Mac.'}
+          : /*
+             * The fit column needs to know how much memory the model has to
+             * live in, and on a phone that is a different machine's memory —
+             * unknowable from here, and not this device's business. Pointing
+             * at "the macOS app" would be pointing at the machine the model is
+             * already running on.
+             */
+            localModelNeedsAddress()
+            ? 'Ranked by size. Whether one fits depends on the machine running it.'
+            : 'Ranked by size. The macOS app also says which of these fit this Mac.'}
       </p>
 
       <ul className={styles.list}>
