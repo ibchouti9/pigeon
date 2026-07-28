@@ -4,6 +4,7 @@ import { useLedger as useLedgerStore, type Obligation } from '../store/ledger';
 import { useAssistant } from '../ai/useAssistant';
 import { Checkbox } from '../components/primitives/Field';
 import { EmptyState } from '../components/primitives/Feedback';
+import { toast } from '../store/toast';
 import { cn } from '../lib/cn';
 import { plural } from '../lib/format';
 import styles from './LedgerRoute.module.css';
@@ -43,12 +44,26 @@ const GROUPS: { key: keyof Pick<ReturnType<typeof useLedger>, 'needsYou' | 'youP
 function Row({ item, onOpen }: { item: Obligation; onOpen: () => void }) {
   const setDone = useLedgerStore((s) => s.setDone);
 
+  /*
+   * §8.5 item 8 — undo or confirm, never neither.
+   *
+   * Ticking a row off removes it from a list the model built, and the model
+   * will not rebuild it: the conversation has not changed, so the cached read
+   * stands and the row does not come back. Without an undo, one mis-click
+   * loses an obligation silently and permanently, which is the one thing a
+   * ledger must not do.
+   */
+  function tick() {
+    setDone(item.id, true);
+    toast.undo(`Marked done: ${item.what}`, 'Undo', () => setDone(item.id, false));
+  }
+
   return (
     <div className={styles.row}>
       <span className={styles.tick}>
         <Checkbox
           checked={false}
-          onChange={() => setDone(item.id, true)}
+          onChange={tick}
           aria-label={`Mark done: ${item.what}`}
         />
       </span>
