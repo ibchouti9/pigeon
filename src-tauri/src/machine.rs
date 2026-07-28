@@ -7,7 +7,15 @@
 //! Safari exposes no memory API, and the Tauri webview is Safari.
 //!
 //! So Rust reads it. Two sysctls, once, at the moment the picker opens.
+//!
+//! Desktop only, and enforced here rather than left to the caller. iOS forbids
+//! spawning a process at all, so `sysctl` cannot run in that build — and there
+//! is nothing for it to answer, because no model runs beside the app on a
+//! phone. Compiled out entirely on mobile rather than returning `None` at
+//! runtime: a command that is always `None` is one somebody eventually tries
+//! to fix.
 
+#[cfg(desktop)]
 use std::process::Command;
 
 use serde::Serialize;
@@ -34,8 +42,10 @@ pub struct MachineMemory {
 /// memory. Two thirds leaves room for the OS, the browser engine rendering
 /// this app, and the mailbox held in it — a model that fits exactly and then
 /// swaps is slower than the smaller model that did not.
+#[cfg(desktop)]
 const USABLE_FRACTION: f64 = 2.0 / 3.0;
 
+#[cfg(desktop)]
 fn sysctl(key: &str) -> Option<String> {
     /*
      * Shelling out rather than binding `sysctlbyname`.
@@ -57,6 +67,8 @@ fn sysctl(key: &str) -> Option<String> {
     }
 }
 
+/// Desktop's answer. iOS gets [`machine_memory`]'s other arm.
+#[cfg(desktop)]
 #[tauri::command]
 pub fn machine_memory() -> Option<MachineMemory> {
     let total_bytes: u64 = sysctl("hw.memsize")?.parse().ok()?;
@@ -69,7 +81,18 @@ pub fn machine_memory() -> Option<MachineMemory> {
     })
 }
 
-#[cfg(test)]
+/// The same command on iOS, where there is nothing to survey.
+///
+/// It still exists, because `generate_handler!` names it and the webview may
+/// call it — `usableMemory` is one function on the TypeScript side. It simply
+/// has one answer.
+#[cfg(mobile)]
+#[tauri::command]
+pub fn machine_memory() -> Option<MachineMemory> {
+    None
+}
+
+#[cfg(all(test, desktop))]
 mod tests {
     use super::*;
 

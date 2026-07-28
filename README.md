@@ -2,7 +2,7 @@
 
 **Mail from people you've chosen. Everyone else waits at the door.**
 
-Pigeon is a macOS mail client for Gmail with one idea in it: mail from someone
+Pigeon is a mail client for Gmail — macOS and iPhone — with one idea in it: mail from someone
 new never lands in your inbox. It waits in the **Screener** until you decide.
 Approve a sender and their mail — this message and everything after — goes to
 your inbox. Decline and you never see them again.
@@ -21,12 +21,14 @@ your mail with exactly as much freedom as you give it.
 Pigeon ships no inference of its own. You bring your own model: an API key for
 Anthropic, OpenAI or Google, or a local endpoint. If Ollama or LM Studio is
 already running when you open the assistant screen, Pigeon finds it and fills
-the fields in — no key, and nothing leaves your Mac. The key, if you use one,
+the fields in — no key, and nothing leaves your Mac. (A phone has no loopback
+to find one on, so the iPhone build offers the three hosted providers and the
+demo.) The key, if you use one,
 is stored on your machine and sent to no origin except the provider you pick.
 
 **There is no Pigeon server.** Nothing to bill through, no shared credential to
 leak, and nothing between you and Google — Pigeon talks to Gmail's own IMAP and
-SMTP servers directly, and your app password never leaves your Mac's Keychain.
+SMTP servers directly, and your app password never leaves your device's Keychain.
 
 ---
 
@@ -37,7 +39,9 @@ npm install
 npm run app
 ```
 
-That builds and opens the macOS app. Pigeon starts on a **demo mail account** —
+That builds and opens the macOS app; `npm run ios` does the same on an iPhone
+or the simulator (see [On your iPhone](#on-your-iphone) for the one-time setup
+that needs). Pigeon starts on a **demo mail account** —
 a seeded inbox, archive and Screener, persisted locally — so the whole product
 is walkable in the first ten seconds, with no Google account and no API key.
 Press **Connect Gmail** when you want real mail; see
@@ -166,7 +170,7 @@ Pigeon verifies the pair with a real sign-in before storing anything, and every
 refusal comes back in words: a wrong password, an ordinary Google password
 where the app password should be, IMAP switched off — each says what to do.
 
-The password goes into the macOS Keychain and is sent only to
+The password goes into the device Keychain and is sent only to
 `imap.gmail.com` and `smtp.gmail.com`. It never expires, there is nothing to
 re-consent to, and revoking it (from the same Google page) shuts Pigeon out
 instantly.
@@ -187,13 +191,65 @@ resurrecting it.
 `npm run dev` serves the same app in a browser, which can neither hold mail
 credentials nor open a TCP socket — so it offers the demo account only. It is
 the fastest way to iterate on the UI and is what the tests run against; the
-macOS app is how real mail is read.
+macOS and iPhone apps are how real mail is read.
+
+## On your iPhone
+
+Same repo, same Rust engine, same screens — Tauri builds an iOS app from the
+source that builds the Mac one. Below 720px the app mounts a different shell:
+a bottom tab bar instead of the rail, one screen at a time instead of two
+panes, swipe-to-archive instead of a button that appears on hover.
+
+**One-time setup.** Three downloads and an Apple account you may already have.
+
+- **Xcode**, the full app from the App Store — not just the Command Line Tools.
+  Open it once so it finishes installing its components, then point the
+  toolchain at it:
+  `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.
+- **The iOS Rust targets**:
+  `rustup target add aarch64-apple-ios aarch64-apple-ios-sim`.
+- **CocoaPods**: `brew install cocoapods`.
+- **An Apple Developer account.** The free tier signs an app that runs on your
+  own device and expires after 7 days; the paid one ($99/yr) signs for a year
+  and reaches TestFlight.
+
+Then generate the Xcode project, once:
+
+```bash
+npm run tauri ios init
+```
+
+**Running it.** `npm run ios` builds and launches on a connected iPhone or in
+the simulator. Signing needs your team id; set it in the environment so it
+stays out of the repo:
+
+```bash
+export APPLE_DEVELOPMENT_TEAM=XXXXXXXXXX
+```
+
+On the phone, the first launch of a free-tier build needs Settings → General →
+VPN & Device Management → trust the developer.
+
+**What is different on a phone.** The app password goes into the iOS Keychain
+rather than the Mac one, and is still sent only to Gmail. The local-model
+provider is not offered: iOS suspends every app that is not in front, so
+nothing can be listening on loopback for Pigeon to talk to. Bring a key from
+Anthropic, OpenAI or Google, or run the demo.
+
+**What is not built.** Nothing fetches mail while the app is closed. iOS
+suspends the process and the IMAP connection dies with it; Pigeon reconnects
+when you come back, so new mail arrives when you open the app rather than
+before. Real background delivery needs either `BGAppRefresh` — best-effort,
+minutes to hours — or a push proxy, and Gmail's IMAP offers no push a client
+can consume directly.
 
 ## Scripts
 
 | | |
 |---|---|
 | `npm run app` | Build and run the macOS app |
+| `npm run ios` | Build and run on a connected iPhone or the simulator |
+| `npm run ios:build` | Build a signed `.ipa` |
 | `npm run app:build` | Bundle `.app` and `.dmg` into `src-tauri/target/release/bundle/` |
 | `npm run app:test` | The Rust tests |
 | `npm run dev` | Dev server, in a browser |

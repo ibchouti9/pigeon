@@ -18,6 +18,8 @@
     "app": "tauri dev",
     "app:build": "tauri build",
     "app:test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "ios": "tauri ios dev",
+    "ios:build": "tauri ios build",
     "tauri": "tauri"
   },
   "dependencies": {
