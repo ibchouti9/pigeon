@@ -57,6 +57,11 @@ export interface ComposerProps {
   online: boolean;
   /** Docked composers carry a title bar and a scrim-free dialog role. */
   variant: 'inline' | 'docked';
+  /**
+   * The composer is the whole screen (§5.12's sheet, below 880px), so the body
+   * fills the height rather than growing to fit its own text.
+   */
+  fill?: boolean;
   className?: string;
   /** Start drafting with Pigeon as soon as the composer mounts (⌘J, §5.6). */
   draftOnMount?: boolean;
@@ -76,6 +81,7 @@ export function Composer({
   userName,
   online,
   variant,
+  fill,
   className,
   draftOnMount,
   sendError,
@@ -281,7 +287,12 @@ export function Composer({
   return (
     <form
       ref={formRef}
-      className={cn(styles.composer, variant === 'inline' && styles.inline, className)}
+      className={cn(
+        styles.composer,
+        variant === 'inline' && styles.inline,
+        fill && styles.fillHeight,
+        className,
+      )}
       aria-label={draft.mode === 'new' ? 'New message' : `Reply to ${recipientLabel}`}
       onKeyDown={onComposerKeyDown}
       onSubmit={(e) => {
@@ -364,6 +375,7 @@ export function Composer({
         busy={generating}
         textareaRef={bodyRef}
         minHeight={variant === 'inline' ? 160 : 200}
+        fill={fill}
       />
 
       {/*

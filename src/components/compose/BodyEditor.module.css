@@ -86,3 +86,19 @@
   border-radius: var(--radius-xs);
   box-shadow: 0 0 0 1px var(--color-destructive) inset;
 }
+
+/*
+ * `fill` — the body takes the space the parent has left rather than growing to
+ * fit its own text. Used by the full-screen composer sheet on a phone, where
+ * grow-to-fit stopped at its 200px minimum and left the rest of the screen
+ * empty below the send row.
+ */
+.fill {
+  flex: 1;
+  min-height: 0;
+}
+
+.fill .input,
+.fill .underlay {
+  height: 100%;
+}

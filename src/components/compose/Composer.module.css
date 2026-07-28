@@ -173,3 +173,17 @@
     max-height: 900px;
   }
 }
+
+/*
+ * The sheet's composer owns the whole height, so the body is what stretches
+ * and the field rows and the action row keep theirs.
+ */
+.fillHeight {
+  flex: 1;
+  min-height: 0;
+}
+
+.fillHeight .fields,
+.fillHeight .actions {
+  flex: none;
+}

@@ -2,7 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      `viewport-fit=cover` is what makes `env(safe-area-inset-*)` resolve to
+      anything other than zero — the app draws into the notch and the home
+      indicator and pays for both in CSS, rather than letting iOS letterbox it.
+
+      `maximum-scale=1, user-scalable=no` is not there to stop anyone zooming:
+      iOS ignores it for pinch in a Safari tab and this is not a Safari tab
+      anyway. It is there to stop the *automatic* zoom WKWebView performs when
+      a text field under 16px takes focus, which leaves the page scaled up with
+      no way back. The 16px floor in base.css is the real fix; this is the belt
+      to its braces, and it is why that floor is a rule rather than a habit.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

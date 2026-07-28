@@ -37,6 +37,14 @@ export interface BodyEditorProps {
   disabled?: boolean;
   minHeight?: number;
   maxHeight?: number;
+  /**
+   * Take whatever height the parent has left instead of growing to fit.
+   *
+   * The full-screen composer sheet on a phone is the whole screen, and
+   * grow-to-fit left the body at its 200px minimum with four hundred pixels of
+   * empty sheet under the send row. `fill` hands the height back to CSS.
+   */
+  fill?: boolean;
   ariaLabel: string;
   ariaDescribedBy?: string;
   /** §5.12 — the body is aria-busy while Pigeon is writing into it. */
@@ -53,6 +61,7 @@ export function BodyEditor({
   disabled,
   minHeight = 200,
   maxHeight = 480,
+  fill,
   ariaLabel,
   ariaDescribedBy,
   busy,
@@ -67,17 +76,23 @@ export function BodyEditor({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // An inline height here would beat the stylesheet, so filling means not
+    // writing one — and clearing any this effect wrote on a previous pass.
+    if (fill) {
+      el.style.removeProperty('height');
+      return;
+    }
     el.style.height = 'auto';
     el.style.height = `${Math.min(maxHeight, Math.max(minHeight, el.scrollHeight))}px`;
-  }, [value, minHeight, maxHeight, ref]);
+  }, [value, minHeight, maxHeight, fill, ref]);
 
   return (
-    <div className={cn(styles.wrap, drafted && styles.drafted, className)}>
+    <div className={cn(styles.wrap, drafted && styles.drafted, fill && styles.fill, className)}>
       <div
         ref={underlayRef}
         className={styles.underlay}
         aria-hidden="true"
-        style={{ minHeight }}
+        style={fill ? undefined : { minHeight }}
       >
         {highlight(value)}
       </div>
@@ -91,7 +106,7 @@ export function BodyEditor({
         aria-describedby={ariaDescribedBy}
         aria-busy={busy || undefined}
         spellCheck
-        style={{ minHeight }}
+        style={fill ? undefined : { minHeight }}
         onScroll={(e) => {
           if (underlayRef.current) {
             underlayRef.current.scrollTop = e.currentTarget.scrollTop;

@@ -125,20 +125,10 @@
     width: auto;
     max-width: none;
     border-radius: 0;
-  }
-}
-
-/* The sheet covers the notch and the home indicator; its chrome steps off. */
-@media (max-width: 719px) {
-  .sheetHeader {
-    height: auto;
-    padding-top: var(--safe-top);
-    padding-left: calc(var(--space-3) + var(--safe-left));
-    padding-right: calc(var(--space-3) + var(--safe-right));
-  }
-
-  .dock {
-    padding-bottom: var(--safe-bottom);
+    /* A column, so the composer inside can claim the height the sheet has and
+       the header keeps its own. */
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -158,4 +148,19 @@
   min-width: 0;
   text-align: center;
   color: var(--color-text-secondary);
+}
+
+/* The sheet covers the notch and the home indicator; its chrome steps off. */
+@media (max-width: 719px) {
+  .sheetHeader {
+    height: auto;
+    padding-top: var(--safe-top);
+    padding-left: calc(var(--space-3) + var(--safe-left));
+    padding-right: calc(var(--space-3) + var(--safe-right));
+  }
+
+  .dock {
+    /* `max`, not a sum — the keyboard already covers the home indicator. */
+    padding-bottom: max(var(--safe-bottom), var(--keyboard-inset));
+  }
 }

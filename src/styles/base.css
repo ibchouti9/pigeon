@@ -15,6 +15,21 @@ body,
   height: 100%;
 }
 
+html {
+  /*
+   * Rotating a phone changes the font size iOS renders text at unless it is
+   * told not to, which turns a landscape mail list into a different design.
+   */
+  -webkit-text-size-adjust: 100%;
+  /*
+   * Rubber-banding the whole document. The app is a fixed shell with its own
+   * scroll regions inside it, so a drag past the end of one of them was
+   * dragging the entire app off the top of the screen and letting it snap
+   * back — which reads as the page having come loose.
+   */
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
@@ -48,6 +63,54 @@ button, input, select, textarea {
   font: inherit;
   color: inherit;
   letter-spacing: inherit;
+}
+
+/*
+ * The 16px floor.
+ *
+ * WKWebView zooms the whole page in when a text field smaller than 16px takes
+ * focus, and does not zoom back out when it loses focus — so one tap on the
+ * search field left the app permanently scaled up and scrolled sideways. The
+ * fields Pigeon sizes below 16px are the search field, the sender filter and
+ * the composer's recipient row, and every one of them is a field you tap
+ * first.
+ *
+ * Scoped to the phone so the desktop's own type scale is left alone: this is
+ * a webview quirk, not a design decision, and the design is right at 1280px.
+ */
+@media (max-width: 719px) {
+  /*
+   * `[class]` is doing real work here, not decorating the selector. Every
+   * field in Pigeon carries a type utility — `t-sm` on the search field,
+   * `t-base` on the composer — and a bare `input` selector loses to all of
+   * them on specificity. The attribute selector puts this at (0,1,1), which
+   * clears a single class without reaching for `!important`.
+   *
+   * `max(16px, 1em)` rather than a flat 16px: a field the design deliberately
+   * sizes *up* keeps its size.
+   */
+  input,
+  select,
+  textarea,
+  input[class],
+  select[class],
+  textarea[class] {
+    font-size: max(16px, 1em);
+  }
+}
+
+/*
+ * A grey rectangle over every control the moment it is touched, courtesy of
+ * the webview. Pigeon draws its own pressed states; this one lands on top of
+ * them, in a colour from no palette, on a delay long enough to look like lag.
+ */
+button,
+a,
+[role='button'],
+[role='radio'],
+[role='tab'],
+label {
+  -webkit-tap-highlight-color: transparent;
 }
 
 button {

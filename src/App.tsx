@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { MobileShell } from './components/shell/MobileShell';
 import { useBreakpoint } from './hooks/useBreakpoint';
+import { useKeyboardInset } from './hooks/useKeyboardInset';
 import { useTheme } from './hooks/useTheme';
 import { useScenario } from './hooks/useScenario';
 import { useRestoreProvider } from './hooks/useRestoreProvider';
@@ -81,6 +82,9 @@ export default function App() {
   useRestoreProvider();
   useTheme();
   useScenario();
+  // Both shells and every overlay read `--keyboard-inset`, so it is published
+  // above all of them rather than by whichever one happens to be mounted.
+  useKeyboardInset();
 
   return (
     /*

@@ -182,6 +182,7 @@ export function ComposeDock() {
   const composer = (
     <Composer
       variant="docked"
+      fill={isSheet}
       focusToken={pulse}
       draft={draft}
       onChange={update}

@@ -178,6 +178,17 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left:   env(safe-area-inset-left, 0px);
 
+  /*
+   * How much of the screen the software keyboard is covering. Written by
+   * `useKeyboardInset` from `visualViewport`, because CSS has no way to ask:
+   * iOS shrinks the visual viewport and leaves the layout viewport — the one
+   * `position: fixed` is measured against — untouched.
+   *
+   * Declared here so it resolves to 0px before the hook has run, and stays 0px
+   * on every platform without a software keyboard.
+   */
+  --keyboard-inset: 0px;
+
   --z-shell: 0; --z-dock: 40; --z-sheet: 50; --z-overlay: 60;
   --z-dialog: 70; --z-toast: 80; --z-banner: 90;
 }

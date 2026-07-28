@@ -9,6 +9,20 @@
   pointer-events: none;
 }
 
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  min-width: 320px;
+  max-width: 420px;
+  padding: var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+  animation: toast-in var(--duration-toast-in) var(--ease-standard) both;
+}
+
 /*
  * Above the tab bar and the compose button, not behind them. An undo toast
  * that a thumb cannot reach is an undo that does not exist, and 8 seconds is
@@ -25,20 +39,6 @@
     min-width: 0;
     max-width: none;
   }
-}
-
-.toast {
-  pointer-events: auto;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
-  min-width: 320px;
-  max-width: 420px;
-  padding: var(--space-4);
-  border: 1px solid transparent;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-overlay);
-  animation: toast-in var(--duration-toast-in) var(--ease-standard) both;
 }
 
 .toast:hover,
