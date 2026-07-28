@@ -96,7 +96,7 @@ describe('O1 Connect Gmail (§3.1)', () => {
       expect(connect.connectGmail).toHaveBeenCalledWith('me@gmail.com', 'abcdabcdabcdabcd'),
     );
     await waitFor(() => expect(useMail.getState().provider.kind).toBe('gmail'));
-    expect(navigate).toHaveBeenCalledWith('/setup/provider');
+    expect(navigate).toHaveBeenCalledWith('/setup/sync');
   });
 
   it('shows the engine’s own words when Gmail refuses, and stays on the demo', async () => {
@@ -148,7 +148,7 @@ describe('O1 Connect Gmail (§3.1)', () => {
 
     expect(connect.connectGmail).not.toHaveBeenCalled();
     expect(useMail.getState().provider.kind).toBe('mock');
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/setup/provider'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/setup/sync'));
   });
 
   it('offers only the demo on the web build, and says why', () => {

@@ -42,7 +42,14 @@ export function WelcomeRoute() {
       .getState()
       .setProvider(provider === 'gmail' ? new ImapMailProvider() : new MockMailProvider());
     await useMail.getState().loadAccount();
-    navigate('/setup/provider');
+    /*
+     * Straight to the mail. O2 used to sit here, so the second thing anyone
+     * saw was a provider picker — before a single message, with an imperative
+     * heading and its only way past a tertiary button beside a disabled
+     * primary. People judge a mail app by its mail; the assistant is offered
+     * from the inbox once there is something for it to be useful about.
+     */
+    navigate('/setup/sync');
   }
 
   async function handleConnect(event?: React.FormEvent) {

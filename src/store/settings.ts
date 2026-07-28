@@ -57,6 +57,14 @@ interface SettingsState {
   onboarded: boolean;
   /** Set when the user chose "Continue without the assistant" on O2. */
   skippedProvider: boolean;
+  /**
+   * Set when the inbox's assistant offer has been waved away.
+   *
+   * The provider step left the required flow, so this card is what replaces
+   * it. It has to be dismissible and it has to stay dismissed, or it becomes
+   * the nag that the step it replaced at least only asked once.
+   */
+  dismissedAssistantOffer: boolean;
 
   setProvider: (config: Partial<ProviderConfig>) => void;
   removeKey: () => void;
@@ -66,6 +74,7 @@ interface SettingsState {
   recordCall: (usd: number, ms: number) => void;
   setOnboarded: (v: boolean) => void;
   setSkippedProvider: (v: boolean) => void;
+  dismissAssistantOffer: () => void;
 }
 
 export const DEFAULT_BASE_URL = 'http://localhost:11434';
@@ -105,6 +114,7 @@ export const useSettings = create<SettingsState>()(
       usage: { spendUsd: 0, calls: 0, month: currentMonth() },
       connection: 'unknown',
       onboarded: false,
+      dismissedAssistantOffer: false,
       skippedProvider: false,
 
       setProvider: (config) =>
@@ -135,6 +145,7 @@ export const useSettings = create<SettingsState>()(
 
       setOnboarded: (onboarded) => set({ onboarded }),
       setSkippedProvider: (skippedProvider) => set({ skippedProvider }),
+      dismissAssistantOffer: () => set({ dismissedAssistantOffer: true }),
     }),
     { name: 'pigeon.provider' },
   ),

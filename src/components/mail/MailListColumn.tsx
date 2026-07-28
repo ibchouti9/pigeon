@@ -28,6 +28,7 @@ import { useMinimumVisible } from '../../hooks/useMinimumVisible';
 import { ThreadRow } from './ThreadRow';
 import { RevokedState } from './RevokedState';
 import { LaneBar } from './LaneBar';
+import { AssistantOffer } from './AssistantOffer';
 import type { LaneView } from '../../hooks/useThreadLanes';
 import styles from './MailListColumn.module.css';
 
@@ -59,6 +60,8 @@ export interface MailListColumnProps {
   onSendTest: () => void;
   onRetry: () => void;
   onConnectGmail: () => void;
+  /** Opens the assistant settings from the inbox's offer card. */
+  onConnectModel?: () => void;
   /**
    * §2.1's counts stay honest while the list stays a window: a real mailbox can
    * hold tens of thousands of conversations, and the first screen must not wait
@@ -119,6 +122,7 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
       onSendTest,
       onRetry,
       onConnectGmail,
+      onConnectModel,
       hasOlder,
       loadingOlder,
       onLoadOlder,
@@ -434,6 +438,14 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
             unread={lanes.unread}
             onSelect={onSelectLane}
           />
+        )}
+
+        {/*
+         * Inbox only, and only once there is mail to look at — an offer to
+         * improve a screen the user cannot see yet is the thing this replaced.
+         */}
+        {place === 'inbox' && onConnectModel && !revoked && status === 'ready' && threads.length > 0 && (
+          <AssistantOffer onConnect={onConnectModel} />
         )}
 
         {revoked ? (

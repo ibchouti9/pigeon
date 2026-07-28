@@ -360,6 +360,7 @@ export function MailPlaceScreen({ place }: { place: Place }) {
           }
           onRetry={() => void loadThreads(place)}
           onConnectGmail={() => navigate('/settings/account')}
+          onConnectModel={() => navigate('/settings/assistant')}
           hasOlder={hasOlder}
           loadingOlder={loadingOlder}
           onLoadOlder={() => void loadOlder(place)}
