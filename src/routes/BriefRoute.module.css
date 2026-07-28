@@ -131,3 +131,13 @@
     flex-wrap: wrap;
   }
 }
+
+/*
+ * The "and three more" row. An action rather than a line of prose, because it
+ * is the only row here that does not open a conversation and the difference
+ * should be visible before it is tapped.
+ */
+.more {
+  color: var(--color-text-accent);
+  font-weight: 500;
+}

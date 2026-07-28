@@ -36,6 +36,15 @@ function today(): string {
   }).format(new Date());
 }
 
+/**
+ * How many arrivals the brief lists before it counts the rest.
+ *
+ * Today is a page you read in one glance, not a second inbox — past eight rows
+ * it stops being a summary of the morning and becomes a shorter copy of the
+ * list one tab over.
+ */
+const BRIEF_ROWS = 8;
+
 export function BriefRoute() {
   const navigate = useNavigate();
   const inbox = useMail((s) => s.inbox);
@@ -143,7 +152,7 @@ export function BriefRoute() {
                   <span className={cn('t-xs', styles.count)}>{fresh.length}</span>
                 </div>
                 <div className={styles.list}>
-                  {fresh.slice(0, 8).map((t) => {
+                  {fresh.slice(0, BRIEF_ROWS).map((t) => {
                     const from = [...t.messages].reverse().find((m) => !m.isFromUser)?.from;
                     return (
                       <button
@@ -157,6 +166,21 @@ export function BriefRoute() {
                       </button>
                     );
                   })}
+                  {/*
+                    The count above says eleven and the list shows eight. What
+                    happened to the other three has to be on the page: a brief
+                    that quietly drops mail is a brief you cannot trust the
+                    numbers on, and the numbers are the whole of what it is.
+                  */}
+                  {fresh.length > BRIEF_ROWS && (
+                    <button
+                      type="button"
+                      className={cn('t-sm', styles.item, styles.more)}
+                      onClick={() => navigate('/inbox')}
+                    >
+                      {plural(fresh.length - BRIEF_ROWS, 'more conversation')} in the Inbox
+                    </button>
+                  )}
                 </div>
               </section>
             )}
