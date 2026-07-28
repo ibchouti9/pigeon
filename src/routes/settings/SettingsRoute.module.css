@@ -61,6 +61,9 @@
 
 /* ---------- phone: a stack, not a split ---------- */
 .stack {
+  /* Same reason as `.wrap` below: a flex child that is not told to grow sizes
+     to its own content, which at 375px is narrower than the phone. */
+  flex: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
