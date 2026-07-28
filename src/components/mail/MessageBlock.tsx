@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MailError } from '../../data/provider';
 import { useMail } from '../../store/mail';
 import { toast } from '../../store/toast';
-import { downloadBase64 } from '../../lib/download';
+import { openAttachment } from '../../lib/download';
 import { cn } from '../../lib/cn';
 import { linkifyBody } from '../../lib/linkify';
 import { HtmlBody } from './HtmlBody';
@@ -69,7 +69,7 @@ export function MessageBlock({
     setDownloading(attachment.id);
     try {
       const base64 = await provider.downloadAttachment(message.id, attachment.id);
-      downloadBase64(base64, attachment.filename, attachment.mimeType);
+      await openAttachment(base64, attachment.filename, attachment.mimeType);
     } catch (error) {
       // A revoked token and an unreachable Gmail each have their own §7.6 line;
       // saying "this attachment didn't download" for all of them describes the

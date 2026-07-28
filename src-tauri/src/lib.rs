@@ -1,3 +1,4 @@
+mod attachment;
 mod badge;
 mod ios_ffi;
 mod machine;
@@ -59,6 +60,8 @@ pub fn run() {
             mail::mail_attachment,
             machine::machine_memory,
             badge::set_unread_badge,
+            #[cfg(target_os = "ios")]
+            attachment::attachment_present,
         ])
         .build(tauri::generate_context!())
         .expect("error while building the application");
