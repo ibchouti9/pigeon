@@ -83,6 +83,16 @@ const REQUESTS: &[&str] = &[
     "http://localhost:11434/api/chat",
     "http://localhost:1234/api/tags",
     "http://127.0.0.1:11434/api/chat",
+    /*
+     * A model on the network rather than on this machine, which is the only
+     * way a phone can reach one: iOS has no loopback worth probing, but an
+     * iPhone on the same wifi can talk to the Mac running Ollama.
+     */
+    "http://192.168.2.214:11434/api/chat",
+    "http://10.0.0.5:11434/api/tags",
+    "http://172.16.0.9:11434/api/chat",
+    "http://172.31.255.254:1234/api/tags",
+    "http://marcs-mac.local:11434/api/chat",
 ];
 
 #[test]
@@ -107,4 +117,33 @@ fn the_scope_still_refuses_what_it_should() {
     // No pattern should quietly become allow-everything.
     assert!(!allowed(&patterns, "https://example.com/steal"));
     assert!(!allowed(&patterns, "https://api.anthropic.com.evil.example/v1/messages"));
+}
+
+/// The private ranges are the whole of what the local-model patterns may
+/// admit, and the boundaries are where a glob goes wrong.
+///
+/// `172.16.0.0/12` is 172.16 through 172.31 and nothing else. Written as
+/// `http://172.2*.*.*` it would also match 172.2.x.x — routable, public
+/// address space — which is why those sixteen entries are enumerated rather
+/// than shortened.
+#[test]
+fn no_routable_address_is_reachable_as_a_local_model() {
+    let patterns = shipped_patterns();
+    for url in [
+        // Neighbours of 10/8 and 192.168/16 that are public.
+        "http://11.0.0.1:11434/api/chat",
+        "http://9.255.255.255:11434/api/chat",
+        "http://192.169.0.1:11434/api/chat",
+        "http://192.167.255.255:11434/api/chat",
+        // Inside 172. but outside 172.16/12, on both sides.
+        "http://172.2.3.4:11434/api/chat",
+        "http://172.15.0.1:11434/api/chat",
+        "http://172.32.0.1:11434/api/chat",
+        // Someone else's machine, dressed as a port we use.
+        "http://evil.example.com:11434/api/chat",
+        // `*.local` is mDNS, not a suffix anyone may claim.
+        "http://notreally.local.example.com:11434/api/chat",
+    ] {
+        assert!(!allowed(&patterns, url), "scope wrongly admits {url}");
+    }
 }

@@ -1,8 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the Pigeon window is allowed to ask the Rust side for. The three notification permissions are the whole of Pigeon's use of them: ask whether it may notify, ask for permission, and post one. Nothing reads notifications back, schedules them, or manages channels.",
-  "windows": ["main"],
+  "description": "What the Pigeon window is allowed to ask the Rust side for. The three notification permissions are the whole of Pigeon's use of them: ask whether it may notify, ask for permission, and post one. Nothing reads notifications back, schedules them, or manages channels. The http list is the three provider hosts the AI adapters call, plus loopback and the RFC 1918 ranges a local model can live on \u2014 private address space and mDNS only, never a routable address.",
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "notification:allow-is-permission-granted",
@@ -11,20 +13,50 @@
     {
       "identifier": "opener:allow-open-url",
       "allow": [
-        { "url": "https://myaccount.google.com/*" },
-        { "url": "https://console.anthropic.com/*" },
-        { "url": "https://platform.openai.com/*" },
-        { "url": "https://aistudio.google.com/*" }
+        {
+          "url": "https://myaccount.google.com/*"
+        },
+        {
+          "url": "https://console.anthropic.com/*"
+        },
+        {
+          "url": "https://platform.openai.com/*"
+        },
+        {
+          "url": "https://aistudio.google.com/*"
+        }
       ]
     },
     {
       "identifier": "http:default",
       "allow": [
-        { "url": "https://api.anthropic.com/*" },
-        { "url": "https://api.openai.com/*" },
-        { "url": "https://generativelanguage.googleapis.com/*" },
-        { "url": "http://localhost:*/*" },
-        { "url": "http://127.0.0.1:*/*" }
+        {
+          "url": "https://api.anthropic.com/*"
+        },
+        {
+          "url": "https://api.openai.com/*"
+        },
+        {
+          "url": "https://generativelanguage.googleapis.com/*"
+        },
+        {
+          "url": "http://localhost:*/*"
+        },
+        {
+          "url": "http://127.0.0.1:*/*"
+        },
+        {
+          "url": "http://(10\\.[0-9]+\\.[0-9]+\\.[0-9]+):*/*"
+        },
+        {
+          "url": "http://(192\\.168\\.[0-9]+\\.[0-9]+):*/*"
+        },
+        {
+          "url": "http://(172\\.(?:1[6-9]|2[0-9]|3[01])\\.[0-9]+\\.[0-9]+):*/*"
+        },
+        {
+          "url": "http://*.local:*/*"
+        }
       ]
     }
   ]

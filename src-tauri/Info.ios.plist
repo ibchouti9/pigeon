@@ -25,5 +25,16 @@
     <array>
         <string>com.pigeonmail.pigeon.refresh</string>
     </array>
+    <!--
+      A phone cannot run a language model, but it can talk to one running on
+      your Mac. iOS 14 and later put every connection to a private address
+      behind a permission prompt, and an app that reaches for one without
+      declaring why is refused silently — the request fails and looks exactly
+      like the model being switched off.
+
+      This string is what that prompt shows.
+    -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Pigeon connects to a language model running on your own network, so your mail is never sent to anyone else's server.</string>
 </dict>
 </plist>
