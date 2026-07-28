@@ -10,6 +10,7 @@
 		1587EBA30B4861BB54BF393E /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E057964E07DF3528F442224 /* Security.framework */; };
 		18BD4851DF4A4FAA5C6BE8F2 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01C19817B1129134330552C1 /* CoreGraphics.framework */; };
 		26BCD4FB1BD491E7FE48726B /* assets in Resources */ = {isa = PBXBuildFile; fileRef = D456B511C8028347ADBB4822 /* assets */; };
+		2C4CE56BBF06B6E949BCA337 /* libapp.a in Resources */ = {isa = PBXBuildFile; fileRef = F464F19BA82712607B0E83BF /* libapp.a */; };
 		329EBF2A8F69A99E9578E143 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F2F350BA865116F80EE00FF3 /* QuartzCore.framework */; };
 		3B8B029AE0AB97B7E370B2A9 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5E31E3822D4DFC5061DB7230 /* main.mm */; };
 		445D12AE4DF8552F8ACD46EC /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B2C39CD3552BC7163420C88B /* LaunchScreen.storyboard */; };
@@ -17,6 +18,7 @@
 		66132DCB408930DE8508BD39 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9507B6A23654EA10CB798681 /* UIKit.framework */; };
 		768D917E641BA382C1F99F3D /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0470A35437D171F6380BDD94 /* libapp.a */; };
 		81BCAEC2542A2A990D4E1EC7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6B7E6F51E886B0A50EB48EDE /* Assets.xcassets */; };
+		9C8CF24566803DD56DAE0A75 /* PigeonBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5788F51FF1351FC00B4C359F /* PigeonBackground.swift */; };
 		A6751EA746D776EE82614975 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86EE94446B27974675534048 /* MetalKit.framework */; };
 		D8FD54BBAE15012782002968 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 81A19ED037EA9650744DC8ED /* Metal.framework */; };
 /* End PBXBuildFile section */
@@ -33,6 +35,7 @@
 		2A727DBA014FCF0522926972 /* machine.rs */ = {isa = PBXFileReference; path = machine.rs; sourceTree = "<group>"; };
 		382A5B1AAF75D585FA8E607C /* allowlist.rs */ = {isa = PBXFileReference; path = allowlist.rs; sourceTree = "<group>"; };
 		424F546CD6EC668F0E833477 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		5788F51FF1351FC00B4C359F /* PigeonBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PigeonBackground.swift; sourceTree = "<group>"; };
 		5E31E3822D4DFC5061DB7230 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		6B7E6F51E886B0A50EB48EDE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6FD7C239FA4BFDF8E77AC15A /* background.rs */ = {isa = PBXFileReference; path = background.rs; sourceTree = "<group>"; };
@@ -54,6 +57,7 @@
 		DF71C92D1AE5D10471D8D1AD /* pigeon_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = pigeon_iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2F350BA865116F80EE00FF3 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		F3433F5530F1333ACAF2FBA2 /* tray.rs */ = {isa = PBXFileReference; path = tray.rs; sourceTree = "<group>"; };
+		F464F19BA82712607B0E83BF /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +92,14 @@
 				424F546CD6EC668F0E833477 /* WebKit.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		43412058411A5BFEBABEE965 /* debug */ = {
+			isa = PBXGroup;
+			children = (
+				F464F19BA82712607B0E83BF /* libapp.a */,
+			);
+			path = debug;
 			sourceTree = "<group>";
 		};
 		56545319065B06F5835DD4BD /* mail */ = {
@@ -154,9 +166,18 @@
 			path = ../../src;
 			sourceTree = "<group>";
 		};
+		6EFFD22A9960E32A7B609C5B /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				43412058411A5BFEBABEE965 /* debug */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
 		A14528727C83A9B048DF44C9 /* Externals */ = {
 			isa = PBXGroup;
 			children = (
+				6EFFD22A9960E32A7B609C5B /* arm64 */,
 			);
 			path = Externals;
 			sourceTree = "<group>";
@@ -173,6 +194,7 @@
 			isa = PBXGroup;
 			children = (
 				5E31E3822D4DFC5061DB7230 /* main.mm */,
+				5788F51FF1351FC00B4C359F /* PigeonBackground.swift */,
 				FA4FC37FCFC98969D8D71A7B /* bindings */,
 			);
 			path = pigeon;
@@ -184,6 +206,13 @@
 				721F998A27D4CD91B1628E76 /* bindings.h */,
 			);
 			path = bindings;
+			sourceTree = "<group>";
+		};
+		"TEMP_2F418A73-F28F-48AB-A0E1-B8BB886D3926" /* x86_64 */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = x86_64;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -247,6 +276,7 @@
 				81BCAEC2542A2A990D4E1EC7 /* Assets.xcassets in Resources */,
 				445D12AE4DF8552F8ACD46EC /* LaunchScreen.storyboard in Resources */,
 				26BCD4FB1BD491E7FE48726B /* assets in Resources */,
+				2C4CE56BBF06B6E949BCA337 /* libapp.a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -281,6 +311,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9C8CF24566803DD56DAE0A75 /* PigeonBackground.swift in Sources */,
 				3B8B029AE0AB97B7E370B2A9 /* main.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

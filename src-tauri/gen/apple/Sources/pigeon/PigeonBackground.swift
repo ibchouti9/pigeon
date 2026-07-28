@@ -17,12 +17,10 @@
 //  Everything below the scheduling is Rust's: `pigeon_background_check` opens
 //  the connection, applies §2.3, and hands back one line to say.
 //
-//  ─────────────────────────────────────────────────────────────────────────
-//  NOT YET IN THE BUILD. `tauri ios init` needs full Xcode, which the machine
-//  this was written on does not have, so there is no Xcode project to add this
-//  file to. See "On your iPhone" in the README for the three steps that put it
-//  in. Nothing here has been compiled.
-//  ─────────────────────────────────────────────────────────────────────────
+//  Lives inside the generated Xcode project because that is where Xcode
+//  compiles it from. `tauri ios init` regenerates the project around it and
+//  leaves both this file and `main.mm` alone — verified by running it — so
+//  neither needs re-applying afterwards.
 
 import BackgroundTasks
 import Foundation
@@ -44,7 +42,14 @@ private struct Notice: Decodable {
     let body: String
 }
 
-enum PigeonBackground {
+/// A class, not the `enum` namespace this would otherwise be: `main.mm` calls
+/// `install` across the language boundary, and `@objc` is only available on
+/// members of classes.
+///
+/// The name is pinned with `@objc(PigeonBackground)` because Swift otherwise
+/// exports a mangled, module-prefixed symbol, and the hand-written declaration
+/// in `main.mm` is looking for this one.
+@objc(PigeonBackground) final class PigeonBackground: NSObject {
     /// Must match `BGTaskSchedulerPermittedIdentifiers` in Info.ios.plist.
     /// iOS refuses to register a task whose identifier is not declared there,
     /// and the refusal is a crash at launch rather than a warning.
@@ -58,10 +63,22 @@ enum PigeonBackground {
     /// reputation for battery.
     private static let earliest: TimeInterval = 15 * 60
 
-    /// Registers the handler. Must be called before the app finishes
-    /// launching, on every launch, including the ones iOS makes in the
-    /// background to run the task itself.
-    static func register() {
+    /// Registers the handler and asks for the first wake-up.
+    ///
+    /// Called from `main.mm` before `start_app`, which is the only seam Tauri
+    /// leaves: the generated app has no delegate of its own to hook, and
+    /// `BGTaskScheduler.register` must happen before launching finishes.
+    ///
+    /// Unverifiable in the simulator, which has no BGTaskScheduler at all —
+    /// `submit` reports "unavailable" there and no task ever runs. What the
+    /// simulator does prove is that this compiles, links against the Rust
+    /// symbols, and registers without throwing.
+    @objc static func install() {
+        register()
+        schedule()
+    }
+
+    private static func register() {
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: taskIdentifier,
             using: nil
@@ -89,13 +106,17 @@ enum PigeonBackground {
         }
     }
 
+    /// Never instantiated; every member is static.
+    private override init() {}
+
     /// Where the foreground left the allowlist and the UID mark.
     ///
-    /// This has to match Tauri's `app_data_dir()` exactly, which on iOS
-    /// resolves to `Library/Application Support` joined with the bundle
-    /// identifier. If the two ever drift apart the check reads an empty
-    /// allowlist and says nothing — quiet, rather than wrong, which is the
-    /// direction this whole feature errs in.
+    /// This has to match Tauri's `app_data_dir()` exactly. Verified on a
+    /// simulator rather than assumed: the foreground wrote its allowlist to
+    /// `<container>/Library/Application Support/com.pigeonmail.pigeon/`, which
+    /// is what the two lines below compute. If they ever drift the check reads
+    /// an empty allowlist and says nothing — quiet rather than wrong, which is
+    /// the direction this whole feature errs in.
     private static func dataDirectory() -> String? {
         guard
             let support = FileManager.default.urls(

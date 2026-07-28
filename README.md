@@ -213,11 +213,9 @@ panes, swipe-to-archive instead of a button that appears on hover.
   own device and expires after 7 days; the paid one ($99/yr) signs for a year
   and reaches TestFlight.
 
-Then generate the Xcode project, once:
-
-```bash
-npm run tauri ios init
-```
+The Xcode project is committed, so there is nothing to generate. Re-running
+`npm run tauri ios init` is safe if it ever needs rebuilding — it regenerates
+the project around the two hand-written files rather than over them.
 
 **Running it.** `npm run ios` builds and launches on a connected iPhone or in
 the simulator. Signing needs your team id; set it in the environment so it
@@ -254,26 +252,27 @@ what arrived since the last UID it saw, keeps the senders you approved, and
 returns one line to notify with. `src-tauri/src/ios_ffi.rs` exposes it as a C
 symbol.
 
-**The Swift half is written and not yet in the build**, because generating the
-Xcode project needs full Xcode. After `npm run tauri ios init`, three steps
-put it in:
+The Swift half is in the build. `PigeonBackground.swift` registers the task
+and `main.mm` calls it before `start_app` — the generated app has no delegate
+of its own to hook, and `BGTaskScheduler.register` has to happen before
+launching finishes. Both files sit inside `src-tauri/gen/apple/`, which is
+committed, and `tauri ios init` regenerates the project around them rather
+than over them.
 
-1. Add `src-tauri/ios/PigeonBackground.swift` to the generated Xcode project
-   (`src-tauri/gen/apple/`), in the app target.
-2. Call `PigeonBackground.register()` before the app finishes launching, and
-   `PigeonBackground.schedule()` after — both in the generated app delegate.
-   Registration has to happen on *every* launch, including the ones iOS makes
-   in the background to run the task.
-3. Ask for notification permission once from the app, which the foreground
-   already does the first time mail arrives.
-
-`Info.ios.plist` is already in place and Tauri merges it: `UIBackgroundModes`
+`Info.ios.plist` is merged at build time, not at init: `UIBackgroundModes`
 needs `fetch` or every scheduling request is refused, and the task identifier
 must appear in `BGTaskSchedulerPermittedIdentifiers` or iOS terminates the app
 at launch rather than warning.
 
-To watch the logic work before any of that, call `mail_check_arrivals` from
-the running app — it is the same function the background task calls.
+**The simulator cannot test this.** `BGTaskScheduler` is unavailable there —
+`submit` returns `BGTaskSchedulerErrorDomain Code=1` and no task ever runs,
+which is what the log line on every simulator launch is saying. What the
+simulator does prove is that it compiles, links against the Rust symbols,
+registers the identifier without iOS killing the app, and fails the scheduling
+gracefully. An actual wake-up needs a device.
+
+To watch the logic work without waiting for iOS, call `mail_check_arrivals`
+from the running app — it is the same function the background task calls.
 
 ## Scripts
 
