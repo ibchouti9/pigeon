@@ -187,4 +187,11 @@ web scripts do not.
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+Apache 2.0. See [LICENSE](LICENSE).
+
+Use it, fork it, ship it, sell it — the licence asks only that you keep the
+attribution and note what you changed. It also grants you a patent licence from
+every contributor, which MIT does not.
+
+"Pigeon" and the postmark mark are not covered by it. A fork is welcome; a fork
+called Pigeon is confusing to the people it's for.

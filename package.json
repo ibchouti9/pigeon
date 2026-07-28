@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Mail from people you've chosen. Everyone else waits at the door.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
