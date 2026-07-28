@@ -91,6 +91,7 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
   const inputRef = searchRef ?? localRef;
 
   const items: Item[] = [
+    { to: '/brief', icon: 'today', label: 'Today' },
     { to: '/inbox', icon: 'inbox', label: 'Inbox', count: unread, countVariant: 'plain', countNoun: 'unread' },
     { to: '/screener', icon: 'screener-ring', label: 'Screener', count: heldCount, countVariant: 'ring', countNoun: 'waiting' },
     { to: '/ledger', icon: 'ledger', label: 'Ledger' },

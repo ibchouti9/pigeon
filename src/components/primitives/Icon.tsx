@@ -10,6 +10,7 @@ export type IconName =
   | 'sent'
   | 'drafts'
   | 'ledger'
+  | 'today'
   | 'search'
   | 'compose'
   | 'settings'
@@ -55,6 +56,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z" />
       <path d="M8.5 8.5h6M8.5 12h4" />
+    </>
+  ),
+  today: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4" />
     </>
   ),
   'screener-ring': (
