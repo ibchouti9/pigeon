@@ -365,6 +365,8 @@ export function MailPlaceScreen({ place }: { place: MailView }) {
           unreadCount={place === 'inbox' ? unreadCount : undefined}
           hasArchivedAny={place === 'inbox' ? otherPlaceHasThreads : undefined}
           fullWidth={single}
+          phone={bp === 'phone'}
+          onSearch={() => navigate('/search')}
           onOpenThread={goTo}
           onArchiveThread={archiveOne}
           onArchiveMany={archiveMany}

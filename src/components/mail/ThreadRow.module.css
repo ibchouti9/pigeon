@@ -6,6 +6,58 @@
   align-items: center;
   height: var(--layout-row-height);
   flex: none;
+  /*
+   * The list scrolls vertically and the row is dragged horizontally, and this
+   * is what tells the browser which is which. Without it the first few frames
+   * of every swipe are also a scroll, and `useRowSwipe` would have to fight
+   * for them with a non-passive listener.
+   */
+  touch-action: pan-y;
+  overflow: hidden;
+  /*
+   * The row's fill is set here and inherited by `.sliding`, so the moving
+   * layer is opaque. Transparent, it would let the archive panel show through
+   * the row rather than out from behind it.
+   */
+  background: var(--color-surface);
+}
+
+/* Everything the swipe moves. The archive panel behind it does not. */
+.sliding {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  background: inherit;
+}
+
+/*
+ * While the finger is down the row follows it exactly — a transition here
+ * would put the row a frame behind the thumb. It is added back for the
+ * release, which is the only moment the row moves on its own.
+ */
+.sliding:not(.slidingActive) {
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+
+.swipeBack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-5);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}
+
+/* Armed: past the threshold, so letting go now archives. */
+.swipeBackArmed {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 /* ---------- checkbox ---------- */
@@ -16,9 +68,44 @@
   transition: opacity var(--duration-fast) var(--ease-standard);
 }
 
-.row:hover .checkbox,
-.row.fillChecked .checkbox,
-.row.cursor .checkbox {
+/*
+ * Hover reveal, on devices that have one.
+ *
+ * A touch webview reports a hover for the last thing tapped and keeps
+ * reporting it until something else is tapped, so unguarded these left a
+ * checkbox and an archive button showing on whichever row the user most
+ * recently opened — and hid that row's timestamp for good.
+ *
+ * The width sits alongside `hover` in every one of these queries on purpose.
+ * `hover: none` is the honest test and the only one a real phone answers, but
+ * the dev browser at 375px answers `hover: hover` — so a rule written on the
+ * capability alone is a rule nobody can look at until it is on a device. Below
+ * 720px the phone shell is mounted regardless, which makes the width a sound
+ * second signal rather than a convenience.
+ */
+@media (hover: hover) and (min-width: 720px) {
+  .row:hover .checkbox {
+    opacity: 1;
+  }
+
+  /* The keyboard cursor's checkbox. There is no keyboard cursor on a phone,
+     and the list opens with one on row 1 — which put a checkbox and a focus
+     ring on the first conversation of every screen, unasked. */
+  .row.cursor .checkbox {
+    opacity: 1;
+  }
+}
+
+.row.fillChecked .checkbox {
+  opacity: 1;
+}
+
+/*
+ * Selection mode, entered from the list header. On a phone the checkbox has no
+ * hover to appear from and no keyboard cursor to follow, so the list says when
+ * it is showing them.
+ */
+.selecting .checkbox {
   opacity: 1;
 }
 
@@ -60,8 +147,17 @@
   color: var(--color-text-secondary);
 }
 
-.row:not(.fillOpen):not(.fillChecked):hover {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) {
+  .row:not(.fillOpen):not(.fillChecked):hover {
+    background: var(--color-surface-hover);
+  }
+}
+
+/* What a tap does instead, where nothing hovers. */
+@media (hover: none), (max-width: 719px) {
+  .row:not(.fillOpen):not(.fillChecked):active {
+    background: var(--color-surface-hover);
+  }
 }
 
 /* Left bar for the open state — independent of which fill is showing. */
@@ -76,9 +172,11 @@
 }
 
 /* Keyboard cursor — an inset outline that stays visible over any fill. */
-.cursor {
-  outline: var(--border-width-emphasis) solid var(--color-focus);
-  outline-offset: -2px;
+@media (hover: hover) and (min-width: 720px) {
+  .cursor {
+    outline: var(--border-width-emphasis) solid var(--color-focus);
+    outline-offset: -2px;
+  }
 }
 
 /* ---------- unread dot slot ---------- */
@@ -183,10 +281,6 @@
   white-space: nowrap;
 }
 
-.row:hover .timestampText {
-  visibility: hidden;
-}
-
 .archiveHover {
   display: none;
   position: absolute;
@@ -195,8 +289,19 @@
   transform: translateY(-50%);
 }
 
-.row:hover .archiveHover {
-  display: inline-flex;
+/*
+ * The archive button trades places with the timestamp on hover, and both
+ * halves of that trade need a real pointer. On touch the button never appears
+ * — swiping the row is what replaces it — so the timestamp must never leave.
+ */
+@media (hover: hover) and (min-width: 720px) {
+  .row:hover .timestampText {
+    visibility: hidden;
+  }
+
+  .row:hover .archiveHover {
+    display: inline-flex;
+  }
 }
 
 /*

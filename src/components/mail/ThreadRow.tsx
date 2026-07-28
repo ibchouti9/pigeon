@@ -6,6 +6,7 @@ import { Checkbox } from '../primitives/Field';
 import { Icon } from '../primitives/Icon';
 import { Monogram } from '../primitives/Monogram';
 import { Tooltip } from '../primitives/Feedback';
+import { COMMIT_PX, useRowSwipe } from './useRowSwipe';
 import styles from './ThreadRow.module.css';
 
 export interface ThreadRowProps {
@@ -32,6 +33,11 @@ export interface ThreadRowProps {
   checked: boolean;
   cursor: boolean;
   open: boolean;
+  /**
+   * The list is in selection mode, so every checkbox is showing. Phone only:
+   * a checkbox that appears on hover appears never on a touch screen.
+   */
+  selecting?: boolean;
   place: MailView;
   online: boolean;
   /** Playing the §4.6 row-depart animation before it leaves the list. */
@@ -66,6 +72,7 @@ export function ThreadRow({
   checked,
   cursor,
   open,
+  selecting,
   place,
   online,
   departing,
@@ -85,6 +92,15 @@ export function ThreadRow({
    */
   const movable = isPlace(place);
 
+  /*
+   * The same action the hover button performs, reached with a thumb — except
+   * in selection mode, where a horizontal drag is how a finger picks several
+   * rows and archiving one out from under that is the opposite of what was
+   * asked.
+   */
+  const swipe = useRowSwipe(onArchive, movable && online && !selecting);
+  const past = swipe.offset <= -COMMIT_PX;
+
   return (
     <div
       ref={rowRef}
@@ -94,9 +110,29 @@ export function ThreadRow({
         checked ? styles.fillChecked : open && styles.fillOpen,
         open && styles.hasBar,
         cursor && styles.cursor,
+        selecting && styles.selecting,
         departing && styles.departing,
       )}
+      {...swipe.handlers}
     >
+      {/*
+        The panel the row slides off, revealed rather than animated in: it is
+        already there, under the row, and the gesture uncovers it. `aria-hidden`
+        because the action it stands for is on the button below, which is what
+        a screen reader should find.
+      */}
+      {swipe.active && (
+        <span
+          className={cn(styles.swipeBack, past && styles.swipeBackArmed)}
+          aria-hidden="true"
+        >
+          <Icon name={place === 'inbox' ? 'archive' : 'inbox'} size={20} />
+        </span>
+      )}
+      <div
+        className={cn(styles.sliding, swipe.active && styles.slidingActive)}
+        style={swipe.offset ? { transform: `translateX(${swipe.offset}px)` } : undefined}
+      >
       <Checkbox
         className={styles.checkbox}
         checked={checked}
@@ -166,6 +202,7 @@ export function ThreadRow({
         </Tooltip>
       </span>
       )}
+      </div>
     </div>
   );
 }

@@ -35,7 +35,23 @@
 
 .count {
   flex: none;
+  /* `space-between` puts this at the far edge on its own. With the phone's
+     actions to its right it is no longer last, so it needs its own gap. */
+  margin-left: var(--space-2);
   color: var(--color-text-tertiary);
+}
+
+/*
+ * Search and Select, on a phone. `margin-left: auto` rather than the header's
+ * `space-between`, so a title with no unread count beside it does not push
+ * these into the middle of the bar.
+ */
+.phoneActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
 }
 
 .bulkLabel {
@@ -57,6 +73,15 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* A phone's list ends under a floating compose button and a tab bar. Keep
+     scrolling past the last row until it clears both. */
+  scroll-padding-bottom: var(--space-16);
+}
+
+@media (max-width: 719px) {
+  .scroll {
+    padding-bottom: var(--space-16);
+  }
 }
 
 .list {

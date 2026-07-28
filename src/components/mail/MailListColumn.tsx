@@ -15,12 +15,13 @@ import {
   plural,
   relativeTime,
 } from '../../lib/format';
-import type { MailView, Thread } from '../../types';
+import { isPlace, type MailView, type Thread } from '../../types';
 import type { LoadStatus } from '../../store/mail';
 import { useUi } from '../../store/ui';
 import { useCompose } from '../../store/compose';
 import { shortcutsBlocked } from '../../store/ui';
 import { Button } from '../primitives/Button';
+import { Icon } from '../primitives/Icon';
 import { EmptyState, SkeletonRows } from '../primitives/Feedback';
 import { groupThreadsByDate } from './grouping';
 import { groupedWindow, rowOffset } from '../../lib/groupedWindow';
@@ -72,6 +73,12 @@ export interface MailListColumnProps {
   onLoadOlder?: () => void;
   /** Narrow tablet (720–879px) — the list is the whole single column. */
   fullWidth?: boolean;
+  /**
+   * Below 720px, where there is no rail to hold the search field and no hover
+   * to reveal a checkbox. The header grows the two controls that answers.
+   */
+  phone?: boolean;
+  onSearch?: () => void;
   /**
    * Inbox only. `threads` is already the selected lane's slice; this is what
    * draws the chips and what a row asks for its badge.
@@ -127,6 +134,8 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
       loadingOlder,
       onLoadOlder,
       fullWidth,
+      phone,
+      onSearch,
       lanes,
       onSelectLane,
     },
@@ -164,6 +173,18 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
       );
     }
     const [checked, setChecked] = useState<Set<string>>(new Set());
+    /*
+     * Phone only. On the desktop a checkbox appears under the pointer and
+     * under the keyboard cursor, so selection needs no mode to be in; a touch
+     * screen has neither, and showing every checkbox all the time turns a list
+     * of conversations into a form. So the header asks first.
+     */
+    const [selecting, setSelecting] = useState(false);
+
+    function leaveSelection() {
+      setChecked(new Set());
+      setSelecting(false);
+    }
     const buttonRefs = useRef(new Map<string, HTMLButtonElement>());
 
     useImperativeHandle(ref, () => ({
@@ -415,7 +436,12 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
                 >
                   {place === 'inbox' ? 'Archive' : 'Move to inbox'}
                 </Button>
-                <Button variant="tertiary" size="sm" onClick={() => setChecked(new Set())}>
+                {/*
+                  Clearing the selection also leaves selection mode on a phone.
+                  It does not on the desktop, where there is no mode to leave —
+                  `leaveSelection` unsets a flag that was never set.
+                */}
+                <Button variant="tertiary" size="sm" onClick={leaveSelection}>
                   Clear
                 </Button>
               </div>
@@ -427,6 +453,41 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
                 <span className={cn('t-mono-sm', styles.count)}>
                   {formatCount(unreadCount ?? 0)}
                 </span>
+              )}
+              {phone && (
+                <div className={styles.phoneActions}>
+                  {selecting ? (
+                    <Button variant="tertiary" size="sm" onClick={leaveSelection}>
+                      Done
+                    </Button>
+                  ) : (
+                    <>
+                      {onSearch && (
+                        <Button
+                          variant="icon"
+                          size="md"
+                          aria-label="Search mail"
+                          onClick={onSearch}
+                        >
+                          <Icon name="search" size={20} />
+                        </Button>
+                      )}
+                      {/*
+                        Sent and Drafts have nowhere to move a row to, so there
+                        is nothing a selection could do with one.
+                      */}
+                      {isPlace(place) && threads.length > 0 && (
+                        <Button
+                          variant="tertiary"
+                          size="sm"
+                          onClick={() => setSelecting(true)}
+                        >
+                          Select
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
             </>
           )}
@@ -510,6 +571,7 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
                           isNewlyApproved={isNewlyApproved(t.approvedAt)}
                           checked={checked.has(t.id)}
                           cursor={idx === cursorIndex}
+                          selecting={selecting}
                           open={t.id === openThreadId}
                           place={place}
                           online={online}
