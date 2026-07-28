@@ -36,15 +36,30 @@ export function isIos(): boolean {
 }
 
 /**
- * Whether anything could be listening on this device's loopback.
+ * Whether it is worth probing this device's own loopback for a model.
  *
- * Not `isDesktop() && !isIos()`: a desktop *browser* reaches a local runtime
- * perfectly well, and `npm run dev` beside a running Ollama is how most of the
- * assistant was built. The only platform that cannot is the one that suspends
- * every app which is not in front, which is iOS.
+ * Not the same question as whether a local model is *usable*. iOS suspends
+ * every app that is not in front, so nothing can be listening on a phone's own
+ * loopback — but a phone on your wifi reaches the Ollama running on your Mac
+ * perfectly well, which is the whole point of `localModelNeedsAddress`.
+ *
+ * A desktop browser probes too: `npm run dev` beside a running Ollama is how
+ * most of the assistant was built.
  */
-export function canRunLocalModel(): boolean {
+export function canProbeLoopback(): boolean {
   return !isIos();
+}
+
+/**
+ * Whether the local model lives somewhere this device has to be told about.
+ *
+ * On a Mac the answer is under your nose and Pigeon finds it. On a phone it is
+ * across the room, and the only thing that can supply its address is the
+ * person holding the phone — `http://192.168.1.x:11434` rather than
+ * `localhost`, because on a phone `localhost` is the phone.
+ */
+export function localModelNeedsAddress(): boolean {
+  return isIos();
 }
 
 export async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {

@@ -1,5 +1,5 @@
-import { useMemo, useRef, type CSSProperties } from 'react';
-import { canRunLocalModel } from '../../lib/desktop';
+import { useRef, type CSSProperties } from 'react';
+import { localModelNeedsAddress } from '../../lib/desktop';
 import { cn } from '../../lib/cn';
 import { PROVIDER_LABELS } from '../../store/settings';
 import styles from './ProviderCard.module.css';
@@ -53,14 +53,14 @@ export function ProviderRadioGroup({
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   /*
-   * No Local row on a phone. Nothing can be listening on `localhost:11434`
-   * beside an app iOS suspends the moment you leave it, so the row would offer
-   * a connection that cannot be made — and it is the row this screen otherwise
-   * points at hardest, since it costs no key and sends nothing anywhere.
+   * The Local row is offered everywhere, including on a phone, where it means
+   * something slightly different: the model is on your Mac rather than under
+   * your hand, and its address has to be typed because nothing can guess it.
+   * The sub-label says which of the two this device is looking at.
    */
-  const options = useMemo(
-    () => (canRunLocalModel() ? PROVIDER_OPTIONS : PROVIDER_OPTIONS.filter((o) => o.id !== 'local')),
-    [],
+  const remote = localModelNeedsAddress();
+  const options = PROVIDER_OPTIONS.map((o) =>
+    o.id === 'local' && remote ? { ...o, sub: 'Ollama on your network' } : o,
   );
 
   function onKeyDown(e: React.KeyboardEvent) {

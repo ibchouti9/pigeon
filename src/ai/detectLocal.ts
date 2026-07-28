@@ -1,4 +1,4 @@
-import { canRunLocalModel } from '../lib/desktop';
+import { canProbeLoopback } from '../lib/desktop';
 import { httpFetch } from '../lib/http';
 
 /**
@@ -87,12 +87,16 @@ export function isChatModel(name: string): boolean {
 /** The first endpoint that answers, or null. Never throws. */
 export async function detectLocalEndpoint(): Promise<LocalEndpoint | null> {
   /*
-   * Nothing is listening on a phone's loopback, and finding that out costs
+   * Nothing is listening on a phone's own loopback, and finding that out costs
    * three ports at 1.5 seconds each on the one screen where the user is
    * waiting to get past. iOS suspends every app that is not in front, so the
    * runtime this probe looks for cannot be running beside Pigeon by design.
+   *
+   * The model a phone *can* reach is on another machine, and no probe will
+   * find it — there is no guessing a LAN address. The Local row stays offered
+   * there; it just arrives with an empty field instead of a filled one.
    */
-  if (!canRunLocalModel()) return null;
+  if (!canProbeLoopback()) return null;
 
   for (const candidate of CANDIDATES) {
     const models = await modelsAt(candidate.baseUrl);

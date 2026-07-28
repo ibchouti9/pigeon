@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';
 import { CURATED_MODELS, testConnection } from '../../ai/client';
 import { detectLocalEndpoint, preferredModel, type LocalEndpoint } from '../../ai/detectLocal';
+import { localModelNeedsAddress } from '../../lib/desktop';
 import { buildCatalog, uncuratedInstalled, type Catalog } from '../../ai/catalog';
 import { usableMemory } from '../../ai/machine';
 import { ModelPicker } from './ModelPicker';
@@ -58,7 +59,9 @@ function statusMessage(status: Status, providerName: string, baseUrl: string, ms
     case 'no-credit':
       return `${providerName} returned no credit on this account. Top up, or switch provider.`;
     case 'unreachable':
-      return `Nothing is answering at ${baseUrl}. Start your local model, then test again.`;
+      return localModelNeedsAddress()
+        ? `Nothing is answering at ${baseUrl}. Check the address, and that the model's machine is awake and on this network.`
+        : `Nothing is answering at ${baseUrl}. Start your local model, then test again.`;
     case 'offline':
       return `Couldn't reach ${providerName}. Check your connection and test again.`;
   }
@@ -82,7 +85,9 @@ function statusDotClass(status: Status): string | null {
 
 function provenanceNote(providerId: SelectableProvider): string {
   if (providerId === 'local') {
-    return 'Nothing leaves your machine. Pigeon talks to the endpoint above and nowhere else.';
+    return localModelNeedsAddress()
+      ? 'Nothing leaves your network. Pigeon talks to the address above and nowhere else.'
+      : 'Nothing leaves your machine. Pigeon talks to the endpoint above and nowhere else.';
   }
   if (providerId === 'demo') {
     return 'Demo replies are canned, not generated — nothing is sent anywhere. Connect a real provider any time in Settings → Assistant.';
@@ -117,7 +122,14 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
   const [apiKey, setApiKey] = useState(
     initialProviderId && initialProviderId !== 'local' ? savedProvider.apiKey : '',
   );
-  const [baseUrl, setBaseUrl] = useState(savedProvider.baseUrl || DEFAULT_BASE_URL);
+  /*
+   * Blank on a phone rather than pre-filled with `localhost`, which is the
+   * phone itself and answers nothing. There is no address to guess at, so the
+   * field asks instead of pretending to know.
+   */
+  const [baseUrl, setBaseUrl] = useState(
+    savedProvider.baseUrl || (localModelNeedsAddress() ? '' : DEFAULT_BASE_URL),
+  );
   const [model, setModel] = useState(
     initialProviderId && initialProviderId !== 'local' ? savedProvider.model : '',
   );
@@ -398,7 +410,19 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
                   invalid={invalid}
                   aria-describedby="provider-status"
                   className={styles.keyInput}
-                  placeholder={isLocal ? DEFAULT_BASE_URL : undefined}
+                  /*
+                   * A phone gets an example of somebody else's machine, not
+                   * `localhost` — on a phone `localhost` is the phone, and a
+                   * placeholder that suggests it is a placeholder that sends
+                   * every user down a dead end before they start.
+                   */
+                  placeholder={
+                    isLocal
+                      ? localModelNeedsAddress()
+                        ? 'http://192.168.1.10:11434'
+                        : DEFAULT_BASE_URL
+                      : undefined
+                  }
                 />
               )}
               {!isDemo && !isLocal && (
@@ -435,6 +459,19 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
             </p>
             {testDetail && (
               <p className={cn('t-xs', 'ink-tertiary', styles.statusDetail)}>{testDetail}</p>
+            )}
+            {/*
+              The one thing a phone cannot work out for itself. Ollama binds to
+              loopback by default, so the Mac running it also has to be told to
+              listen on the network before any of this can answer — which is
+              the step people lose an evening to, and it is one line.
+            */}
+            {isLocal && localModelNeedsAddress() && (
+              <p className={cn('t-xs', 'ink-tertiary', styles.statusDetail)}>
+                The address of the Mac running the model, on this wifi. Ollama only listens to
+                itself unless told otherwise — start it with{' '}
+                <code>OLLAMA_HOST=0.0.0.0 ollama serve</code>.
+              </p>
             )}
             <p className={cn('t-xs', 'ink-tertiary', styles.provenance)}>
               {provenanceNote(providerId)}
