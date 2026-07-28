@@ -26,6 +26,7 @@ import { EmptyState, SkeletonRows } from '../primitives/Feedback';
 import { groupThreadsByDate } from './grouping';
 import { groupedWindow, rowOffset } from '../../lib/groupedWindow';
 import { useMinimumVisible } from '../../hooks/useMinimumVisible';
+import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { ThreadRow } from './ThreadRow';
 import { RevokedState } from './RevokedState';
 import { LaneBar } from './LaneBar';
@@ -79,6 +80,8 @@ export interface MailListColumnProps {
    */
   phone?: boolean;
   onSearch?: () => void;
+  /** Pull-to-refresh, on the phone that has a finger to pull with. */
+  onRefresh?: () => void | Promise<void>;
   /**
    * Inbox only. `threads` is already the selected lane's slice; this is what
    * draws the chips and what a row asks for its badge.
@@ -136,6 +139,7 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
       fullWidth,
       phone,
       onSearch,
+      onRefresh,
       lanes,
       onSelectLane,
     },
@@ -366,6 +370,12 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
      * plain list; this keeps the headers and windows around them.
      */
     const scrollRef = useRef<HTMLDivElement>(null);
+    /*
+     * Only where there is a finger. A pointer has the header, the timer and
+     * ⌘R; adding a drag gesture to a mouse would be inventing an interaction
+     * nobody would find.
+     */
+    const pull = usePullToRefresh(scrollRef, onRefresh ?? (() => {}), Boolean(phone && onRefresh));
     const [scrollTop, setScrollTop] = useState(0);
     const [viewportHeight, setViewportHeight] = useState(800);
 
@@ -530,7 +540,32 @@ export const MailListColumn = forwardRef<MailListColumnHandle, MailListColumnPro
             className={styles.scroll}
             ref={scrollRef}
             onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+            {...pull.handlers}
           >
+            {/*
+              The pulled-open gap, and what is in it. Height rather than a
+              transform: the rows below are already in a scroller, and pushing
+              them with a margin keeps the scroll position honest where a
+              translate would leave it reading zero while the list looked
+              moved.
+            */}
+            <div
+              className={styles.pull}
+              style={{ height: pull.distance }}
+              aria-hidden={!pull.refreshing}
+            >
+              {pull.distance > 0 && (
+                <span
+                  className={cn(
+                    styles.pullMark,
+                    (pull.armed || pull.refreshing) && styles.pullMarkArmed,
+                    pull.refreshing && styles.pullMarkSpinning,
+                  )}
+                  role={pull.refreshing ? 'status' : undefined}
+                  aria-label={pull.refreshing ? 'Checking for new mail' : undefined}
+                />
+              )}
+            </div>
             <div role="list" aria-label={ariaLabel} className={styles.list}>
               <div style={{ height: windowed.topPad }} aria-hidden="true" />
               {(() => {

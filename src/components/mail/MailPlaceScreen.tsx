@@ -367,6 +367,7 @@ export function MailPlaceScreen({ place }: { place: MailView }) {
           fullWidth={single}
           phone={bp === 'phone'}
           onSearch={() => navigate('/search')}
+          onRefresh={() => useMail.getState().refresh()}
           onOpenThread={goTo}
           onArchiveThread={archiveOne}
           onArchiveMany={archiveMany}

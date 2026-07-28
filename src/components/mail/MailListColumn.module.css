@@ -133,3 +133,64 @@
 .stateLink {
   color: var(--color-text-accent);
 }
+
+/* ---------- pull to refresh ---------- */
+/*
+ * The gap the list opens when pulled, and the ring inside it. Height is
+ * animated only on the way back: while the finger is down the gap has to track
+ * it exactly, and a transition there puts the list a frame behind the thumb.
+ */
+.pull {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.pullMark {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  /* An open ring rather than a full circle, so it reads as the same mark the
+     Screener stamps and the postmark is drawn from. */
+  border: 2px solid var(--color-border-subtle);
+  border-top-color: var(--color-text-tertiary);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+/* Past the threshold: releasing now will fetch. */
+.pullMarkArmed {
+  border-color: var(--color-accent-subtle);
+  border-top-color: var(--color-accent);
+}
+
+.pullMarkSpinning {
+  animation: pull-spin 700ms linear infinite;
+}
+
+@keyframes pull-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * §8.5 item 5 — nothing moves under reduced motion. A spinner that cannot spin
+ * still has to say it is working, so it holds the armed colour instead.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .pullMarkSpinning {
+    animation: none;
+  }
+}
+
+/*
+ * Without this the whole list rubber-bands on iOS before the gesture is
+ * recognised, and the pull fights the bounce all the way down.
+ */
+@media (max-width: 719px), (max-height: 449px) {
+  .scroll {
+    overscroll-behavior-y: contain;
+  }
+}
