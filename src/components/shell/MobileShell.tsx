@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { TabBar } from './TabBar';
 import { RevokedState } from '../mail/RevokedState';
@@ -11,6 +10,14 @@ import { useComposeParam } from '../../hooks/useComposeParam';
 import { Icon } from '../primitives/Icon';
 import { cn } from '../../lib/cn';
 import styles from './MobileShell.module.css';
+
+/*
+ * Compose floats over the mail places and nowhere else. Today, the Ledger and
+ * the Screener are all screens about mail that already exists, and a button
+ * for writing new mail sitting over a Screener card answers a question the
+ * screen is not asking.
+ */
+const MAIL_PLACES = ['/inbox', '/archive', '/sent', '/drafts', '/search'];
 
 /**
  * The shell below 720px: the screen, a tab bar, and nothing else.
@@ -32,7 +39,6 @@ export function MobileShell() {
   const revoked = useMail((s) => s.revoked);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const regionRef = useRef<HTMLDivElement>(null);
   const openCompose = useCompose((s) => s.open);
   const hasDraft = useCompose((s) => Boolean(s.draft));
 
@@ -48,21 +54,15 @@ export function MobileShell() {
    * nobody asked about, and VoiceOver already announces a screen change.
    *
    * The second is §8.1's single-key map — `c`, `e`, `g i` — which needs a
-   * keyboard to press. Leaving it mounted would cost nothing on a phone with
-   * no keyboard and would fight the software one on a phone with a text field
-   * open, since `isTypingTarget` cannot see a field the webview has scrolled
-   * out from under it.
+   * keyboard to press. A phone has none, and the one case where it would have
+   * something to do is the one where it does harm: a hardware keyboard paired
+   * to a phone, typing into a field the webview has scrolled out from under
+   * itself, where `isTypingTarget` can no longer tell that focus is in a text
+   * field and `e` archives the thread behind it.
    */
 
   const inSettings = pathname.startsWith('/settings');
 
-  /*
-   * Compose floats over the mail places and nowhere else. Today, the Ledger
-   * and the Screener are all screens about mail that already exists, and a
-   * button for writing new mail sitting over a Screener card is an answer to a
-   * question the screen is not asking.
-   */
-  const MAIL_PLACES = ['/inbox', '/archive', '/sent', '/drafts', '/search'];
   /*
    * And not while a thread is open. At that width the reader has replaced the
    * list, the conversation's own reply affordance sits at the foot of it, and
@@ -88,7 +88,7 @@ export function MobileShell() {
         </div>
       )}
 
-      <div className={styles.region} id="main" ref={regionRef}>
+      <div className={styles.region} id="main">
         {/* §5.5 — a revoked token locks the shell; Settings stays reachable. */}
         {revoked && !inSettings ? (
           <RevokedState onConnectGmail={() => navigate('/settings/account')} />
