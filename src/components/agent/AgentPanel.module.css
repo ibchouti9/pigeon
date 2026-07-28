@@ -12,6 +12,52 @@
   border-left: var(--border-hairline);
   box-shadow: var(--shadow-modal);
   z-index: 40;
+  /* Same family as the composer dock: it is the other thing that slides in
+     over the mail and stays there while you work. */
+  animation: agent-in var(--duration-panel) var(--ease-standard);
+}
+
+@keyframes agent-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* §8.5 item 5 — the global rule in tokens.css constrains transitions only; a
+   keyframe animating transform still travels. */
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation-name: agent-fade;
+  }
+}
+
+@keyframes agent-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Below the tablet breakpoint the panel is the screen.
+ *
+ * At 420px docked beside a 380px list on an 880px window there is nothing
+ * left for the mail, and the agent is most useful when you can still see what
+ * it is talking about — so on a narrow window it takes the whole width rather
+ * than squeezing both.
+ */
+@media (max-width: 880px) {
+  .panel {
+    width: 100vw;
+    border-left: 0;
+  }
 }
 
 .head {
@@ -60,6 +106,46 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--color-text-tertiary);
+}
+
+/* Each entry arrives rather than appearing, so a long run reads as progress
+   rather than as the panel redrawing itself. */
+.you,
+.pigeon,
+.did,
+.looking,
+.ask {
+  animation: entry-in var(--duration-fast) var(--ease-standard);
+}
+
+@keyframes entry-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .you,
+  .pigeon,
+  .did,
+  .looking,
+  .ask {
+    animation-name: entry-fade;
+  }
+}
+
+@keyframes entry-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* A read in progress: quieter than a change, because nothing happened. */

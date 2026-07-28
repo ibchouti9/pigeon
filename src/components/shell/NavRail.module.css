@@ -214,3 +214,20 @@
 .itemSelected .count {
   color: var(--color-text-secondary);
 }
+
+/*
+ * The rail's three groups: what needs you, what is arriving, the record.
+ * A hairline rather than headings — the order already says it, and three
+ * labels would cost more rows than the seven destinations they organise.
+ */
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.navGroupDivided {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-hairline);
+}

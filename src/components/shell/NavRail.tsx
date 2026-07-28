@@ -93,14 +93,30 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
   const localRef = useRef<HTMLInputElement>(null);
   const inputRef = searchRef ?? localRef;
 
-  const items: Item[] = [
-    { to: '/brief', icon: 'today', label: 'Today' },
-    { to: '/inbox', icon: 'inbox', label: 'Inbox', count: unread, countVariant: 'plain', countNoun: 'unread' },
-    { to: '/screener', icon: 'screener-ring', label: 'Screener', count: heldCount, countVariant: 'ring', countNoun: 'waiting' },
-    { to: '/ledger', icon: 'ledger', label: 'Ledger' },
-    { to: '/archive', icon: 'archive', label: 'Archive' },
-    { to: '/sent', icon: 'sent', label: 'Sent' },
-    { to: '/drafts', icon: 'drafts', label: 'Drafts' },
+  /*
+   * Three groups, in the order a day runs through them.
+   *
+   * The rail grew from three destinations to seven and the additions landed
+   * wherever they fit, so an agent surface sat between the Screener and the
+   * Archive with nothing to say they were different kinds of thing. Grouped:
+   * what needs you, what is arriving, and the record of what happened. The
+   * separator is the only chrome — a heading each would cost three rows of
+   * label to say what the order already says.
+   */
+  const groups: Item[][] = [
+    [
+      { to: '/brief', icon: 'today', label: 'Today' },
+      { to: '/ledger', icon: 'ledger', label: 'Ledger' },
+    ],
+    [
+      { to: '/inbox', icon: 'inbox', label: 'Inbox', count: unread, countVariant: 'plain', countNoun: 'unread' },
+      { to: '/screener', icon: 'screener-ring', label: 'Screener', count: heldCount, countVariant: 'ring', countNoun: 'waiting' },
+    ],
+    [
+      { to: '/archive', icon: 'archive', label: 'Archive' },
+      { to: '/sent', icon: 'sent', label: 'Sent' },
+      { to: '/drafts', icon: 'drafts', label: 'Drafts' },
+    ],
   ];
 
   return (
@@ -184,6 +200,11 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
       )}
 
       <div className={styles.nav}>
+        {groups.map((items, groupIndex) => (
+          <div
+            key={groupIndex}
+            className={cn(styles.navGroup, groupIndex > 0 && styles.navGroupDivided)}
+          >
         {items.map((item) => (
           <NavLink
             key={item.to}
@@ -209,6 +230,8 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
             )}
             {compact && item.count ? <span className={styles.dot} aria-hidden="true" /> : null}
           </NavLink>
+        ))}
+          </div>
         ))}
       </div>
 

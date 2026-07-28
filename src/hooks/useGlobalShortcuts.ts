@@ -43,6 +43,20 @@ export function useGlobalShortcuts(searchRef: React.RefObject<HTMLInputElement |
         return;
       }
 
+      /*
+       * ⌘K, and it belongs with ⌘Enter and ⌘J rather than with `c`.
+       *
+       * §8.1 disables single-key shortcuts inside a text field; the assistant
+       * is most useful exactly when you are mid-sentence in a composer and
+       * want it to look something up. A modifier is what lets the shortcut
+       * work there — the same reason those two are exempt.
+       */
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        ui.setAgentOpen(!ui.agentOpen);
+        e.preventDefault();
+        return;
+      }
+
       // Below here everything is an unmodified single key, so the modal layers
       // block it: `c` must not open a composer behind an open dialog, and
       // `g i` must not navigate out from under the held-message sheet.
@@ -52,7 +66,14 @@ export function useGlobalShortcuts(searchRef: React.RefObject<HTMLInputElement |
       if (pendingG.current) {
         pendingG.current = false;
         if (gTimer.current) clearTimeout(gTimer.current);
-        const target = { i: '/inbox', s: '/screener', a: '/archive', ',': '/settings' }[
+        const target = {
+          i: '/inbox',
+          s: '/screener',
+          a: '/archive',
+          t: '/brief',
+          l: '/ledger',
+          ',': '/settings',
+        }[
           e.key.toLowerCase()
         ];
         if (target) {

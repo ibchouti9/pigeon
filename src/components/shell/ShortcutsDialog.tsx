@@ -10,10 +10,13 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
     rows: [
       ['g then i', 'Go to Inbox'],
       ['g then s', 'Go to Screener'],
+      ['g then t', 'Go to Today'],
+      ['g then l', 'Go to Ledger'],
       ['g then a', 'Go to Archive'],
       ['g then ,', 'Go to Settings'],
       ['/', 'Focus search'],
       ['c', 'Compose'],
+      ['⌘K', 'Open or close the assistant'],
       ['?', 'Keyboard shortcuts'],
       ['⌘Z', 'Undo the newest action'],
       ['Esc', 'Close the topmost layer'],
