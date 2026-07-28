@@ -1,3 +1,4 @@
+mod badge;
 mod machine;
 mod mail;
 
@@ -36,6 +37,7 @@ pub fn run() {
             mail::mail_sent_recipients,
             mail::mail_attachment,
             machine::machine_memory,
+            badge::set_unread_badge,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

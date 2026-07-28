@@ -3,17 +3,18 @@ import { useMail } from '../store/mail';
 import { useOnline } from './useOnline';
 import { useMailRefresh } from './useMailRefresh';
 import { useNewMailNotice } from './useNewMailNotice';
+import { useUnreadBadge } from './useUnreadBadge';
 import { toast } from '../store/toast';
 
 /**
  * Everything the shell does that is not layout: load the account and the five
- * lists it needs on every screen, keep them refreshed, and say so when the
- * network comes back.
+ * lists every screen reads, keep them fresh, badge the icon, notify when mail
+ * arrives from someone you chose, and say so when the network comes back.
  *
  * Lifted out of `AppShell` when the phone got a shell of its own. Two shells
  * that each remember to load the held senders is one shell away from a phone
  * that shows an empty Screener because someone added a sixth list to the other
- * file.
+ * file — and the same again for every hook added here since.
  */
 export function useShellData(): void {
   const online = useOnline();
@@ -27,6 +28,7 @@ export function useShellData(): void {
 
   useMailRefresh();
   useNewMailNotice();
+  useUnreadBadge();
 
   useEffect(() => {
     void loadAccount();
