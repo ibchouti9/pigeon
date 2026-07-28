@@ -178,4 +178,34 @@ describe('parseObligationLines', () => {
       { n: 1, kind: 'you-promised', what: 'pay the invoice', due: 'the 3rd' },
     ]);
   });
+
+  /*
+   * Two rules earned the hard way, against qwen2.5:32b on a real thread.
+   *
+   * Asked "what did I promise Dana about the liability cap" on a conversation
+   * containing, in the reader's own words, "Will come back with a position on
+   * the cap by end of day", the shipped prompt answered "Not in this mail." So
+   * did "when is Dana's deadline" against "I need your answer before Friday".
+   * Two of four questions refused, both because the emails did not repeat the
+   * question's wording.
+   *
+   * Each rule fixes one and neither fixes both: the paraphrase rule alone
+   * recovered the deadline, and only the "You:" rule recovered the promise.
+   * The refusal still works — a question about something genuinely absent is
+   * still answered "Not in this mail."
+   */
+  describe('the answer prompt', () => {
+    it('tells the model the emails will not echo the question', () => {
+      expect(ANSWER_SYSTEM).toMatch(/Match on meaning/);
+    });
+
+    it('tells the model whose words the attributed lines are', () => {
+      expect(ANSWER_SYSTEM).toContain('Lines beginning "You:"');
+    });
+
+    /* The guard on all of it: a refusal is still available and still exact. */
+    it('keeps the one refusal line, worded exactly', () => {
+      expect(ANSWER_SYSTEM).toContain('say exactly: Not in this mail.');
+    });
+  });
 });

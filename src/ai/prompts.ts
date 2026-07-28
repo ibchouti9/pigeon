@@ -130,6 +130,10 @@ Answer a question using only the emails supplied.
 
 Rules:
 - Use only what is in the emails. Never add a fact from anywhere else.
+- The emails will not use the question's words. Match on meaning: a promise may
+  read "I'll come back with a position", a deadline "before Friday".
+- Lines beginning "You:" are the reader's own words; "I" in the question means
+  the reader.
 - Cite every claim with the email's number in square brackets: [2].
 - Maximum 3 sentences.
 - If the emails do not answer the question, say exactly: Not in this mail.
