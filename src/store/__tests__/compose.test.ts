@@ -5,6 +5,7 @@ import {
   parseAddress,
   useCompose,
 } from '../compose';
+import type { Draft } from '../../types';
 
 describe('useCompose', () => {
   beforeEach(() => {
@@ -91,5 +92,61 @@ describe('parseAddress', () => {
 
   it('leaves a bare address alone', () => {
     expect(parseAddress('  dana@lumen.com  ')).toEqual({ name: '', email: 'dana@lumen.com' });
+  });
+});
+
+/**
+ * D13's draft lived in memory with no persistence at all, so quitting or
+ * reloading mid-compose threw away everything typed, silently. §3.5 3e asks
+ * the offline banner to warn about exactly this; §7 gives that banner one
+ * sentence that cannot be added to, so not losing the draft is the other way
+ * to make the warning unnecessary.
+ */
+describe('a draft survives a restart', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useCompose.getState().close();
+  });
+
+  function stored(): { draft: Draft | null; droppedAttachments: number } {
+    const raw = localStorage.getItem('pigeon.draft');
+    return JSON.parse(raw ?? '{"state":{}}').state;
+  }
+
+  it('writes what was typed', () => {
+    useCompose.getState().open();
+    useCompose.getState().update({ subject: 'Contract redlines', body: 'Sending Friday.' });
+
+    expect(stored().draft?.subject).toBe('Contract redlines');
+    expect(stored().draft?.body).toBe('Sending Friday.');
+  });
+
+  it('keeps nothing for a composer that was opened and never used', () => {
+    useCompose.getState().open();
+
+    expect(stored().draft).toBeNull();
+  });
+
+  it('keeps nothing once the draft is closed', () => {
+    useCompose.getState().open();
+    useCompose.getState().update({ body: 'half a thought' });
+    useCompose.getState().close();
+
+    expect(stored().draft).toBeNull();
+  });
+
+  it('leaves attachments out and counts them instead', () => {
+    useCompose.getState().open();
+    useCompose.getState().update({
+      body: 'The deck is attached.',
+      attachments: [
+        { id: 'a1', filename: 'deck.pdf', mimeType: 'application/pdf', size: 12, data: 'AA==' },
+      ],
+    });
+
+    // 25 MB of base64 is more than any localStorage will take, and a quota
+    // failure would lose the whole draft rather than just the file.
+    expect(stored().draft?.attachments).toEqual([]);
+    expect(stored().droppedAttachments).toBe(1);
   });
 });

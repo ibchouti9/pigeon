@@ -7,9 +7,9 @@ import { Tooltip } from '../primitives/Feedback';
 import { RecipientField } from './RecipientField';
 import { BodyEditor } from './BodyEditor';
 import { useAssistant, useBehaviour } from '../../ai/useAssistant';
-import { hasUnresolvedPlaceholder } from '../../store/compose';
+import { hasUnresolvedPlaceholder, useCompose } from '../../store/compose';
 import { cn } from '../../lib/cn';
-import { displayName, formatBytes } from '../../lib/format';
+import { displayName, formatBytes, plural } from '../../lib/format';
 import type { Tone } from '../../ai/types';
 import styles from './Composer.module.css';
 
@@ -141,6 +141,7 @@ export function Composer({
   const fileRef = useRef<HTMLInputElement>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
   const provenanceId = useId();
+  const droppedAttachments = useCompose((s) => s.droppedAttachments);
 
   const generating = draft.aiState === 'generating';
   const isAiInk = draft.aiState === 'drafted';
@@ -448,6 +449,18 @@ export function Composer({
               Send again
             </Button>
           </div>
+        </div>
+      )}
+
+      {/*
+       * A restored draft comes back without its files, and saying so is the
+       * point of counting them: the alternative is someone sending a message
+       * they believe still has the attachment on it.
+       */}
+      {droppedAttachments > 0 && draft.attachments.length === 0 && (
+        <div className={cn('t-sm', styles.errorBlock)} role="status">
+          {plural(droppedAttachments, 'attachment', 'attachments')} didn&apos;t survive the
+          restart. Attach {droppedAttachments === 1 ? 'it' : 'them'} again before you send.
         </div>
       )}
 
