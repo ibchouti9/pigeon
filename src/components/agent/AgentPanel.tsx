@@ -24,20 +24,10 @@ const SUGGESTIONS = [
  * every agent, and the only defence is that the change is as legible as the
  * prose around it.
  *
- * ## Known: it overlaps the composer dock
- *
- * Both are fixed to the right edge, so with a composer open the panel covers
- * it — measured at 1280px, an overlap of 372px. It matters because the
- * agent's own `draft` tool opens the composer, so asking it to write a reply
- * puts the reply behind the panel that wrote it.
- *
- * An attempt to move the dock left while the panel is open did not land, and
- * is worth knowing about before trying again: with the class applied, the
- * media query matching, and `right` set as an inline style — which nothing in
- * the sheets marks `!important` — `getComputedStyle(dock).right` stayed at
- * 24px and the element did not move. Not a specificity problem and not an
- * invalid `calc()`; both were ruled out directly in the browser. Something
- * else is deciding that box, and finding it is the actual task.
+ * Docked beside the mail only above 1080px. Below that it overlays: the
+ * composer dock alone is 480px and this is 420, which is 900px of fixed
+ * furniture on an 880px window. `ComposeDock` steps aside on the same
+ * boundary.
  */
 export function AgentPanel() {
   const open = useUi((s) => s.agentOpen);

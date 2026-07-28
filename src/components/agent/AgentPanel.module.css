@@ -46,14 +46,14 @@
 }
 
 /*
- * Below the tablet breakpoint the panel is the screen.
+ * Below the desktop breakpoint the panel is the screen.
  *
- * At 420px docked beside a 380px list on an 880px window there is nothing
- * left for the mail, and the agent is most useful when you can still see what
- * it is talking about — so on a narrow window it takes the whole width rather
- * than squeezing both.
+ * Docking beside the mail only works where there is mail left to see. At
+ * tablet the composer dock alone is 480px and this is 420 — 900px of fixed
+ * furniture on a 880px window — so below 1080 it overlays rather than
+ * squeezing both. `ComposeDock` insets on the same boundary.
  */
-@media (max-width: 880px) {
+@media (max-width: 1079px) {
   .panel {
     width: 100vw;
     border-left: 0;

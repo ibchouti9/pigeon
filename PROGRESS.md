@@ -855,12 +855,20 @@ regressions above were introduced by an improvement to the same prompt.
 
 ### Open
 
-- **The agent panel overlaps the composer dock.** Both are fixed to the right
-  edge; 372px of overlap at 1280. It matters because the agent's own `draft`
-  tool opens the composer. An attempt to move the dock did not land, and what
-  was ruled out is recorded in `AgentPanel.tsx` so the next attempt does not
-  repeat it: class applied, media query matching, `right` set inline, no
-  `!important` anywhere — and `getComputedStyle(dock).right` stayed at 24px.
+- ~~The agent panel overlaps the composer dock~~ — fixed, and the detour is
+  the lesson. Both are fixed to the right edge, 372px of overlap at 1280, and
+  it mattered because the agent's own `draft` tool opens the composer. Several
+  attempts appeared to do nothing: the class applied, the media query matched,
+  `right` was set inline with no `!important` anywhere, and
+  `getComputedStyle(dock).right` stayed at 24px regardless.
+
+  The cause was a `transition: right` added in the same edit. **A transition
+  does not tick in a hidden browser pane**, so the computed value stays pinned
+  at its start for as long as you watch it — the element never moves and every
+  reading says the rule was ignored. Dropping the transition made the same code
+  work first time. The fourth probe in this codebase to measure the harness
+  rather than the product; when a CSS rule appears to be ignored and the
+  cascade says it should not be, suspect the animation before the cascade.
 - Latency. A two-step agent question is 20–40s against a local 32B. Every step
   is narrated and the final answer streams, so the wait is legible rather than
   silent, but it is still a wait. A smaller model for the loop and the large

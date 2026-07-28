@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCompose } from '../../store/compose';
+import { useUi } from '../../store/ui';
 import { MailError } from '../../data/provider';
 import { useMail } from '../../store/mail';
 import { useOnline } from '../../hooks/useOnline';
@@ -18,7 +19,28 @@ import styles from './ComposeDock.module.css';
  * (`role="dialog"` with no focus trap and no scrim) so the user can click
  * behind it (C-9).
  */
+/**
+ * How far the dock steps left when the assistant is docked beside it.
+ *
+ * `--layout-agent-width` (420) plus `--space-6` (24), as a number: the value
+ * is set inline, and an inline `calc()` over those two tokens was accepted by
+ * the element and then silently not applied.
+ */
+const AGENT_INSET_PX = 444;
+
 export function ComposeDock() {
+  /*
+   * Steps out from under the assistant, which is fixed to the same edge —
+   * 372px of overlap at 1280px with both open. Not a stray layout nit: the
+   * agent's own `draft` tool opens this composer, so asking it to write a
+   * reply put the reply behind the panel that wrote it.
+   *
+   * Below the desktop breakpoint the panel takes the whole width and there is
+   * nowhere to step aside to.
+   */
+  const agentOpen = useUi((s) => s.agentOpen);
+  const roomToMove = useBreakpoint() === 'desktop';
+
   const draft = useCompose((s) => s.draft);
   const minimized = useCompose((s) => s.minimized);
   const expanded = useCompose((s) => s.expanded);
@@ -235,6 +257,7 @@ export function ComposeDock() {
       role="dialog"
       aria-label="New message"
       className={cn(styles.dock, pulsing && styles.pulse)}
+      style={agentOpen && roomToMove ? { right: AGENT_INSET_PX } : undefined}
     >
       {isSheet ? sheetHeader : titleBar}
       {composer}
