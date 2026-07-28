@@ -83,7 +83,7 @@
  * 720px the phone shell is mounted regardless, which makes the width a sound
  * second signal rather than a convenience.
  */
-@media (hover: hover) and (min-width: 720px) {
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
   .row:hover .checkbox {
     opacity: 1;
   }
@@ -147,14 +147,14 @@
   color: var(--color-text-secondary);
 }
 
-@media (hover: hover) and (min-width: 720px) {
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
   .row:not(.fillOpen):not(.fillChecked):hover {
     background: var(--color-surface-hover);
   }
 }
 
 /* What a tap does instead, where nothing hovers. */
-@media (hover: none), (max-width: 719px) {
+@media (hover: none), (max-width: 719px), (max-height: 449px) {
   .row:not(.fillOpen):not(.fillChecked):active {
     background: var(--color-surface-hover);
   }
@@ -172,7 +172,7 @@
 }
 
 /* Keyboard cursor — an inset outline that stays visible over any fill. */
-@media (hover: hover) and (min-width: 720px) {
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
   .cursor {
     outline: var(--border-width-emphasis) solid var(--color-focus);
     outline-offset: -2px;
@@ -294,7 +294,7 @@
  * halves of that trade need a real pointer. On touch the button never appears
  * — swiping the row is what replaces it — so the timestamp must never leave.
  */
-@media (hover: hover) and (min-width: 720px) {
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
   .row:hover .timestampText {
     visibility: hidden;
   }

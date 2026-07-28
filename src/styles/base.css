@@ -78,7 +78,7 @@ button, input, select, textarea {
  * Scoped to the phone so the desktop's own type scale is left alone: this is
  * a webview quirk, not a design decision, and the design is right at 1280px.
  */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   /*
    * `[class]` is doing real work here, not decorating the selector. Every
    * field in Pigeon carries a type utility — `t-sm` on the search field,

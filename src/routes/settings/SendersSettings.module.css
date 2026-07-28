@@ -44,7 +44,7 @@
  * `flex: none` on the filter meant it did not shrink — it ran off the right
  * edge instead. Below 720px the filter takes its own line at full width.
  */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .toolbar {
     flex-wrap: wrap;
     row-gap: var(--space-3);

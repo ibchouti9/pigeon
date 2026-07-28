@@ -36,6 +36,24 @@ describe('useBreakpoint (§5)', () => {
     expect(result.current).toBe('narrow');
   });
 
+  /*
+   * Landscape on a phone is 812 by 375, which is past the 720px width and took
+   * the rail — a vertical column of eleven controls in an `overflow: hidden`
+   * box 375px tall. Everything from Drafts downward was off the screen.
+   */
+  it.each([
+    [812, 375, 'phone'],
+    [932, 430, 'phone'],
+    [667, 375, 'phone'],
+    // Upright, no phone is under 450px tall, so the height clause never fires.
+    [430, 932, 'phone'],
+    [1440, 900, 'desktop'],
+  ])('%d×%d → %s', (width, height, expected) => {
+    setViewportWidth(width, height);
+    const { result } = renderHook(() => useBreakpoint());
+    expect(result.current).toBe(expected);
+  });
+
   describe('isSingleColumn', () => {
     it('is true at both widths that stack the list and the reader', () => {
       expect(isSingleColumn('phone')).toBe(true);

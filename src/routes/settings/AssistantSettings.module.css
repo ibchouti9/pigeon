@@ -184,7 +184,7 @@
  * to read exactly these values, so hiding one to make the row fit would defeat
  * the screen.
  */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .header {
     height: auto;
     align-items: flex-start;

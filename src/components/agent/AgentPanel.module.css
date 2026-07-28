@@ -227,7 +227,7 @@
  * underneath it and unreachable while it is open, which is correct — this is a
  * conversation you are having, not a place you are.
  */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .head {
     height: auto;
     min-height: var(--layout-header-height);

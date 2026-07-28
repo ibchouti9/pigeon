@@ -24,7 +24,7 @@
  * column off the top of a tall window, and on an 812px screen it is simply
  * eighty pixels the five steps do not have.
  */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .page {
     min-height: auto;
     /* Not `100%`: the page scrolls when the keyboard is up, and a percentage

@@ -22,8 +22,28 @@ export type Breakpoint = 'desktop' | 'tablet' | 'narrow' | 'phone';
  * matches the media queries in the stylesheets, so JS and CSS agree by
  * construction.
  */
+/*
+ * `phone` is a height rule as well as a width one, and the height is what a
+ * rotated iPhone needs.
+ *
+ * Landscape on a phone is 812 by 375 — comfortably past the 720px width, so it
+ * took the rail. The rail is a vertical column of eight destinations, Compose,
+ * the assistant and Settings, and it is `overflow: hidden`: at 375px tall
+ * everything from Drafts downward was simply off the bottom of the screen,
+ * unreachable and with nothing to say it was there.
+ *
+ * 449px catches every iPhone on its side and no phone upright. A short, wide
+ * *desktop* window matches it too, and gets the tab bar — which is the right
+ * answer for the same reason, since the rail does not fit there either.
+ *
+ * Every phone rule in the stylesheets is written
+ * `@media (max-width: 719px), (max-height: 449px)` to match this exactly. The
+ * two must stay in step: the shell is chosen here and styled there.
+ */
+const PHONE = '(max-width: 719px), (max-height: 449px)';
+
 const QUERIES: { bp: Breakpoint; query: string }[] = [
-  { bp: 'phone', query: '(max-width: 719px)' },
+  { bp: 'phone', query: PHONE },
   { bp: 'narrow', query: '(min-width: 720px) and (max-width: 879px)' },
   { bp: 'tablet', query: '(min-width: 880px) and (max-width: 1079px)' },
   { bp: 'desktop', query: '(min-width: 1080px)' },

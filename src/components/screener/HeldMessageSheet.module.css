@@ -34,7 +34,7 @@
  * 32px of scrim either side of a 375px screen is a card, not a sheet, and the
  * held message inside it is a whole email.
  */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .scrim {
     align-items: flex-end;
   }

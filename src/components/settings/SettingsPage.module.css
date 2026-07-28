@@ -32,7 +32,7 @@
 }
 
 /* 32px gutters either side of a 375px screen is a fifth of it. */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .inner {
     padding: var(--space-5) var(--space-4);
   }

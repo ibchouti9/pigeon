@@ -44,7 +44,7 @@
  * subject was clipped mid-word and the back link was pushed off the top of
  * its own header.
  */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .header {
     height: auto;
     padding: var(--space-2) var(--space-4);
@@ -128,7 +128,7 @@
  * of the tab bar — otherwise the last message and the reply affordance end
  * underneath it.
  */
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .body {
     padding: var(--space-5) var(--space-4) var(--space-12);
   }

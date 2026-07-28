@@ -78,7 +78,7 @@
   scroll-padding-bottom: var(--space-16);
 }
 
-@media (max-width: 719px) {
+@media (max-width: 719px), (max-height: 449px) {
   .scroll {
     padding-bottom: var(--space-16);
   }

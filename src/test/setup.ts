@@ -42,21 +42,30 @@ if (typeof globalThis.localStorage === 'undefined') {
  */
 const listeners = new Set<() => void>();
 
+/**
+ * One comma-free clause: every `(min|max)-(width|height)` in it, ANDed.
+ *
+ * Anything Pigeon does not express as a size — `prefers-color-scheme`,
+ * `prefers-reduced-motion`, `hover` — stays off, which is what leaves tests on
+ * the light theme with motion enabled.
+ */
+function clause(part: string): boolean {
+  const features = [...part.matchAll(/\((min|max)-(width|height):\s*(\d+)px\)/g)];
+  if (features.length === 0) return false;
+  return features.every(([, kind, axis, value]) => {
+    const actual = axis === 'width' ? window.innerWidth : window.innerHeight;
+    return kind === 'min' ? actual >= Number(value) : actual <= Number(value);
+  });
+}
+
+/**
+ * A comma in a media query is OR, and the phone breakpoint is written
+ * `(max-width: 719px), (max-height: 449px)` — so a stub that ANDed the two
+ * would report a 375px-wide, 800px-tall viewport as *not* a phone, and every
+ * test of the mobile shell would silently exercise the desktop one.
+ */
 function evaluate(query: string): boolean {
-  const width = window.innerWidth;
-  let matches = true;
-  for (const [, kind, value] of query.matchAll(/\((min|max)-width:\s*(\d+)px\)/g) as unknown as [
-    string,
-    string,
-    string,
-  ][]) {
-    const px = Number(value);
-    matches &&= kind === 'min' ? width >= px : width <= px;
-  }
-  // Anything Pigeon doesn't express as a width query (prefers-color-scheme,
-  // prefers-reduced-motion) stays off by default.
-  if (!/\((min|max)-width:/.test(query)) return false;
-  return matches;
+  return query.split(',').some((part) => clause(part.trim()));
 }
 
 window.matchMedia = ((query: string) => ({
@@ -72,9 +81,17 @@ window.matchMedia = ((query: string) => ({
   dispatchEvent: () => false,
 })) as unknown as typeof window.matchMedia;
 
-/** Tests default to the desktop breakpoint; call this to move off it. */
-export function setViewportWidth(width: number): void {
+/**
+ * Tests default to the desktop breakpoint; call this to move off it.
+ *
+ * The height is set alongside the width, and generously, because the phone
+ * breakpoint is `(max-width: 719px), (max-height: 449px)` — jsdom's default
+ * `innerHeight` is 768, which is over the line, but a test that set only the
+ * width would be one jsdom default away from silently landing on a phone.
+ */
+export function setViewportWidth(width: number, height = 900): void {
   Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+  Object.defineProperty(window, 'innerHeight', { value: height, configurable: true });
   listeners.forEach((fn) => fn());
   window.dispatchEvent(new Event('resize'));
 }
