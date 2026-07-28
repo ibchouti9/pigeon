@@ -28,6 +28,22 @@ function reasonText(sender: Sender): string {
   return plural(sender.replyCount ?? 0, 'reply', 'replies');
 }
 
+/**
+ * Whether to tick this row for the user.
+ *
+ * §3.1 step 4 says "all approved by default", and §5.3's own mockup shows
+ * `noreply@atlas-ci.com` unticked with the button reading "Approve 341
+ * senders" out of 342 — so the rule the spec actually draws is everyone
+ * except the addresses that cannot receive a reply. Writing to a no-reply
+ * address once is not evidence of a correspondence, and on a real account the
+ * sent scan turns up a good number of them.
+ */
+function isPerson(sender: Sender): boolean {
+  return !/^(no-?reply|do-?not-?reply|notifications?|mailer-daemon|postmaster|bounce)/i.test(
+    sender.email,
+  );
+}
+
 type LoadStatus = 'loading' | 'ready' | 'error';
 
 export function KnownSendersRoute() {
@@ -53,7 +69,7 @@ export function KnownSendersRoute() {
     try {
       const known = await useMail.getState().provider.getKnownSenders();
       setSenders(known);
-      setTicked(new Set(known.map((s) => s.id)));
+      setTicked(new Set(known.filter(isPerson).map((s) => s.id)));
       setStatus('ready');
     } catch (error) {
       /*

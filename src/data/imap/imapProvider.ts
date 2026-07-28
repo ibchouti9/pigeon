@@ -124,7 +124,8 @@ export class ImapMailProvider implements MailProvider {
   private decisions = SenderDecisions.load('');
   /** Lowercased addresses the user has written to (D10). */
   private known = new Set<string>();
-  private contacts: Address[] = [];
+  /** Sent-mail correspondents, with how often each was written to (§5.3). */
+  private contacts: (Address & { count: number })[] = [];
   private buildingKnown: Promise<void> | null = null;
 
   /** threadId → hydrated thread, valid while `cacheKeys` agrees. */
@@ -206,7 +207,10 @@ export class ImapMailProvider implements MailProvider {
       this.contacts = [];
       for (const r of recipients) {
         this.known.add(r.email);
-        this.contacts.push({ name: r.name, email: r.email });
+        // The engine counts how often each address was written to and this
+        // dropped it, so O4 rendered "0 replies" against every row in the
+        // list — a column of constants where the evidence should be.
+        this.contacts.push({ name: r.name, email: r.email, count: r.count });
       }
     })().finally(() => {
       this.buildingKnown = null;
@@ -217,13 +221,20 @@ export class ImapMailProvider implements MailProvider {
 
   async getKnownSenders(): Promise<Sender[]> {
     if (this.known.size === 0) await this.buildKnownSet();
-    return this.contacts.map((c) => ({
-      id: c.email,
-      name: c.name || c.email,
-      email: c.email,
-      status: 'unknown' as const,
-      knownReason: 'replies' as const,
-    }));
+    // Most-written-to first. §5.3 asks the user to ratify this list in one
+    // pass, which they can only do if the people they actually correspond
+    // with are at the top rather than wherever the sent scan happened to
+    // reach them.
+    return [...this.contacts]
+      .sort((a, b) => b.count - a.count)
+      .map((c) => ({
+        id: c.email,
+        name: c.name || c.email,
+        email: c.email,
+        status: 'unknown' as const,
+        knownReason: 'replies' as const,
+        replyCount: c.count,
+      }));
   }
 
   async approveKnownSenders(senderIds: string[]): Promise<void> {

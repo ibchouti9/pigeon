@@ -83,7 +83,7 @@ async function renderRoute() {
       </Routes>
     </MemoryRouter>,
   );
-  await screen.findByRole('button', { name: 'Approve 5 senders' });
+  await screen.findByRole('button', { name: 'Approve 4 senders' });
   return provider;
 }
 
@@ -93,9 +93,19 @@ describe('O4 known senders — live label and untick all', () => {
     useMail.setState({ provider: new StubSendersProvider() });
   });
 
-  it('starts with everyone ticked and reads "Approve 5 senders"', async () => {
+  it('ticks the people and leaves the no-reply address alone (§5.3)', async () => {
     await renderRoute();
     expect(screen.getByRole('button', { name: 'Untick all' })).toBeInTheDocument();
+    // §5.3's own mockup shows noreply@atlas-ci.com unticked, and its button
+    // reading "Approve 341 senders" against 342 rows.
+    expect(screen.getByRole('checkbox', { name: 'Atlas CI' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Dana Whitlock' })).toBeChecked();
+  });
+
+  it('shows how often each person was written to, not a column of zeroes', async () => {
+    await renderRoute();
+    expect(screen.getByText('24 replies')).toBeInTheDocument();
+    expect(screen.getByText('11 replies')).toBeInTheDocument();
   });
 
   it('unticking one sender updates the live count', async () => {
@@ -103,7 +113,7 @@ describe('O4 known senders — live label and untick all', () => {
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Dana Whitlock' }));
 
-    expect(await screen.findByRole('button', { name: 'Approve 4 senders' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Approve 3 senders' })).toBeInTheDocument();
   });
 
   it('Untick all clears every checkbox, flips its own label, and shows the helper line', async () => {
