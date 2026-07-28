@@ -51,6 +51,22 @@ export interface BehaviourFlags {
   sortInbox: boolean;
 }
 
+/**
+ * How much the agent may do without asking.
+ *
+ * - `ask` — it proposes every action and nothing happens until you say so.
+ *   What the rest of Pigeon already does: the Screener proposes a selection
+ *   and you press the button.
+ * - `reversible` — it archives, files and marks read on its own, all of which
+ *   have an undo. It still asks before sending anything or deciding a sender.
+ * - `auto` — it acts, and tells you afterwards.
+ *
+ * The line between the middle and the top is not "how risky" but "who else
+ * finds out": archiving is between the user and their mailbox, and a sent
+ * message or a declined sender reaches another person.
+ */
+export type AgentAutonomy = 'ask' | 'reversible' | 'auto';
+
 export interface UsageStats {
   /** Month-to-date, in USD. Reported, never enforced (D46). */
   spendUsd: number;
@@ -76,6 +92,8 @@ interface SettingsState {
   onboarded: boolean;
   /** Set when the user chose "Continue without the assistant" on O2. */
   skippedProvider: boolean;
+  /** How much the agent may do without asking first. */
+  agentAutonomy: AgentAutonomy;
   /**
    * Set when the inbox's assistant offer has been waved away.
    *
@@ -93,6 +111,7 @@ interface SettingsState {
   recordCall: (usd: number, ms: number) => void;
   setOnboarded: (v: boolean) => void;
   setSkippedProvider: (v: boolean) => void;
+  setAgentAutonomy: (v: AgentAutonomy) => void;
   dismissAssistantOffer: () => void;
 }
 
@@ -135,6 +154,7 @@ export const useSettings = create<SettingsState>()(
       usage: { spendUsd: 0, calls: 0, month: currentMonth() },
       connection: 'unknown',
       onboarded: false,
+      agentAutonomy: 'ask',
       dismissedAssistantOffer: false,
       skippedProvider: false,
 
@@ -166,6 +186,7 @@ export const useSettings = create<SettingsState>()(
 
       setOnboarded: (onboarded) => set({ onboarded }),
       setSkippedProvider: (skippedProvider) => set({ skippedProvider }),
+      setAgentAutonomy: (agentAutonomy) => set({ agentAutonomy }),
       dismissAssistantOffer: () => set({ dismissedAssistantOffer: true }),
     }),
     {

@@ -14,8 +14,11 @@ interface UiState {
   dialog: ConfirmDialog | null;
   /** Sender id whose held message is showing in a sheet over the Screener. */
   heldSheetSenderId: string | null;
+  /** Whether the agent panel is docked open. */
+  agentOpen: boolean;
 
   setShortcutsOpen: (v: boolean) => void;
+  setAgentOpen: (v: boolean) => void;
   openDialog: (d: ConfirmDialog) => void;
   closeDialog: () => void;
   openHeldSheet: (senderId: string) => void;
@@ -24,10 +27,12 @@ interface UiState {
 
 export const useUi = create<UiState>((set) => ({
   shortcutsOpen: false,
+  agentOpen: false,
   dialog: null,
   heldSheetSenderId: null,
 
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
+  setAgentOpen: (agentOpen) => set({ agentOpen }),
   openDialog: (dialog) => set({ dialog }),
   closeDialog: () => set({ dialog: null }),
   openHeldSheet: (heldSheetSenderId) => set({ heldSheetSenderId }),

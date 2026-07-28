@@ -166,3 +166,8 @@
 .pillRejected .pillDot {
   background: var(--color-destructive);
 }
+
+/* The autonomy ladder sits above the behaviour switches. */
+.autonomyRow {
+  margin-top: var(--space-3);
+}

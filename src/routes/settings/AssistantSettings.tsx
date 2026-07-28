@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { SettingsPage } from '../../components/settings/SettingsPage';
 import { Button } from '../../components/primitives/Button';
 import { Switch } from '../../components/primitives/Field';
+import { Segmented } from '../../components/primitives/Controls';
 import { ProviderPanel } from '../../components/onboarding/ProviderPanel';
-import { DEFAULT_BASE_URL, PROVIDER_LABELS, hasProvider, type BehaviourFlags, type ConnectionStatus, type ProviderConfig, useSettings } from '../../store/settings';
+import { DEFAULT_BASE_URL, PROVIDER_LABELS, hasProvider, type AgentAutonomy,
+  type BehaviourFlags, type ConnectionStatus, type ProviderConfig, useSettings } from '../../store/settings';
 import { PROVIDER_ENDPOINTS, testConnection } from '../../ai/client';
 import { toast } from '../../store/toast';
 import { formatSpend, plural, relativeTime } from '../../lib/format';
@@ -20,6 +22,14 @@ interface BehaviourRow {
 
 /** §7.8 — only the "automatic summaries" toast is given verbatim in the spec;
  * the other two follow the same "what changed, on/off" pattern. */
+/** What each autonomy setting actually permits, in the user's terms. */
+const AUTONOMY_NOTES: Record<AgentAutonomy, string> = {
+  ask: 'Pigeon proposes every action and waits. Nothing happens to your mail until you say so.',
+  reversible:
+    'Pigeon can archive, file and mark mail read on its own — all of which you can undo. It still asks before sending anything or deciding a sender.',
+  auto: 'Pigeon acts, and tells you what it did. This includes sending mail and declining senders.',
+};
+
 const BEHAVIOUR_ROWS: BehaviourRow[] = [
   {
     key: 'autoSummarize',
@@ -108,6 +118,7 @@ const PILLS: Record<ConnectionStatus, { label: string; className: string }> = {
 };
 
 export function AssistantSettings() {
+  const autonomy = useSettings((s) => s.agentAutonomy);
   const provider = useSettings((s) => s.provider);
   const connection = useSettings((s) => s.connection);
   const usage = useSettings((s) => s.usage);
@@ -265,6 +276,34 @@ export function AssistantSettings() {
             </div>
           </>
         )}
+      </section>
+
+      {/*
+        How much the agent may do on its own.
+        
+        Its own control rather than a fourth switch: the three settings are a
+        ladder, not three independent things, and the line between them is not
+        "how risky" but who else finds out. Archiving is between the user and
+        their mailbox; a sent message or a declined sender reaches a person.
+      */}
+      <section className={styles.behaviourBlock}>
+        <h2 className="t-base">What the assistant may do on its own</h2>
+        <span className={cn('t-sm', styles.toggleDescription)}>
+          {AUTONOMY_NOTES[autonomy]}
+        </span>
+        <div className={styles.autonomyRow}>
+          <Segmented
+            as="radiogroup"
+            label="Assistant autonomy"
+            value={autonomy}
+            onChange={(v) => useSettings.getState().setAgentAutonomy(v)}
+            options={[
+              { value: 'ask', label: 'Ask first' },
+              { value: 'reversible', label: 'Undoable things' },
+              { value: 'auto', label: 'Anything' },
+            ]}
+          />
+        </div>
       </section>
 
       <section className={styles.behaviourBlock}>

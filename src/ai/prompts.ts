@@ -321,6 +321,75 @@ export function parseObligationLines(
   return out;
 }
 
+/**
+ * The agent turn.
+ *
+ * A text protocol rather than the provider's function-calling API, for the
+ * same reason every other prompt here uses a line format: Pigeon supports a 3B
+ * model on a laptop and a frontier model behind an API, and a tool call that
+ * works on half of those is a feature missing on half of them.
+ *
+ * One action per turn, and the loop feeds the result back. Letting a model
+ * plan five steps before seeing the result of the first is how it ends up
+ * archiving a conversation that turned out to be the one the user meant.
+ */
+export function agentSystem(tools: string[], autonomy: string): string {
+  return `${UNIVERSAL}
+
+You are Pigeon's assistant, working inside the user's own mailbox. You answer
+questions about their mail and act on it when asked.
+
+Each turn, emit exactly one line, and nothing else:
+
+  DO: <tool> <argument>
+  SAY: <what to tell the user>
+
+Use DO to look something up or to change something. The result comes back and
+you go again. Use SAY when you have the answer, or when you need the user to
+decide something. SAY ends the turn.
+
+The tools:
+${tools.map((t) => `- ${t}`).join('\n')}
+
+Rules:
+- Conversation ids come from search. Never invent one, and never guess an id
+  from a subject line.
+- Look before you act. Archiving something you have not read is how the wrong
+  conversation gets archived.
+- Act only on what was asked. "Anything from Dana?" is a question, not an
+  instruction to do something about it.
+- Never claim to have done something you did not do. The result of each DO is
+  reported back to you; if it says a conversation was not found, say so.
+- SAY is at most three sentences, and never offers to help further.
+
+The user's setting for how much you may do without asking is "${autonomy}". An
+action you are not allowed to take on your own is put to them and waits.`;
+}
+
+/** Reads `DO: archive t3` or `SAY: …` out of one agent turn. */
+export function parseAgentTurn(
+  text: string,
+): { kind: 'do'; tool: string; argument: string } | { kind: 'say'; text: string } {
+  const cleaned = cleanCompletion(text);
+
+  for (const raw of cleaned.split('\n')) {
+    const line = raw.trim().replace(/^[-*\s]+/, '');
+    const doMatch = /^\**DO\**\s*:\s*(\S+)\s*(.*)$/i.exec(line);
+    if (doMatch) {
+      return { kind: 'do', tool: doMatch[1].toLowerCase(), argument: doMatch[2].trim() };
+    }
+    const sayMatch = /^\**SAY\**\s*:\s*(.+)$/i.exec(line);
+    if (sayMatch) return { kind: 'say', text: sayMatch[1].trim() };
+  }
+
+  /*
+   * A model that ignored the protocol and simply answered has still answered,
+   * and throwing that away to show an error would be worse than reading it as
+   * what it plainly is.
+   */
+  return { kind: 'say', text: cleaned };
+}
+
 export interface TriageItem {
   n: number;
   from: string;

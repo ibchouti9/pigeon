@@ -1,0 +1,126 @@
+/* The agent panel: a conversation with the mailbox, docked at the right. */
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(420px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-left: var(--border-hairline);
+  box-shadow: var(--shadow-modal);
+  z-index: 40;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: var(--layout-header-height);
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border-bottom: var(--border-hairline);
+  flex-shrink: 0;
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.log {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.you {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+}
+
+.pigeon {
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+}
+
+/* Something that actually happened to the mailbox. */
+.did {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-tertiary);
+}
+
+.ask {
+  padding: var(--space-3);
+  background: var(--color-surface-sunken);
+  border: var(--border-width-control) solid var(--color-border-control);
+  border-radius: var(--radius-lg);
+}
+
+.askWhat {
+  display: block;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.askNote {
+  display: block;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+.askActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.empty {
+  color: var(--color-text-tertiary);
+  padding: var(--space-4) 0;
+}
+
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.suggestion {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-sunken);
+  border: 0;
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.suggestion:hover {
+  color: var(--color-text-primary);
+}
+
+.composer {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: var(--border-hairline);
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+}

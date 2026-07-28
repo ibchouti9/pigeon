@@ -3,6 +3,7 @@ import type {
   Adapter,
   AnswerRequest,
   AnswerResult,
+  AgentMessage,
   DraftInput,
   ObligationAnswer,
   ObligationKind,
@@ -98,6 +99,8 @@ const MAX_TOKENS = {
   triage: 512,
   /** One short line per conversation, `OBLIGATION_BATCH` of them. */
   obligations: 640,
+  /** One action line, or a three-sentence answer. */
+  agent: 400,
 };
 
 /** The three answers `TRIAGE_SYSTEM` is allowed to give. */
@@ -345,6 +348,20 @@ function makeClient(config: ProviderConfig): AiClient {
       };
     },
 
+    async agentTurn(system: string, history: AgentMessage[]): Promise<string> {
+      /*
+       * The history is flattened into one user turn rather than sent as a
+       * message array. `Adapter.complete` takes a system and a user string —
+       * the shape every other pass needs — and widening it for this one would
+       * touch all five adapters to serve a single caller. The model sees the
+       * same thing either way.
+       */
+      const transcript = history
+        .map((m) => (m.role === 'user' ? `USER: ${m.content}` : m.content))
+        .join('\n\n');
+      return run(system, transcript, MAX_TOKENS.agent);
+    },
+
     async extractObligations(items: ObligationRequest[]): Promise<ObligationAnswer[]> {
       if (items.length === 0) return [];
       const text = await run(
@@ -461,6 +478,7 @@ function failingClient(provider: ProviderId): AiClient {
     // whole mailbox, and the failure harness needs it to produce nothing
     // rather than to throw into a pass nobody asked for.
     extractObligations: async () => [],
+    agentTurn: fail,
   };
 }
 

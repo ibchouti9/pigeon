@@ -51,6 +51,22 @@ export interface AiClient {
    * A thread with nothing outstanding is simply absent from the result.
    */
   extractObligations(items: ObligationRequest[]): Promise<ObligationAnswer[]>;
+
+  /**
+   * One turn of the agent loop.
+   *
+   * The only method here that takes a conversation rather than a single
+   * request — the agent's whole shape is "act, see the result, act again", and
+   * a model cannot choose the second action without the first one's result in
+   * front of it.
+   */
+  agentTurn(system: string, history: AgentMessage[]): Promise<string>;
+}
+
+export interface AgentMessage {
+  /** `user` carries both the person's question and the tool results. */
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 /** What a thread might be asking of the reader, or of somebody else. */

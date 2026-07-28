@@ -11,6 +11,7 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 import { useMailRefresh } from '../../hooks/useMailRefresh';
+import { AgentPanel } from '../agent/AgentPanel';
 import { useRouteFocus } from '../../hooks/useRouteFocus';
 import { useComposeParam } from '../../hooks/useComposeParam';
 import { toast } from '../../store/toast';
@@ -104,6 +105,7 @@ export function AppShell() {
       */}
       <HeldMessageSheet />
       <ShortcutsDialog />
+      <AgentPanel />
       <ToastStack />
     </div>
   );

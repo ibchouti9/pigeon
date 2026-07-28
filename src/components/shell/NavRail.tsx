@@ -3,6 +3,7 @@ import type { SyncProgress } from '../../types';
 import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMail, useHeldCount, useUnreadCount } from '../../store/mail';
 import { useCompose } from '../../store/compose';
+import { useUi } from '../../store/ui';
 import { getSyncProgress, subscribeSync } from '../onboarding/syncSession';
 import { useOnline } from '../../hooks/useOnline';
 import { Badge } from '../primitives/Controls';
@@ -81,6 +82,8 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
   const unread = useUnreadCount();
   const heldCount = useHeldCount();
   const openCompose = useCompose((s) => s.open);
+  const agentOpen = useUi((s) => s.agentOpen);
+  const setAgentOpen = useUi((s) => s.setAgentOpen);
   const online = useOnline();
 
   const [sync, setSync] = useState(getSyncProgress);
@@ -208,6 +211,25 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
           </NavLink>
         ))}
       </div>
+
+      {/*
+        The agent, above Compose because it is the thing that writes for you.
+        Not a destination: it docks beside whatever screen you are on, since
+        half of what you ask it is about the mail already in front of you.
+      */}
+      <Button
+        variant="secondary"
+        fullWidth={!compact}
+        size={compact ? 'md' : undefined}
+        className={styles.compose}
+        aria-label="Assistant"
+        title="Assistant"
+        aria-pressed={agentOpen}
+        onClick={() => setAgentOpen(!agentOpen)}
+      >
+        <Icon name="sparkle" size={compact ? 20 : 16} />
+        {!compact && <span>Assistant</span>}
+      </Button>
 
       {/*
         §5.4 — offline disables the archive and compose controls. aria-disabled
