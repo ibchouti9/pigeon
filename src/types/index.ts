@@ -173,7 +173,19 @@ export interface Draft {
   cc: Address[];
   bcc: Address[];
   subject: string;
+  /**
+   * The plain-text body. Stays the canonical one: the placeholder rule (D26),
+   * every AI prompt, and the `text/plain` half of what is sent all read this.
+   */
   body: string;
+  /**
+   * The formatted body, when the composer produced one.
+   *
+   * Derived *from* the editor rather than alongside it — `body` is what
+   * `htmlToText` makes of this — so the two halves of an outgoing
+   * multipart/alternative cannot drift apart.
+   */
+  bodyHtml?: string;
   /** Set for replies and forwards. */
   threadId?: string;
   mode: 'new' | 'reply' | 'reply-all' | 'forward';

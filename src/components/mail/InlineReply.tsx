@@ -6,6 +6,7 @@ import { useMail } from '../../store/mail';
 import { useUi } from '../../store/ui';
 import { useOnline } from '../../hooks/useOnline';
 import { toast } from '../../store/toast';
+import { textToHtml } from '../../data/mime';
 import { displayName } from '../../lib/format';
 import type { ReplyMode } from './ThreadReader';
 import { buildReplyDraft } from './replyDraft';
@@ -54,6 +55,16 @@ export function InlineReply({
         bcc: draft.bcc,
         subject: draft.subject,
         body: draft.body,
+        /*
+         * The HTML half, built from the text the composer holds.
+         *
+         * The editor is still a textarea, so there is no formatting to carry
+         * — but paragraphs are structure, and a recipient's client renders
+         * `text/plain` as one undifferentiated block in a proportional font.
+         * The text half goes out unchanged beside it (see `buildRawMessage`),
+         * so nothing is lost for a client that prefers it.
+         */
+        bodyHtml: textToHtml(draft.body),
         threadId: draft.threadId,
         attachments: draft.attachments,
       });

@@ -642,6 +642,7 @@ export class ImapMailProvider implements MailProvider {
     bcc: Address[];
     subject: string;
     body: string;
+    bodyHtml?: string;
     threadId?: string;
     attachments?: OutgoingAttachment[];
   }): Promise<Message> {
@@ -657,6 +658,7 @@ export class ImapMailProvider implements MailProvider {
       bcc: draft.bcc,
       subject: draft.subject,
       body: draft.body,
+      bodyHtml: draft.bodyHtml,
       attachments: draft.attachments,
       inReplyTo: parent?.messageId,
       references: parent?.references,

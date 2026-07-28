@@ -5,6 +5,7 @@ import { useMail } from '../../store/mail';
 import { useOnline } from '../../hooks/useOnline';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { toast } from '../../store/toast';
+import { textToHtml } from '../../data/mime';
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { Composer } from './Composer';
@@ -79,6 +80,16 @@ export function ComposeDock() {
         bcc: draft.bcc,
         subject: draft.subject,
         body: draft.body,
+        /*
+         * The HTML half, built from the text the composer holds.
+         *
+         * The editor is still a textarea, so there is no formatting to carry
+         * — but paragraphs are structure, and a recipient's client renders
+         * `text/plain` as one undifferentiated block in a proportional font.
+         * The text half goes out unchanged beside it (see `buildRawMessage`),
+         * so nothing is lost for a client that prefers it.
+         */
+        bodyHtml: textToHtml(draft.body),
         threadId: draft.threadId,
         attachments: draft.attachments,
       });

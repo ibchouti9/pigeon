@@ -385,6 +385,7 @@ export class MockMailProvider implements MailProvider {
     bcc: Address[];
     subject: string;
     body: string;
+    bodyHtml?: string;
     threadId?: string;
     attachments?: OutgoingAttachment[];
   }): Promise<Message> {

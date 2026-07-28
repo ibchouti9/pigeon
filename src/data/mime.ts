@@ -120,6 +120,32 @@ export function htmlToText(html: string): string {
     .replace(/\uE000(\d+)\uE000/g, (_, i: string) => preserved[Number(i)]);
 }
 
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+};
+
+/**
+ * Plain text promoted to the markup the editor edits.
+ *
+ * Pigeon writes text, not HTML — a drafted reply, a tone change, a forward's
+ * quoted history — so anything it produces has to be promoted before it
+ * reaches a `contenteditable`, or the editor would render the angle brackets
+ * of a quoted line as tags. One paragraph per blank-line-separated block,
+ * which is what `htmlToText` turns back into the same blank lines.
+ */
+export function textToHtml(text: string): string {
+  if (!text.trim()) return '';
+  return text
+    .split(/\n{2,}/)
+    .map((block) => {
+      const escaped = block.replace(/[&<>]/g, (c) => HTML_ESCAPES[c]);
+      return `<p>${escaped.replace(/\n/g, '<br>')}</p>`;
+    })
+    .join('');
+}
+
 /** Splits a reply's quoted history off the top-level body (§5.6). */
 export function splitQuoted(body: string): { body: string; quoted?: string } {
   const lines = body.split('\n');
@@ -241,6 +267,8 @@ export function buildRawMessage(input: {
   bcc: Address[];
   subject: string;
   body: string;
+  /** The rich half, when the composer produced one. Sent alongside the text. */
+  bodyHtml?: string;
   attachments?: OutgoingAttachment[];
   inReplyTo?: string;
   references?: string;
@@ -257,12 +285,50 @@ export function buildRawMessage(input: {
   lines.push('MIME-Version: 1.0');
 
   const attachments = input.attachments ?? [];
+  const html = input.bodyHtml?.trim();
+
+  /*
+   * The plain-text half is always sent, and it is not a courtesy.
+   *
+   * `text/plain` is what a screen reader, a terminal client, a notification
+   * preview and every downstream search index read — and it is what Pigeon
+   * itself reads back, since `Message.body` is the canonical body for search,
+   * the lane classifier and every AI prompt. A message that arrives as HTML
+   * alone is a message those cannot see. RFC 2046 puts the plainest
+   * alternative first and the richest last; clients show the last they can
+   * render.
+   */
+  const bodyPart = (): string[] => {
+    if (!html) {
+      return [
+        'Content-Type: text/plain; charset="UTF-8"',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        ...bodyLines(input.body),
+      ];
+    }
+    const alt = `----pigeon-alt-${input.body.length}-${html.length}-boundary`;
+    return [
+      `Content-Type: multipart/alternative; boundary="${alt}"`,
+      '',
+      `--${alt}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      ...bodyLines(input.body),
+      '',
+      `--${alt}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      ...bodyLines(html),
+      '',
+      `--${alt}--`,
+    ];
+  };
 
   if (attachments.length === 0) {
-      lines.push('Content-Type: text/plain; charset="UTF-8"');
-    lines.push('Content-Transfer-Encoding: 8bit');
-    lines.push('');
-    lines.push(...bodyLines(input.body));
+    lines.push(...bodyPart());
     return encodeBase64Url(lines.join('\r\n'));
   }
 
@@ -273,10 +339,7 @@ export function buildRawMessage(input: {
   lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
   lines.push('');
   lines.push(`--${boundary}`);
-  lines.push('Content-Type: text/plain; charset="UTF-8"');
-  lines.push('Content-Transfer-Encoding: 8bit');
-  lines.push('');
-  lines.push(...bodyLines(input.body));
+  lines.push(...bodyPart());
 
   for (const file of attachments) {
     lines.push('');

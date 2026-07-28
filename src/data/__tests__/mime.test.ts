@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRawMessage, htmlToText, splitQuoted } from '../mime';
+import { buildRawMessage, htmlToText, splitQuoted, textToHtml } from '../mime';
 
 /**
  * Decodes what `buildRawMessage` emits (base64url, UTF-8), so the assertions
@@ -397,5 +397,72 @@ describe('htmlToText', () => {
 
   it('strips script and style content rather than reading it aloud', () => {
     expect(htmlToText('<style>p{color:red}</style><p>Body</p><script>x()</script>')).toBe('Body');
+  });
+});
+
+/**
+ * Outgoing mail carried a `text/plain` part and nothing else, so a message
+ * arrived in the recipient's client as one undifferentiated block. The text
+ * half still goes out unchanged beside the HTML — it is what a screen reader,
+ * a terminal client and every search index read.
+ */
+describe('sending an HTML half', () => {
+  const base = {
+    from: { name: 'Marc', email: 'marc@ferrum.dev' },
+    to: [{ name: 'Dana', email: 'dana@lumen.com' }],
+    cc: [],
+    bcc: [],
+    subject: 'Contract redlines',
+  };
+
+  it('sends text alone when there is no HTML', () => {
+    const raw = decodeBase64Url(buildRawMessage({ ...base, body: 'Sending Friday.' }));
+    expect(raw).toContain('Content-Type: text/plain; charset="UTF-8"');
+    expect(raw).not.toContain('multipart/alternative');
+  });
+
+  it('sends both halves, plainest first, when there is', () => {
+    const raw = decodeBase64Url(
+      buildRawMessage({ ...base, body: 'Sending Friday.', bodyHtml: '<p>Sending Friday.</p>' }),
+    );
+    expect(raw).toContain('multipart/alternative');
+    // RFC 2046: clients render the last alternative they understand.
+    expect(raw.indexOf('text/plain')).toBeLessThan(raw.indexOf('text/html'));
+    expect(raw).toContain('<p>Sending Friday.</p>');
+    expect(raw).toContain('Sending Friday.');
+  });
+
+  it('nests the alternative inside the mixed part when a file rides along', () => {
+    const raw = decodeBase64Url(
+      buildRawMessage({
+        ...base,
+        body: 'Deck attached.',
+        bodyHtml: '<p>Deck attached.</p>',
+        attachments: [
+          { id: 'a1', filename: 'deck.pdf', mimeType: 'application/pdf', size: 4, data: 'AAAA' },
+        ],
+      }),
+    );
+    expect(raw.indexOf('multipart/mixed')).toBeLessThan(raw.indexOf('multipart/alternative'));
+    expect(raw).toContain('Content-Disposition: attachment');
+  });
+});
+
+describe('textToHtml', () => {
+  it('makes a paragraph of each block, which is the structure text/plain loses', () => {
+    expect(textToHtml('One.\n\nTwo.')).toBe('<p>One.</p><p>Two.</p>');
+  });
+
+  it('keeps a single newline as a line break inside its paragraph', () => {
+    expect(textToHtml('Thanks,\nMarc')).toBe('<p>Thanks,<br>Marc</p>');
+  });
+
+  it('escapes what would otherwise be read as markup', () => {
+    // A quoted reply line starts with ">" and must not become a tag.
+    expect(textToHtml('> earlier text & more')).toBe('<p>&gt; earlier text &amp; more</p>');
+  });
+
+  it('produces nothing at all for an empty body', () => {
+    expect(textToHtml('   ')).toBe('');
   });
 });
