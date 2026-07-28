@@ -59,7 +59,13 @@ interface MailState {
    */
   refresh: () => Promise<void>;
 
-  markRead: (threadId: string) => Promise<void>;
+  /**
+   * §D17's unread state, in both directions. The provider has always taken a
+   * boolean and this dropped it, so the only writer was the reader's own
+   * 1,200ms timer — leaving a thread unread to deal with later, which is the
+   * move most of Gmail's triage rests on, could not be expressed at all.
+   */
+  markRead: (threadId: string, read?: boolean) => Promise<void>;
   setPlace: (threadId: string, place: 'inbox' | 'archive') => Promise<void>;
 
   /** One move, one toast, one undo — however many threads were selected. */
@@ -348,13 +354,15 @@ export const useMail = create<MailState>((set, get) => ({
     }
   },
 
-  markRead: async (threadId) => {
+  markRead: async (threadId, read = true) => {
     const epoch = get().providerEpoch;
     const before = get().inbox;
-    if (!before.some((t) => t.id === threadId && t.unread)) return;
-    set({ inbox: before.map((t) => (t.id === threadId ? { ...t, unread: false } : t)) });
+    // Already where it is being asked to go — no request, and no needless
+    // re-render of a list somebody is looking at.
+    if (!before.some((t) => t.id === threadId && t.unread === read)) return;
+    set({ inbox: before.map((t) => (t.id === threadId ? { ...t, unread: !read } : t)) });
     try {
-      await get().provider.markRead(threadId, true);
+      await get().provider.markRead(threadId, read);
     } catch {
       // Rolling back after a provider swap would restore the previous
       // account's inbox over the new one's.

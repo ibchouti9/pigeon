@@ -238,6 +238,25 @@ export function MailPlaceScreen({ place }: { place: Place }) {
       if (shortcutsBlocked(e)) return;
 
       /*
+       * Shift+U — leave it unread, the way Gmail spells it.
+       *
+       * It returns to the list on purpose rather than as a convenience: the
+       * reader marks whatever it is showing read after 1,200ms, so marking an
+       * open thread unread and staying put would simply be undone a second
+       * later. Closing is also what the action means — this thread is for
+       * later — and it matches what the same key does in Gmail.
+       */
+      if (e.shiftKey && e.key === 'U' && place === 'inbox') {
+        const id = threadId ?? cursorThreadIdRef.current;
+        if (id) {
+          void markRead(id, false);
+          if (threadId) closeThread(true);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      /*
        * Lanes on the number row. Bound to the canonical lane order rather than
        * to the chips on screen, so `3` is Offers on every account and on every
        * day — a digit that changes meaning because a campaign arrived
