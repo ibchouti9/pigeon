@@ -4,6 +4,7 @@ import { useOnline } from './useOnline';
 import { useMailRefresh } from './useMailRefresh';
 import { useNewMailNotice } from './useNewMailNotice';
 import { useUnreadBadge } from './useUnreadBadge';
+import { useNotifyAllowlist } from './useNotifyAllowlist';
 import { toast } from '../store/toast';
 
 /**
@@ -29,6 +30,7 @@ export function useShellData(): void {
   useMailRefresh();
   useNewMailNotice();
   useUnreadBadge();
+  useNotifyAllowlist();
 
   useEffect(() => {
     void loadAccount();

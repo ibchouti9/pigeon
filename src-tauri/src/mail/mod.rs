@@ -13,6 +13,7 @@
 //! wraps one blocking call so the webview never waits on the wire.
 
 mod act;
+mod allowlist;
 mod fetch;
 mod parse;
 mod send;
@@ -62,9 +63,19 @@ pub async fn mail_connect(
     Ok(())
 }
 
+/// Mirrors §2.3's answer down for the background wake-up on iOS, which runs
+/// in a process with no webview to ask.
 #[tauri::command]
-pub async fn mail_disconnect() {
+pub fn mail_set_notify_allowlist(app: tauri::AppHandle, emails: Vec<String>) -> Result<(), String> {
+    allowlist::store(&app, &emails)
+}
+
+#[tauri::command]
+pub async fn mail_disconnect(app: tauri::AppHandle) {
     watch::stop();
+    // Before the credentials go, so a wake-up racing the sign-out has nobody
+    // it is allowed to announce.
+    allowlist::clear(&app);
     let _ = blocking(|| {
         session::forget_credentials();
         Ok(())
