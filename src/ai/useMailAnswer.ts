@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Thread } from '../types';
+import { displayName } from '../lib/format';
 import { parseQuery } from '../data/query';
 import { useSettings } from '../store/settings';
 import { getAiClient, ANSWER_SOURCES } from './client';
@@ -36,6 +37,30 @@ export interface MailAnswer {
  * that appears over results the user was already reading is an interruption.
  * Pigeon offers; the user asks.
  */
+/**
+ * One thread, as text a model can answer questions about.
+ *
+ * Every line is attributed, and that is the entire point of this function.
+ * The bodies used to be concatenated with nothing between them, which threw
+ * away the one fact most questions turn on — who said it. "What did I promise
+ * Dana" is unanswerable from a wall of text in which the reader's own
+ * sentences are indistinguishable from Dana's, and the model correctly refused
+ * with "Not in this mail." on a thread that plainly contained the answer.
+ *
+ * "You" rather than the account's own name, because that is how the question
+ * will be phrased.
+ *
+ * Newest first: on a long thread the oldest message is the least likely to
+ * hold the answer and the most likely to fill the context, and the prompt
+ * truncates from the end.
+ */
+export function conversationText(thread: Thread): string {
+  return [...thread.messages]
+    .reverse()
+    .map((m) => `${m.isFromUser ? 'You' : displayName(m.from)}: ${m.body ?? ''}`.trim())
+    .join('\n\n');
+}
+
 export function useMailAnswer(
   query: string,
   results: Thread[],
@@ -88,12 +113,7 @@ export function useMailAnswer(
         from: newest ? `${newest.from.name} <${newest.from.email}>` : '',
         subject: t.subject,
         date: t.lastMessageAt.slice(0, 10),
-        // Newest first: on a long thread the oldest message is the least
-        // likely to hold the answer and the most likely to fill the context.
-        body: [...t.messages]
-          .reverse()
-          .map((m) => m.body ?? '')
-          .join('\n\n'),
+        body: conversationText(t),
       };
     });
 
