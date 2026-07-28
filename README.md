@@ -13,6 +13,11 @@ you cannot see — a derived read over the same list, computed from header and
 wording evidence, showing its reasoning, and correctable per sender forever
 with one click.
 
+And the model does not only answer — it notices. Pigeon reads your
+conversations for what they still ask of you, keeps that as a **Ledger**, opens
+on a **Today** page built from it, and has an **assistant** that can act on
+your mail with exactly as much freedom as you give it.
+
 Pigeon ships no inference of its own. You bring your own model: an API key for
 Anthropic, OpenAI or Google, or a local endpoint. If Ollama or LM Studio is
 already running when you open the assistant screen, Pigeon finds it and fills
@@ -42,10 +47,17 @@ Pick the **Demo** provider on the assistant step to see the assistant surfaces
 with canned output, or connect a real model. If you already run Ollama, this
 step is two clicks: Pigeon has found it by the time the screen renders.
 
-A 3B model is enough. Pigeon asks its model for three bullets, one sentence, a
-lane name or a three-sentence answer, never for an essay — `llama3.2:3b`
-answers all of them in about a second on an M-series laptop, and everything it
-returns is parsed leniently and thrown away if it comes back malformed.
+A 3B model is enough for most of it. Pigeon asks its model for three bullets,
+one sentence, a lane name or a three-sentence answer, never for an essay —
+`llama3.2:3b` answers all of them in about a second on an M-series laptop, and
+everything it returns is parsed leniently and thrown away if it comes back
+malformed. The Ledger and the assistant read whole conversations and are
+happier on something larger; `qwen2.5:32b` is what they were built against.
+
+`npm run ai:probe` runs every surface against whatever model is on
+`localhost:11434` and writes the transcript to a file. A prompt change is a
+behaviour change with no type checker behind it, and that is the only thing
+that catches one.
 
 `npm run dev` serves the same app in a browser instead, which is faster to
 iterate on and is what the tests run against. Real Gmail needs the desktop
@@ -79,7 +91,10 @@ is a bug.
 | **Lanes** | The inbox split into People, Reading, Offers, Receipts and Alerts, on evidence rather than on a tab someone else chose. `0`–`5` switch between them. Every thread's lane is one click from the sentence explaining it, and one more from overruling it for that sender permanently. |
 | **Ask your mail** | Type a question into search and Pigeon answers it from the threads that matched, with every claim numbered and linked to the message it came from. It reads those results and nothing else, so "Not in this mail." is an answer it can give. |
 | **Postmark** | The signature element: a circular ink impression, stamped onto a sender card at the moment of decision, and kept permanently as that sender's record. |
-| **Assistant** | Thread summaries, Screener triage, lane sorting, mail answers, and reply drafting with three tone controls. Every AI surface degrades to its underlying content when no provider is connected — a missing key never looks like a broken app, and lanes still sort without one. |
+| **Ledger** | What your mail is actually asking of you, in three groups: what people asked and have not had, what you promised, and what you are waiting on. Pulled out of the conversations themselves — "decide the liability cap · Dana Whitlock · Friday" — with the deadline copied from the mail rather than guessed at, and nothing invented: an obligation has to be supported by the words of its own conversation. |
+| **Today** | The mailbox in one page: what arrived, what has a date on it, what nobody has come back to you about. Composed rather than generated — every number is counted and every line is a real thread, because a brief that is confidently wrong about a quiet morning is worse than no brief. |
+| **Assistant** | Ask about your mail or tell Pigeon what to do with it, and watch each step as it happens. Seven tools, sorted by who finds out: reads are free, archiving and drafting are yours to undo, and sending or declining a sender always asks. How much it may do on its own is a setting — ask first, undoable things, or anything. |
+| **AI surfaces** | Thread summaries, Screener triage, lane sorting, mail answers, and reply drafting with three tone controls. Every one degrades to its underlying content when no provider is connected — a missing key never looks like a broken app, and lanes still sort without one. |
 | **No delete** | Archive is the only removal action. Declining silences a sender; it never deletes their mail. Every destructive-feeling action offers 8 seconds of undo. |
 | **Keyboard** | The whole product is operable without a pointer, including approving a sender, sending an AI-assisted reply, and reversing a decision. Press `?` for the map. |
 
@@ -98,6 +113,10 @@ src/
     imap/         the real provider: maps the Rust engine into the domain
   ai/           AiClient interface + one adapter per provider
     detectLocal.ts  finds the model already running on this machine
+    prompts.ts      every system prompt, and the parsers for what comes back
+    useLedger.ts    the pass that reads conversations for what is outstanding
+    useAgent.ts     the agent loop: one action a turn, result fed back
+    tools.ts        what the agent may do, and which autonomy level covers it
   store/        zustand stores: mail, settings, compose, toast, ui
   components/
     primitives/ C-1…C-28 from the spec's component inventory
@@ -181,6 +200,7 @@ macOS app is how real mail is read.
 | `npm run build` | Typecheck and build the frontend |
 | `npm run check` | Typecheck, lint and test |
 | `npm test` | Vitest |
+| `npm run ai:probe` | Every AI surface against a live model, transcript to a file |
 
 The desktop shell needs a Rust toolchain ([rustup.rs](https://rustup.rs)); the
 web scripts do not.

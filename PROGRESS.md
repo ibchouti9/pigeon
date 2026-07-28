@@ -770,6 +770,102 @@ what the harness is for.
 regressions above were introduced by an improvement to the same prompt, and
 neither would have failed a single test in the suite.
 
+## The agent-native pass (July 28)
+
+Three features, built in the order they depend on each other, and each driven
+against `qwen2.5:32b` rather than only tested.
+
+**The Ledger.** Every AI surface in Pigeon was reactive: it summarised the
+thread you opened, sorted the mail that arrived, answered the question you
+typed. None of them noticed anything. §7.9 already orders a summary's bullets
+so the last is "what is being asked of the reader", naming the person and the
+deadline — the model had been extracting obligations all along, once per
+thread, into a block nobody sees unless they open that thread. `useLedger`
+aggregates it over the inbox and sent mail together, which only became possible
+when Sent landed the day before.
+
+Two things the first live run taught, both now load-bearing:
+
+- **Cross-contamination inside a batch.** "decide the liability cap" — genuine,
+  and correct for Dana Whitlock's contract thread — was also attached to a
+  thread about a different clause that never mentions a cap. A missed
+  obligation costs the user nothing they did not already have; an invented one
+  is a lie about a person that they may act on. `groundedInThread` requires the
+  obligation's content words to appear in its own conversation, and the batch
+  dropped from six to four.
+- **No invented deadlines.** "no date" is the prompt's own word for the common
+  case, so the absence of a date has a token rather than an empty field.
+
+**Today.** Composed, not generated. Every number counted, every line a ledger
+row or a thread that exists. A model writing prose *about* the mailbox would be
+a paragraph nobody can check, and being confidently wrong about a quiet morning
+is the one thing that screen cannot afford.
+
+**The agent.** One action per turn, the result fed back before the next is
+chosen — a model that plans five steps before seeing the result of the first is
+how the wrong conversation gets archived. Seven tools sorted by *who finds
+out*: reads are free, archive/unread/draft change the user's own mailbox and
+have an undo, and approve/decline reach another person so the middle autonomy
+setting deliberately does not cover them. The gate is real, not advice to the
+model: a tool the setting does not cover stops the loop and waits.
+
+`draft` opens the composer and never the outbox, which is why it counts as
+reversible. That is the line between an agent that helps and one that speaks
+for you.
+
+The protocol is text rather than the provider's function-calling API, like
+every other prompt here: Pigeon supports a 3B model on a laptop and a frontier
+model behind an API, and a tool call that works on half of those is a feature
+missing on half of them.
+
+### What the live runs found that the tests could not
+
+`npm run ai:probe`. The suite checks that model output *parses*; none of these
+would have failed a single test.
+
+- Drafts could not say "I". §7.9's Universal block bans the first person and
+  its Draft Replies block asks for the reader's own register, which is first
+  person by construction. The ban won: "Agreed to push back on the tooling
+  clause. On the liability cap, willing to accept $750K as compromise."
+- All three tone controls added a bare `[confirm:]` to a draft that had none,
+  which D26 blocks Send on — so using one on a finished reply made it
+  unsendable.
+- A citation printed the model's numbering while the sources list numbered by
+  citation order: "4" over a single source labelled "1".
+- The Screener read was a label where §7.9 asks for a sentence. Fixing that
+  cost the caution — a "verify your billing details within 24 hours" notice
+  moved from `unsure` to **approve** — until the decision rules were moved last
+  in the prompt, closest to the answer.
+
+**A prompt change is a behaviour change with no type checker.** Two of the
+regressions above were introduced by an improvement to the same prompt.
+
+### Measured, and one measurement that was wrong
+
+- Bundle: 564 kB → 348 kB of JS (183 → 110 kB gzipped), 92 → 60 kB of CSS, by
+  lazily loading onboarding and Settings. Neither belongs in the code that has
+  to arrive before the first screen paints.
+- The ledger's two screens merged inbox and sent with a `findIndex` inside a
+  `filter`, rebuilt every render: 4.3ms at 800 conversations, 17ms at 2,000.
+  Linear and memoised now — and the identity mattered as much as the cost,
+  since `useLedger` keys its reading pass on that array.
+- **"880ms per navigation" between the two new screens was the mock provider's
+  own simulated latency.** A longtask observer over the same navigations found
+  no blocking work at all. The number was real and measured the wrong thing.
+
+### Open
+
+- **The agent panel overlaps the composer dock.** Both are fixed to the right
+  edge; 372px of overlap at 1280. It matters because the agent's own `draft`
+  tool opens the composer. An attempt to move the dock did not land, and what
+  was ruled out is recorded in `AgentPanel.tsx` so the next attempt does not
+  repeat it: class applied, media query matching, `right` set inline, no
+  `!important` anywhere — and `getComputedStyle(dock).right` stayed at 24px.
+- Latency. A two-step agent question is 20–40s against a local 32B. Every step
+  is narrated and the final answer streams, so the wait is legible rather than
+  silent, but it is still a wait. A smaller model for the loop and the large
+  one for drafting is what the provider layer can already express.
+
 ## Deliberate deviations from the spec
 
 Each is a considered call, not an oversight.
