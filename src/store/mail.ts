@@ -3,6 +3,7 @@ import type { Account, Address, HeldSender, MailView, Sender, Thread } from '../
 import type { MailProvider, SearchResults } from '../data/provider';
 import { MailError } from '../data/provider';
 import { MockMailProvider } from '../data/mock/mockProvider';
+import { haptic } from '../lib/haptics';
 import { toast } from './toast';
 import { useCompose } from './compose';
 import { displayName, plural } from '../lib/format';
@@ -514,7 +515,17 @@ export const useMail = create<MailState>((set, get) => ({
     const entry = held.find((h) => h.sender.id === senderId);
     if (!entry) return false;
 
-    // Optimistic: the card leaves immediately (§3.2 step 3).
+    /*
+     * At the moment the card leaves, not when the server agrees. §3.2 step 3
+     * makes the departure optimistic precisely because the decision is
+     * already made in the user's head — and the feeling belongs to that
+     * moment, not to a round trip they are not waiting on.
+     *
+     * Here rather than in the Screener, because there are five places a
+     * decision is taken — the stack, the sheet's two buttons, its keyboard
+     * shortcut, bulk review — and this is the one thing they all go through.
+     */
+    haptic(decision === 'approved' ? 'decided' : 'refused');
     set((st) => ({
       held: held.filter((h) => h.sender.id !== senderId),
       deciding: st.deciding + 1,

@@ -1,4 +1,5 @@
 import { useRef, useState, type RefObject } from 'react';
+import { haptic } from '../lib/haptics';
 
 /** How far the finger must travel, after resistance, to arm the refresh. */
 const THRESHOLD = 64;
@@ -68,6 +69,12 @@ export function usePullToRefresh(
   const pulled = useRef(0);
 
   function pull(next: number) {
+    /*
+     * On the way past the threshold, once. This is the moment the platform
+     * expects a tick — it is what tells a thumb it can let go, without having
+     * to watch the ring change colour.
+     */
+    if (pulled.current < THRESHOLD && next >= THRESHOLD) haptic('tick');
     pulled.current = next;
     setDistance(next);
   }

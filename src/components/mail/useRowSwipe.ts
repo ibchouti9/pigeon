@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { haptic } from '../../lib/haptics';
 
 /** Past this much travel, releasing commits the action. */
 const COMMIT_PX = 88;
@@ -110,7 +111,11 @@ export function useRowSwipe(onCommit: () => void, enabled: boolean): RowSwipe {
       onTouchEnd() {
         const committed = axis.current === 'x' && travelled.current <= -COMMIT_PX;
         reset();
-        if (committed) onCommit();
+        if (!committed) return;
+        // The row is about to leave; the tap is what says the gesture landed
+        // rather than that the finger slipped.
+        haptic('tick');
+        onCommit();
       },
       onTouchCancel: reset,
     },

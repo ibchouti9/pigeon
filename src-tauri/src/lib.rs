@@ -1,5 +1,6 @@
 mod attachment;
 mod badge;
+mod haptics;
 mod ios_ffi;
 mod machine;
 mod mail;
@@ -62,6 +63,8 @@ pub fn run() {
             badge::set_unread_badge,
             #[cfg(target_os = "ios")]
             attachment::attachment_present,
+            #[cfg(target_os = "ios")]
+            haptics::haptic,
         ])
         .build(tauri::generate_context!())
         .expect("error while building the application");

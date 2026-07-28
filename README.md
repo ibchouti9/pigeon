@@ -214,9 +214,16 @@ panes, swipe-to-archive instead of a button that appears on hover.
   own device and expires after 7 days; the paid one ($99/yr) signs for a year
   and reaches TestFlight.
 
-The Xcode project is committed, so there is nothing to generate. Re-running
-`npm run tauri ios init` is safe if it ever needs rebuilding — it regenerates
-the project around the two hand-written files rather than over them.
+The Xcode project is committed, so there is nothing to generate.
+
+**Adding a Swift file needs `npm run tauri ios init` afterwards.** The project
+lists its sources explicitly, so a new file sits on disk uncompiled until the
+project is regenerated — and the failure is a linker error about a missing
+symbol rather than anything mentioning the file. Init is safe to re-run: it
+regenerates the project around the hand-written files rather than over them,
+`main.mm` included. Clear `gen/apple/build` and the project's DerivedData too
+if a change looks like it did not take; asset catalogs and Swift modules both
+cache more eagerly than they should.
 
 **Running it.** `npm run ios` builds and launches on a connected iPhone or in
 the simulator. Signing needs your team id; set it in the environment so it

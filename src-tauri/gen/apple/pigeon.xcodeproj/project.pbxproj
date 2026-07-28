@@ -22,6 +22,7 @@
 		A6751EA746D776EE82614975 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86EE94446B27974675534048 /* MetalKit.framework */; };
 		C007458E690EEB13DD512AFE /* PigeonFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452FE2E6021248EA41610A34 /* PigeonFiles.swift */; };
 		D8FD54BBAE15012782002968 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 81A19ED037EA9650744DC8ED /* Metal.framework */; };
+		E1E378AC826B2CECE8634E0B /* PigeonHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D9318C08C811E475C16D617 /* PigeonHaptics.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,10 +40,12 @@
 		424F546CD6EC668F0E833477 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		452FE2E6021248EA41610A34 /* PigeonFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PigeonFiles.swift; sourceTree = "<group>"; };
 		5788F51FF1351FC00B4C359F /* PigeonBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PigeonBackground.swift; sourceTree = "<group>"; };
+		5D9318C08C811E475C16D617 /* PigeonHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PigeonHaptics.swift; sourceTree = "<group>"; };
 		5E31E3822D4DFC5061DB7230 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		6B7E6F51E886B0A50EB48EDE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6FD7C239FA4BFDF8E77AC15A /* background.rs */ = {isa = PBXFileReference; path = background.rs; sourceTree = "<group>"; };
 		721F998A27D4CD91B1628E76 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
+		7400B0A7BDC48547E952546C /* haptics.rs */ = {isa = PBXFileReference; path = haptics.rs; sourceTree = "<group>"; };
 		81A19ED037EA9650744DC8ED /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		86EE94446B27974675534048 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		8A3BB031B322CDA974D0DBE1 /* pigeon_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = pigeon_iOS.entitlements; sourceTree = "<group>"; };
@@ -159,6 +162,7 @@
 			children = (
 				28BBF45FD08AC8F3DE075351 /* attachment.rs */,
 				C1F2194DAFCD913E17030BA4 /* badge.rs */,
+				7400B0A7BDC48547E952546C /* haptics.rs */,
 				048798D392668CD6DBB98D86 /* ios_ffi.rs */,
 				054BB1C438F515EEB86904F7 /* lib.rs */,
 				2A727DBA014FCF0522926972 /* machine.rs */,
@@ -200,6 +204,7 @@
 				5E31E3822D4DFC5061DB7230 /* main.mm */,
 				5788F51FF1351FC00B4C359F /* PigeonBackground.swift */,
 				452FE2E6021248EA41610A34 /* PigeonFiles.swift */,
+				5D9318C08C811E475C16D617 /* PigeonHaptics.swift */,
 				FA4FC37FCFC98969D8D71A7B /* bindings */,
 			);
 			path = pigeon;
@@ -213,7 +218,7 @@
 			path = bindings;
 			sourceTree = "<group>";
 		};
-		"TEMP_D3FE1EA3-5935-45FE-95F4-D3E0E56B5B84" /* x86_64 */ = {
+		"TEMP_D35F62B8-87AC-4AC0-8789-3467D47DF0E7" /* x86_64 */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -318,6 +323,7 @@
 			files = (
 				9C8CF24566803DD56DAE0A75 /* PigeonBackground.swift in Sources */,
 				C007458E690EEB13DD512AFE /* PigeonFiles.swift in Sources */,
+				E1E378AC826B2CECE8634E0B /* PigeonHaptics.swift in Sources */,
 				3B8B029AE0AB97B7E370B2A9 /* main.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
