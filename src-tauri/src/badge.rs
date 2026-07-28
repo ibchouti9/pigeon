@@ -22,4 +22,10 @@ pub fn set_unread_badge(app: AppHandle, count: u32) {
     // platform refuses — Windows has no dock, Android has no API — there is
     // nothing to tell the user and nothing to retry.
     let _ = window.set_badge_count(if count == 0 { None } else { Some(count.into()) });
+
+    // The same number, in the one place it stays visible with every window
+    // shut. Set here rather than from its own command because it is the same
+    // fact, and two commands is two chances for them to disagree.
+    #[cfg(desktop)]
+    crate::tray::set_count(&app, count);
 }
