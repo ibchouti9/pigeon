@@ -1,5 +1,15 @@
 # Contributing to Pigeon
 
+## Signing the CLA
+
+The first pull request you open gets a bot comment asking you to sign the
+[Contributor License Agreement](CLA.md). One reply, once, and never again.
+
+Pigeon is Apache 2.0 and stays that way. The agreement exists so the project
+can add a commercially licensed edition later without needing every past
+contributor to agree individually — which is a problem projects discover years
+in, when everyone has changed jobs. You keep the copyright on your work.
+
 ## The spec is the source of truth
 
 [`docs/design/SPEC.md`](docs/design/SPEC.md) is a complete build specification.
