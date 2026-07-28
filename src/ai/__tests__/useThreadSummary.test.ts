@@ -63,7 +63,7 @@ describe('useThreadSummary', () => {
         baseUrl: 'http://localhost:11434',
         model: 'demo',
       },
-      behaviour: { autoSummarize: true, screenerReads: true, answerQuestions: true, matchWritingStyle: true, sortInbox: true },
+      behaviour: { autoSummarize: true, screenerReads: true, answerQuestions: true, readLedger: true, matchWritingStyle: true, sortInbox: true },
     });
   });
 
@@ -111,7 +111,7 @@ describe('useThreadSummary', () => {
 
   it('does nothing when the behaviour toggle is off (§5.13c)', () => {
     useSettings.setState({
-      behaviour: { autoSummarize: false, screenerReads: true, answerQuestions: true, matchWritingStyle: true, sortInbox: true },
+      behaviour: { autoSummarize: false, screenerReads: true, answerQuestions: true, readLedger: true, matchWritingStyle: true, sortInbox: true },
     });
     const { result } = renderHook(() => useThreadSummary(thread(true)));
     expect(result.current.state).toBe('idle');

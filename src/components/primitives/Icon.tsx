@@ -9,6 +9,7 @@ export type IconName =
   | 'archive'
   | 'sent'
   | 'drafts'
+  | 'ledger'
   | 'search'
   | 'compose'
   | 'settings'
@@ -48,6 +49,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
       <path d="M17.5 2.5a2.1 2.1 0 0 1 3 3L13 13l-4 1 1-4z" />
+    </>
+  ),
+  ledger: (
+    <>
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z" />
+      <path d="M8.5 8.5h6M8.5 12h4" />
     </>
   ),
   'screener-ring': (

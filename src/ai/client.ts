@@ -4,6 +4,9 @@ import type {
   AnswerRequest,
   AnswerResult,
   DraftInput,
+  ObligationAnswer,
+  ObligationKind,
+  ObligationRequest,
   SortAnswer,
   SortRequest,
   TriageAnswer,
@@ -21,6 +24,9 @@ import {
   SUMMARY_SYSTEM,
   cleanCompletion,
   dropEmptyPlaceholders,
+  OBLIGATION_SYSTEM,
+  obligationUser,
+  parseObligationLines,
   draftSystem,
   draftUser,
   parseBullets,
@@ -90,6 +96,8 @@ const MAX_TOKENS = {
   answer: 320,
   /** One short line per sender, `TRIAGE_BATCH` of them. */
   triage: 512,
+  /** One short line per conversation, `OBLIGATION_BATCH` of them. */
+  obligations: 640,
 };
 
 /** The three answers `TRIAGE_SYSTEM` is allowed to give. */
@@ -121,6 +129,19 @@ export const ANSWER_SOURCES = 6;
  * enough, too, that a batch that fails loses very little.
  */
 export const SORT_BATCH = 10;
+
+/**
+ * How many conversations go to the ledger pass at once.
+ *
+ * Smaller than the sort batch because each row carries a transcript rather
+ * than a preview line, and this pass has to hold the *whole* conversation in
+ * mind to know whether a request was already answered — which is the one
+ * judgement it exists to make.
+ */
+export const OBLIGATION_BATCH = 6;
+
+/** How much of one conversation the ledger pass reads. */
+const OBLIGATION_TRANSCRIPT_CHARS = 2400;
 
 /**
  * A reason worth showing a person, or nothing.
@@ -272,6 +293,42 @@ function makeClient(config: ProviderConfig): AiClient {
       };
     },
 
+    async extractObligations(items: ObligationRequest[]): Promise<ObligationAnswer[]> {
+      if (items.length === 0) return [];
+      const text = await run(
+        OBLIGATION_SYSTEM,
+        obligationUser(
+          items.map((item, i) => ({
+            n: i + 1,
+            counterparty: item.counterparty,
+            subject: item.subject,
+            transcript: item.transcript.slice(0, OBLIGATION_TRANSCRIPT_CHARS),
+          })),
+        ),
+        MAX_TOKENS.obligations,
+      );
+
+      return parseObligationLines(text)
+        .filter((line) => line.n >= 1 && line.n <= items.length)
+        .map((line) => {
+          const item = items[line.n - 1];
+          return {
+            threadId: item.threadId,
+            kind: line.kind as ObligationKind,
+            what: line.what,
+            /*
+             * The counterparty as Pigeon already knows it, not as the model
+             * retyped it. The name is on screen next to this; a model that
+             * shortens "Marc Ferrum jr" to "Marc" puts two different names on
+             * one row.
+             */
+            who: item.counterparty,
+            due: line.due,
+          };
+        })
+        .filter((o) => Boolean(o.what));
+    },
+
     async triageSenders(items: TriageRequest[]): Promise<TriageAnswer[]> {
       if (items.length === 0) return [];
       const text = await run(
@@ -344,6 +401,10 @@ function failingClient(provider: ProviderId): AiClient {
     sortThreads: async () => [],
     answer: fail,
     triageSenders: async () => [],
+    // Same reasoning as sorting: the ledger runs in the background over the
+    // whole mailbox, and the failure harness needs it to produce nothing
+    // rather than to throw into a pass nobody asked for.
+    extractObligations: async () => [],
   };
 }
 

@@ -150,4 +150,37 @@ describe('live model', () => {
     },
     TIMEOUT,
   );
+  it(
+    'extracts the obligations ledger',
+    async () => {
+      const ai = client();
+      const me = DEMO_ACCOUNT.email.toLowerCase();
+      const items = threads.slice(0, 10).map((t) => {
+        const other = t.messages.find((m) => !m.isFromUser)?.from;
+        const newest = t.messages[t.messages.length - 1];
+        return {
+          threadId: t.id,
+          counterparty: other?.name || other?.email || 'Unknown',
+          subject: t.subject,
+          transcript: t.messages
+            .map((m) => `${m.isFromUser ? 'reader' : 'them'}: ${m.body.replace(/\s+/g, ' ')}`)
+            .join('\n'),
+          readerSpokeLast: Boolean(newest?.from.email.toLowerCase() === me),
+          ageDays: 1,
+        };
+      });
+
+      const started = Date.now();
+      const found = await ai.extractObligations(items);
+      log(
+        `OBLIGATIONS (${Date.now() - started}ms) — ${found.length} of ${items.length} threads`,
+        found.map((o) => {
+          const item = items.find((i) => i.threadId === o.threadId);
+          return `[${o.kind}] ${o.what}  · ${o.who} · ${o.due ?? 'no date'}   (${item?.subject.slice(0, 34)})`;
+        }),
+      );
+      expect(Array.isArray(found)).toBe(true);
+    },
+    TIMEOUT,
+  );
 });

@@ -1,0 +1,107 @@
+/* The ledger: what the mailbox is asking of the reader. */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  height: var(--layout-header-height);
+  padding: 0 var(--space-6);
+  border-bottom: var(--border-hairline);
+  flex-shrink: 0;
+}
+
+.progress {
+  color: var(--color-text-tertiary);
+}
+
+.body {
+  padding: var(--space-6);
+  max-width: 720px;
+}
+
+.group {
+  margin-bottom: var(--space-8);
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.groupNote {
+  display: block;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-sunken);
+  border: var(--border-width-control) solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.tick {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.what {
+  display: block;
+  color: var(--color-text-primary);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+}
+
+/* The deadline is the one thing on the row worth finding at a glance. */
+.due {
+  color: var(--color-text-secondary);
+}
+
+.open {
+  flex-shrink: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.open:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  padding: var(--space-8) 0;
+}

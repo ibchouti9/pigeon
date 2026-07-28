@@ -34,6 +34,14 @@ export interface BehaviourFlags {
    * one was the exception.
    */
   answerQuestions: boolean;
+  /**
+   * Whether Pigeon reads conversations for what they still ask of the reader.
+   *
+   * The most expensive pass in the product — it reads whole conversations
+   * rather than a preview line — and the only one that runs over the mailbox
+   * rather than over what is on screen.
+   */
+  readLedger: boolean;
   matchWritingStyle: boolean;
   /**
    * Whether the assistant is asked about the inbox threads the deterministic
@@ -119,6 +127,7 @@ export const useSettings = create<SettingsState>()(
         autoSummarize: true,
         screenerReads: true,
         answerQuestions: true,
+        readLedger: true,
         matchWritingStyle: true,
         sortInbox: true,
       },

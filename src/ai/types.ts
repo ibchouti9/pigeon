@@ -39,6 +39,49 @@ export interface AiClient {
    * decides a sender on the model's say-so.
    */
   triageSenders(items: TriageRequest[]): Promise<TriageAnswer[]>;
+
+  /**
+   * Reads threads for what they oblige the reader to do.
+   *
+   * The one pass that looks across the mailbox rather than at one thread. Every
+   * other surface answers a question about the thing on screen; this one
+   * notices, which is the difference between a model in a mail client and a
+   * mail client with an agent in it.
+   *
+   * A thread with nothing outstanding is simply absent from the result.
+   */
+  extractObligations(items: ObligationRequest[]): Promise<ObligationAnswer[]>;
+}
+
+/** What a thread might be asking of the reader, or of somebody else. */
+export type ObligationKind = 'needs-you' | 'you-promised' | 'waiting-on';
+
+export interface ObligationRequest {
+  threadId: string;
+  /** Who the thread is with, from the reader's point of view. */
+  counterparty: string;
+  subject: string;
+  /** The conversation, newest last, with each message marked as sent or not. */
+  transcript: string;
+  /** Whether the reader wrote the newest message. Decides `waiting-on`. */
+  readerSpokeLast: boolean;
+  /** Whole days since the newest message. */
+  ageDays: number;
+}
+
+export interface ObligationAnswer {
+  threadId: string;
+  kind: ObligationKind;
+  /** The obligation itself, as a short imperative or statement. */
+  what: string;
+  /** Who it is with. Copied from the request rather than invented. */
+  who: string;
+  /**
+   * When it is due, exactly as the mail put it — "Friday", "the 3rd", "before
+   * the renewal". Absent when the thread names no time at all, which is most
+   * of them, and inventing one would be the worst thing this pass could do.
+   */
+  due?: string;
 }
 
 export interface TriageRequest {

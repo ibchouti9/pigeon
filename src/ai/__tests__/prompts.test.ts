@@ -5,6 +5,7 @@ import {
   draftSystem,
   dropEmptyPlaceholders,
   parseBullets,
+  parseObligationLines,
   parseSentence,
   SORT_SYSTEM,
   SUMMARY_SYSTEM,
@@ -124,5 +125,57 @@ describe('who each prompt is speaking as', () => {
       expect(toneSystem(tone)).toContain('Never write a new');
       expect(toneSystem(tone)).toContain('never write an empty');
     }
+  });
+});
+
+/**
+ * The ledger's parser. Its own rather than `parseLaneLines` because this
+ * format has three fields and the label is the middle one — the lane parser
+ * hunts for the label anywhere and takes everything else as evidence, which
+ * folds the deadline into the obligation text.
+ */
+describe('parseObligationLines', () => {
+  it('reads the three fields', () => {
+    expect(parseObligationLines('1: decide the liability cap — needs-you — Friday')).toEqual([
+      { n: 1, kind: 'needs-you', what: 'decide the liability cap', due: 'Friday' },
+    ]);
+  });
+
+  it('treats the prompt’s own word for no deadline as none', () => {
+    const [line] = parseObligationLines('2: send the scope — needs-you — no date');
+    expect(line.due).toBeUndefined();
+    expect(line.what).toBe('send the scope');
+  });
+
+  it('accepts a hyphen where a model substitutes one for the em dash', () => {
+    const [line] = parseObligationLines('3: confirm the talk title - needs-you - the 12th');
+    // The hyphen inside "needs-you" must not split the line.
+    expect(line.kind).toBe('needs-you');
+    expect(line.due).toBe('the 12th');
+  });
+
+  it('drops a conversation that owes nothing', () => {
+    expect(parseObligationLines('1: none\n2: none')).toEqual([]);
+  });
+
+  it('drops a label with nothing attached to it', () => {
+    expect(parseObligationLines('1: — needs-you — Friday')).toEqual([]);
+  });
+
+  it('takes the first answer when a model answers a row twice', () => {
+    const lines = parseObligationLines(
+      '1: decide the cap — needs-you — Friday\n1: something else — waiting-on — no date',
+    );
+    expect(lines).toHaveLength(1);
+    expect(lines[0].what).toBe('decide the cap');
+  });
+
+  it('ignores prose the model wrapped its answer in', () => {
+    const lines = parseObligationLines(
+      "Here is what I found:\n\n1: pay the invoice — you-promised — the 3rd\n\nThat's everything.",
+    );
+    expect(lines).toEqual([
+      { n: 1, kind: 'you-promised', what: 'pay the invoice', due: 'the 3rd' },
+    ]);
   });
 });

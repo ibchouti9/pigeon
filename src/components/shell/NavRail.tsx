@@ -93,6 +93,7 @@ export function NavRail({ compact, searchRef, locked = false }: NavRailProps) {
   const items: Item[] = [
     { to: '/inbox', icon: 'inbox', label: 'Inbox', count: unread, countVariant: 'plain', countNoun: 'unread' },
     { to: '/screener', icon: 'screener-ring', label: 'Screener', count: heldCount, countVariant: 'ring', countNoun: 'waiting' },
+    { to: '/ledger', icon: 'ledger', label: 'Ledger' },
     { to: '/archive', icon: 'archive', label: 'Archive' },
     { to: '/sent', icon: 'sent', label: 'Sent' },
     { to: '/drafts', icon: 'drafts', label: 'Drafts' },

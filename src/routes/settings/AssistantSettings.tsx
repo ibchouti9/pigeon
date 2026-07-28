@@ -45,6 +45,14 @@ const BEHAVIOUR_ROWS: BehaviourRow[] = [
     offCopy: 'Search answers are off.',
   },
   {
+    key: 'readLedger',
+    label: 'Keep a ledger of what my mail asks of me',
+    description:
+      'Pigeon reads conversations for what is still outstanding — what people asked of you, what you promised, and what you are waiting on.',
+    onCopy: 'The ledger is on.',
+    offCopy: 'The ledger is off.',
+  },
+  {
     key: 'sortInbox',
     label: 'Sort the inbox lanes it is unsure about',
     description:

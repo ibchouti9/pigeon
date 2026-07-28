@@ -194,6 +194,130 @@ Rules, which outrank everything above:
 Output format: one line per sender, exactly \`<number>: <sentence> — <answer>\`.
 No preamble, no numbering of your own, no blank lines.`;
 
+/**
+ * What the mail is asking of the reader.
+ *
+ * The pass that makes Pigeon notice rather than answer. §7.9 already orders a
+ * summary's bullets as "what changed, what the numbers are, what is being
+ * asked of the reader", and requires the last to name the person asking and
+ * their deadline — so the model has been extracting exactly this all along,
+ * one thread at a time, into a block nobody sees unless they open the thread.
+ * This aggregates it.
+ *
+ * The line format and the evidence-first ordering are the same ones the lane
+ * and triage passes use, for the same reasons: small models emit
+ * `1: … — label` reliably and JSON about half the time, and stating the
+ * substance before the label is the single biggest accuracy lever in this
+ * file.
+ *
+ * Inventing a deadline is the worst thing this pass can do — a ledger that
+ * says Friday when the mail said nothing is worse than no ledger — so the
+ * absence of one is given its own word rather than left to an empty field.
+ */
+export const OBLIGATION_SYSTEM = `${PIGEON_VOICE}
+
+Decide what each conversation still requires of somebody.
+
+The three kinds:
+- needs-you: the other person asked the reader for something — a decision, an
+  answer, a document, a payment — and has not had it.
+- you-promised: the reader said they would do something and has not yet said
+  it is done.
+- waiting-on: the reader asked the other person for something and has not had
+  a reply.
+
+Rules:
+- One line per conversation. A conversation that requires nothing of anybody is
+  answered \`none\` and is the most common answer — most mail is finished, or
+  was never a request.
+- Judge the whole conversation, not the newest message. A request answered
+  later in the thread is finished.
+- A newsletter, a receipt, a confirmation, an automated alert and a marketing
+  email require nothing. Answer none.
+- "Let me know if you need anything" is politeness, not a request. So is
+  "thanks" and "no rush". Answer none.
+- The obligation is at most 9 words, starts with a verb, and names the thing —
+  "decide the liability cap", "send the phase two scope", not "respond" or
+  "follow up".
+- Copy the deadline exactly as the mail words it: "Friday", "the 3rd", "before
+  the renewal". If the conversation names no time at all, write \`no date\`.
+  Never estimate one, and never turn "soon" into a date.
+
+Output format: one line per conversation, exactly
+\`<number>: <obligation> — <kind> — <deadline>\`
+or \`<number>: none\`.
+No preamble, no numbering of your own, no blank lines.`;
+
+export interface ObligationItem {
+  n: number;
+  counterparty: string;
+  subject: string;
+  transcript: string;
+}
+
+export function obligationUser(items: ObligationItem[]): string {
+  return items
+    .map(
+      (i) =>
+        `${i.n}. with: ${i.counterparty}\n   subject: ${i.subject}\n${i.transcript
+          .split('\n')
+          .map((l) => `   ${l}`)
+          .join('\n')}`,
+    )
+    .join('\n\n');
+}
+
+/** The kinds, for the parser below. `none` is handled by absence. */
+const OBLIGATION_KINDS = ['needs-you', 'you-promised', 'waiting-on'] as const;
+
+/**
+ * Reads `2: decide the liability cap — needs-you — Friday` out of whatever
+ * came back.
+ *
+ * Its own parser rather than `parseLaneLines`, because this format has three
+ * fields and the middle one is the label — the lane parser hunts for the label
+ * anywhere on the line and takes everything else as evidence, which would fold
+ * the deadline into the obligation text.
+ */
+export function parseObligationLines(
+  text: string,
+): { n: number; kind: string; what: string; due?: string }[] {
+  const out: { n: number; kind: string; what: string; due?: string }[] = [];
+  const seen = new Set<number>();
+
+  for (const raw of cleanCompletion(text).split('\n')) {
+    const numbered = /^\s*\**(\d+)\**\s*[.:)-]\s*(.+?)\s*$/.exec(raw.trim());
+    if (!numbered) continue;
+
+    const n = Number(numbered[1]);
+    if (seen.has(n)) continue;
+
+    const body = numbered[2];
+    // Splitting on the em dash the format asks for, and on the hyphen a model
+    // substitutes for it — but not on the hyphen inside "needs-you".
+    const parts = body.split(/\s+[—–]\s+|\s+-\s+/).map((p) => p.trim());
+
+    const kind = parts.find((p) =>
+      (OBLIGATION_KINDS as readonly string[]).includes(p.toLowerCase().replace(/[*.]/g, '')),
+    );
+    if (!kind) continue; // `none`, or an answer about a kind that does not exist.
+
+    const at = parts.indexOf(kind);
+    const what = parts.slice(0, at).join(' — ').replace(/[*]/g, '').trim();
+    if (!what) continue; // A kind with nothing attached says nothing.
+
+    const rawDue = parts.slice(at + 1).join(' — ').replace(/[*.]/g, '').trim();
+    // "no date" is the prompt's own word for the common case, and a model that
+    // leaves the field off entirely means the same thing.
+    const due = !rawDue || /^(no date|none|n\/a|unspecified)$/i.test(rawDue) ? undefined : rawDue;
+
+    seen.add(n);
+    out.push({ n, kind: kind.toLowerCase().replace(/[*.]/g, ''), what, due });
+  }
+
+  return out;
+}
+
 export interface TriageItem {
   n: number;
   from: string;
