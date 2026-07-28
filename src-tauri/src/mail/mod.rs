@@ -14,6 +14,7 @@
 
 mod act;
 mod allowlist;
+mod background;
 mod fetch;
 mod parse;
 mod send;
@@ -21,7 +22,31 @@ mod session;
 mod types;
 mod watch;
 
+use std::path::PathBuf;
+
+use tauri::Manager;
+
 use types::{ListPage, SentRecipient, ThreadJson};
+
+/// Where the two halves of the background path meet.
+///
+/// The foreground writes the allowlist and the UID mark here through Tauri;
+/// the iOS wake-up reads them with no Tauri app at all, from the container
+/// path Swift hands it. One directory, resolved two ways.
+fn data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map_err(|e| format!("No data directory: {e}"))
+}
+
+/// [`background::Arrivals`], on its way to the webview.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArrivalsJson {
+    pub count: u32,
+    pub names: Vec<String>,
+    pub subject: Option<String>,
+}
 
 /// Runs blocking IMAP work off the main thread.
 async fn blocking<T: Send + 'static>(
@@ -67,7 +92,25 @@ pub async fn mail_connect(
 /// in a process with no webview to ask.
 #[tauri::command]
 pub fn mail_set_notify_allowlist(app: tauri::AppHandle, emails: Vec<String>) -> Result<(), String> {
-    allowlist::store(&app, &emails)
+    allowlist::store(&data_dir(&app)?, &emails)
+}
+
+/// Runs one wake-up's worth of work, from the foreground.
+///
+/// The same function iOS calls in the background, reachable while the app is
+/// open — which is the only way to watch it work before there is a device to
+/// watch it on. It moves the UID mark like any other run, so calling it twice
+/// answers twice only if mail arrived in between.
+#[tauri::command]
+pub async fn mail_check_arrivals(app: tauri::AppHandle) -> Result<Option<ArrivalsJson>, String> {
+    let dir = data_dir(&app)?;
+    blocking(move || background::check(&dir)).await.map(|found| {
+        found.map(|a| ArrivalsJson {
+            count: a.count,
+            names: a.names,
+            subject: a.subject,
+        })
+    })
 }
 
 #[tauri::command]
@@ -75,7 +118,9 @@ pub async fn mail_disconnect(app: tauri::AppHandle) {
     watch::stop();
     // Before the credentials go, so a wake-up racing the sign-out has nobody
     // it is allowed to announce.
-    allowlist::clear(&app);
+    if let Ok(dir) = data_dir(&app) {
+        allowlist::clear(&dir);
+    }
     let _ = blocking(|| {
         session::forget_credentials();
         Ok(())

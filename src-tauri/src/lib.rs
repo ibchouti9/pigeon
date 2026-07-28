@@ -46,6 +46,7 @@ pub fn run() {
             mail::mail_connect,
             mail::mail_disconnect,
             mail::mail_set_notify_allowlist,
+            mail::mail_check_arrivals,
             mail::mail_list_threads,
             mail::mail_search,
             mail::mail_get_thread,
