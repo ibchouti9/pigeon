@@ -20,6 +20,7 @@ import {
   citedSources,
   SUMMARY_SYSTEM,
   cleanCompletion,
+  dropEmptyPlaceholders,
   draftSystem,
   draftUser,
   parseBullets,
@@ -203,7 +204,7 @@ function makeClient(config: ProviderConfig): AiClient {
         draftUser(input),
         MAX_TOKENS.draft,
       );
-      const body = cleanCompletion(text);
+      const body = dropEmptyPlaceholders(cleanCompletion(text));
       if (!body) throw new AiError('Pigeon couldn\'t write a draft. Write your reply, or try again.');
       return body;
     },
@@ -287,7 +288,7 @@ function makeClient(config: ProviderConfig): AiClient {
 
     async retone(draft: string, tone: Tone) {
       const text = await run(toneSystem(tone), draft, MAX_TOKENS.draft);
-      const body = cleanCompletion(text);
+      const body = dropEmptyPlaceholders(cleanCompletion(text));
       if (!body) throw new AiError('Pigeon couldn\'t write a draft. Write your reply, or try again.');
       return body;
     },

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';
-import { LANES, LANE_LABELS, type Lane, type LaneAssignment } from '../../data/lanes';
+import { LANES, LANE_BLURBS, LANE_LABELS, type Lane, type LaneAssignment } from '../../data/lanes';
 import { Icon } from '../primitives/Icon';
 import styles from './LaneTag.module.css';
 
@@ -58,6 +58,16 @@ export function LaneTag({ assignment, senderEmail, senderName, onCorrect, onClea
 
   const source = assignment.source;
 
+  /*
+   * §5.5 puts every lane "one click from the sentence explaining it", and a
+   * model does not always supply one: measured against qwen2.5:32b, one thread
+   * in a batch of eight came back correctly sorted with its evidence blank.
+   * The lane is still right, so discarding it would cost more than the missing
+   * sentence — the lane's own description is what the menu falls back to, and
+   * an empty paragraph under a heading is not an explanation.
+   */
+  const why = assignment.why?.trim() || LANE_BLURBS[assignment.lane];
+
   return (
     <span className={styles.root} ref={rootRef}>
       <button
@@ -66,7 +76,7 @@ export function LaneTag({ assignment, senderEmail, senderName, onCorrect, onClea
         className={cn('t-sm', styles.tag, open && styles.tagOpen)}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label={`Sorted into ${LANE_LABELS[assignment.lane]}. ${assignment.why}. Change where mail from ${senderName} goes.`}
+        aria-label={`Sorted into ${LANE_LABELS[assignment.lane]}. ${why}. Change where mail from ${senderName} goes.`}
         onClick={() => setOpen((v) => !v)}
       >
         {LANE_LABELS[assignment.lane]}
@@ -76,7 +86,7 @@ export function LaneTag({ assignment, senderEmail, senderName, onCorrect, onClea
       {open && (
         <div className={styles.menu} role="menu">
           <p className={cn('t-xs', styles.why)}>
-            {assignment.why}
+            {why}
             {source === 'assistant' && <span className={styles.byModel}> — your model's read</span>}
           </p>
 

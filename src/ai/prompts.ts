@@ -8,15 +8,37 @@ import type { DraftInput, Tone } from './types';
 import type { Message, Thread } from '../types';
 import { displayName, formatMessageTimestamp } from '../lib/format';
 
+/**
+ * The rules that hold whoever the words are for.
+ *
+ * §7.9's "Universal" block also forbids the first person, and that half is
+ * split out below rather than kept here — see `PIGEON_VOICE`.
+ */
 const UNIVERSAL = `You write inside Pigeon, a mail client.
 
-Never use the first person. Never address the reader as "you" inside a summary.
 No hedging openers ("It looks like", "It seems", "It appears"). No
 meta-commentary ("Here's a summary"). No emoji. No exclamation marks. Never
 restate the subject line. Output only what is asked for, with no preamble and no
 closing remark.`;
 
-export const SUMMARY_SYSTEM = `${UNIVERSAL}
+/**
+ * Pigeon speaking about the mail — a summary, a Screener read, a lane's
+ * evidence. §7.9's first-person ban belongs here and only here.
+ *
+ * Applied to draft replies as well, it produced subject-less telegram English:
+ * measured against qwen2.5:32b, a reply to a contract thread came back as
+ * "Agreed to push back on the tooling clause per Sana's note. On the liability
+ * cap, willing to accept $750K as compromise." Nobody writes like that, and
+ * §7.9's own Draft Replies section asks the model to match the register of the
+ * reader's sent mail — which is first person by construction. The two halves
+ * of the section contradict each other; this resolves it by scope, because a
+ * reply is written *as* the reader and a summary is written *about* them.
+ */
+const PIGEON_VOICE = `${UNIVERSAL}
+
+Never use the first person. Never address the reader as "you" inside a summary.`;
+
+export const SUMMARY_SYSTEM = `${PIGEON_VOICE}
 
 Summarize a mail thread.
 
@@ -66,7 +88,7 @@ Output format: the body of the reply alone. No subject, no quoted text.`;
  * contradicted its own labels. Made to state the evidence first, the same
  * model on the same batch got every one right, in half the time.
  */
-export const SORT_SYSTEM = `${UNIVERSAL}
+export const SORT_SYSTEM = `${PIGEON_VOICE}
 
 Sort each email into exactly one lane.
 
@@ -102,7 +124,7 @@ No preamble, no numbering of your own, no blank lines.`;
  * that would make the feature worse than useless: a confident answer to a
  * question the mail does not contain.
  */
-export const ANSWER_SYSTEM = `${UNIVERSAL}
+export const ANSWER_SYSTEM = `${PIGEON_VOICE}
 
 Answer a question using only the emails supplied.
 
@@ -127,7 +149,7 @@ Output format: the answer alone, with its citations. Nothing else.`;
  *
  * Same evidence-first ordering as the lane prompt, for the same reason.
  */
-export const TRIAGE_SYSTEM = `${UNIVERSAL}
+export const TRIAGE_SYSTEM = `${PIGEON_VOICE}
 
 Recommend what to do with mail from a sender the reader has never written to.
 
@@ -244,6 +266,29 @@ export function tidyAnswer(raw: string): string {
   return sentences.slice(0, 3).join(' ').trim();
 }
 
+/**
+ * Removes a placeholder that asks for nothing.
+ *
+ * D26 blocks Send on any `[confirm:` in the body, which is right when the
+ * placeholder names what is missing and useless when it does not: the helper
+ * line reads "Replace [confirm:] before sending" and there is nothing to
+ * replace it *with*. Measured against qwen2.5:32b, every tone control did this
+ * to a draft that had no placeholder to begin with, so using one on a finished
+ * reply made it unsendable.
+ *
+ * The prompt asks the model not to; this is what makes it true. A placeholder
+ * that does name something is left exactly alone — that one is the feature.
+ */
+export function dropEmptyPlaceholders(body: string): string {
+  return body
+    .replace(/\s*\[confirm:\s*\]/gi, '')
+    // "…by ." and "…by  ." are what removing a trailing one leaves behind.
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .replace(/[^\S\n]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 /** True when the model said, in so many words, that it could not answer. */
 export function isRefusal(answer: string): boolean {
   return /^\s*not in this mail\b/i.test(answer.trim());
@@ -274,26 +319,47 @@ export function draftSystem(styleSamples: string[] | undefined): string {
 
   return `${UNIVERSAL}
 
-Write a reply on the reader's behalf. ${register}
+Write a reply on the reader's behalf, in their voice: first person, as though
+they typed it. ${register}
 
 ${DRAFT_RULES}`;
 }
 
 const TONE_RULES: Record<Tone, string> = {
   shorter: `Remove sentences; never compress into jargon. Target 60% of the
-current length. Keep every [confirm:] placeholder exactly as it is.`,
+current length.`,
   friendlier: `Add a greeting and a closing courtesy, and soften imperatives to
-requests. Do not add compliments or enthusiasm. Keep every [confirm:] placeholder
-exactly as it is.`,
+requests. Do not add compliments or enthusiasm. Sign off the way the draft
+already does, or not at all.`,
   firmer: `Remove hedges and apologies, and state the request as a direct ask
-with a deadline if one exists in the thread. Do not add threats or escalation
-language. Keep every [confirm:] placeholder exactly as it is.`,
+with a deadline if one is already in the draft. Do not add threats or escalation
+language.`,
 };
+
+/**
+ * §7.9's "keep every [confirm:] placeholder", written so it cannot be read as
+ * an instruction to produce one.
+ *
+ * It could be, and was. Measured against qwen2.5:32b: a draft containing no
+ * placeholder at all came back from all three tones carrying a bare
+ * `[confirm:]` — "Sincerely,\n\n[confirm:]" from friendlier, "by [confirm:]."
+ * from firmer. An empty placeholder is worse than a wrong one, because D26
+ * blocks Send on any `[confirm:` and the helper line then asks the user to
+ * replace something that never said what it wanted. Pressing a tone button on
+ * a finished draft made it unsendable.
+ */
+const TONE_PLACEHOLDERS = `The draft may contain [confirm: …] placeholders.
+Reproduce the ones that are there, character for character. Never write a new
+one, and never write an empty [confirm:] — if a detail is missing, leave the
+sentence as the draft has it.`;
 
 export function toneSystem(tone: Tone): string {
   return `${UNIVERSAL}
 
-Rewrite a draft reply. ${TONE_RULES[tone]}
+Rewrite a draft reply, keeping it in the reader's own voice and first person.
+${TONE_RULES[tone]}
+
+${TONE_PLACEHOLDERS}
 
 Output format: the rewritten body alone.`;
 }

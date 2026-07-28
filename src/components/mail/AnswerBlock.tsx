@@ -32,7 +32,8 @@ function withCitations(text: string, cited: Thread[], onOpen: (id: string) => vo
      * renders as plain text rather than a dead link.
      */
     const n = Number(match[1]);
-    const thread = cited[nthDistinct(text, n)];
+    const index = nthDistinct(text, n);
+    const thread = cited[index];
     if (!thread) {
       out.push(<Fragment key={key++}>{match[0]}</Fragment>);
       continue;
@@ -46,7 +47,16 @@ function withCitations(text: string, cited: Thread[], onOpen: (id: string) => vo
         title={thread.subject}
         onClick={() => onOpen(thread.id)}
       >
-        {match[1]}
+        {/*
+          The source's own number, not the model's.
+          
+          The model numbers by the position of the email in the prompt, and the
+          list below numbers by the order the answer cited them — so an answer
+          that leaned on the fourth email Pigeon sent showed a superscript "4"
+          above a sources list whose only entry was labelled "1". Measured
+          against qwen2.5:32b asking "How much did I pay Atlasgrid?".
+        */}
+        {index + 1}
       </button>,
     );
   }
