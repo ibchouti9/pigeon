@@ -67,3 +67,17 @@
     animation-duration: var(--duration-base);
   }
 }
+
+/*
+ * Enough foot room for the card's last control — "Read message" — to scroll
+ * clear of the tab bar rather than resting exactly on it.
+ */
+@media (max-width: 719px), (max-height: 449px) {
+  .header {
+    padding: 0 var(--space-4);
+  }
+
+  .content {
+    padding: 0 var(--space-4) var(--space-16);
+  }
+}

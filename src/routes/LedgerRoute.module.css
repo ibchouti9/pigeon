@@ -105,3 +105,14 @@
 .empty {
   padding: var(--space-8) 0;
 }
+
+/* Narrower gutters, and room to scroll clear of the tab bar. */
+@media (max-width: 719px), (max-height: 449px) {
+  .header {
+    padding: 0 var(--space-4);
+  }
+
+  .body {
+    padding: var(--space-5) var(--space-4) var(--space-12);
+  }
+}

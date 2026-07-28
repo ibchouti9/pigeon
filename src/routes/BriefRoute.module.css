@@ -94,3 +94,30 @@
 .empty {
   padding: var(--space-8) 0;
 }
+
+/*
+ * Today's rows are the one place in the product where the whole screen is a
+ * list of tap targets, and at 8px of vertical padding they measured 38px —
+ * under Apple's 44pt floor, on a screen with no pointer to be precise with.
+ * The page gets its gutters back at the same time; 24px either side of 375px
+ * is an eighth of the width.
+ */
+@media (max-width: 719px), (max-height: 449px) {
+  .header {
+    padding: 0 var(--space-4);
+  }
+
+  .body {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .item {
+    min-height: var(--layout-touch-target);
+    padding: var(--space-2);
+    /* The two lines wrap rather than truncate: on a phone the sender and the
+       subject do not fit one line, and a baseline row would clip the subject
+       to nothing. */
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}

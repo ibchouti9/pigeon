@@ -209,3 +209,26 @@
 .spacer {
   flex: 1;
 }
+
+/*
+ * On a phone the row is a name, a reason and a checkbox.
+ *
+ * The subject keeps `flex: 1` beside a 180px name, which at 375px leaves it
+ * about fifty pixels — "Intr…", "Sta…", "Qui…". That is not a shortened
+ * subject, it is three characters of one, and it costs the sender's name the
+ * width it needs to be read. Pigeon's own reason line underneath already says
+ * what the mail is; the subject in full is one tap away in the sheet.
+ */
+@media (max-width: 719px), (max-height: 449px) {
+  .name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .subject {
+    display: none;
+  }
+}
