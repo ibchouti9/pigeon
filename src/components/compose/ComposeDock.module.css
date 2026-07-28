@@ -128,6 +128,20 @@
   }
 }
 
+/* The sheet covers the notch and the home indicator; its chrome steps off. */
+@media (max-width: 719px) {
+  .sheetHeader {
+    height: auto;
+    padding-top: var(--safe-top);
+    padding-left: calc(var(--space-3) + var(--safe-left));
+    padding-right: calc(var(--space-3) + var(--safe-right));
+  }
+
+  .dock {
+    padding-bottom: var(--safe-bottom);
+  }
+}
+
 /* §5.12 — below 880px the dock is a full-screen sheet with a Cancel/Send header. */
 .sheetHeader {
   display: flex;

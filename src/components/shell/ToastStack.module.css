@@ -9,6 +9,24 @@
   pointer-events: none;
 }
 
+/*
+ * Above the tab bar and the compose button, not behind them. An undo toast
+ * that a thumb cannot reach is an undo that does not exist, and 8 seconds is
+ * not long enough to go looking for it.
+ */
+@media (max-width: 719px) {
+  .region {
+    left: calc(var(--space-3) + var(--safe-left));
+    right: calc(var(--space-3) + var(--safe-right));
+    bottom: calc(var(--layout-tabbar-height) + var(--safe-bottom) + var(--space-3));
+  }
+
+  .toast {
+    min-width: 0;
+    max-width: none;
+  }
+}
+
 .toast {
   pointer-events: auto;
   display: flex;

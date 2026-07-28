@@ -60,6 +60,33 @@
   }
 }
 
+/*
+ * Full-screen on a phone means full-screen: the panel covers the notch and the
+ * home indicator, so its own chrome has to step back off both. The tab bar is
+ * underneath it and unreachable while it is open, which is correct — this is a
+ * conversation you are having, not a place you are.
+ */
+@media (max-width: 719px) {
+  .head {
+    height: auto;
+    min-height: var(--layout-header-height);
+    padding-top: var(--safe-top);
+    padding-left: calc(var(--space-4) + var(--safe-left));
+    padding-right: calc(var(--space-3) + var(--safe-right));
+  }
+
+  .composer {
+    padding-bottom: calc(var(--space-3) + var(--safe-bottom));
+    padding-left: calc(var(--space-3) + var(--safe-left));
+    padding-right: calc(var(--space-3) + var(--safe-right));
+  }
+
+  .log {
+    padding-left: calc(var(--space-4) + var(--safe-left));
+    padding-right: calc(var(--space-4) + var(--safe-right));
+  }
+}
+
 .head {
   display: flex;
   align-items: center;

@@ -29,6 +29,25 @@
   animation: sheet-in var(--duration-slow) var(--ease-standard);
 }
 
+/*
+ * On a phone it fills the screen bottom-up, the way a sheet does there —
+ * 32px of scrim either side of a 375px screen is a card, not a sheet, and the
+ * held message inside it is a whole email.
+ */
+@media (max-width: 719px) {
+  .scrim {
+    align-items: flex-end;
+  }
+
+  .sheet {
+    width: 100%;
+    max-width: none;
+    max-height: 92%;
+    padding-bottom: var(--safe-bottom);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+}
+
 @keyframes sheet-in {
   from {
     transform: translateY(100%);
