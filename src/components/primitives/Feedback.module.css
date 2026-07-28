@@ -99,6 +99,24 @@
   display: inline-flex;
 }
 
+/*
+ * Never on a touch screen.
+ *
+ * A tooltip is a pointer affordance: it exists because a mouse can rest on
+ * something without committing to it. A finger cannot, and iOS emulates both
+ * `mouseenter` and focus on tap — so every icon button in the reader flashed
+ * its label on the way to doing the thing, and the label, anchored above the
+ * button, landed on top of the Dynamic Island.
+ *
+ * Nothing is lost. Every one of these buttons carries the same words as its
+ * `aria-label`, which is what a screen reader was reading all along.
+ */
+@media (hover: none), (max-width: 719px), (max-height: 449px) {
+  .tooltip {
+    display: none;
+  }
+}
+
 .tooltip {
   position: absolute;
   bottom: calc(100% + 8px);
