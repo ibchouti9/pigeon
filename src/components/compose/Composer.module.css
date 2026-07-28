@@ -215,3 +215,51 @@
     display: none;
   }
 }
+
+/*
+ * The provenance row on a phone.
+ *
+ * "Drafted by Pigeon", three tone buttons and "Discard draft" do not share
+ * 402pt. Left to wrap on its own the row broke wherever it ran out of room,
+ * which orphaned whichever tone button happened to be last onto a line of its
+ * own — as though it were the different one of the three.
+ *
+ * So the break is chosen rather than inherited. The label and Discard take the
+ * first line; an empty full-width flex item forces the wrap; the three tones
+ * take the second line together, which is the only arrangement where they read
+ * as one control with three settings.
+ *
+ * Ordered rather than reordered in the markup, because the DOM order is what
+ * the tab key and a screen reader follow and it is already right.
+ */
+@media (max-width: 719px), (max-height: 449px) {
+  .provenance {
+    row-gap: var(--space-3);
+  }
+
+  .provenanceLabel {
+    order: 1;
+    margin-right: 0;
+  }
+
+  .provenanceSpacer {
+    order: 1;
+  }
+
+  /* "Discard draft" — the only child that is not a tone button. */
+  .provenance > :global(button):last-child {
+    order: 2;
+  }
+
+  /* The forced wrap: no width, no height, all of the line. */
+  .provenance::after {
+    content: '';
+    order: 3;
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .provenance > :global(button):not(:last-child) {
+    order: 4;
+  }
+}
