@@ -1,4 +1,4 @@
-import { invoke, isDesktop } from '../lib/desktop';
+import { invoke, isDesktop, isIos } from '../lib/desktop';
 
 /**
  * How much of this Mac a model may have.
@@ -24,7 +24,14 @@ const GB = 1e9;
  * catalog falls back to ranking by what is already installed.
  */
 export async function usableMemory(): Promise<{ gb: number; chip?: string }> {
-  if (!isDesktop()) return { gb: 0 };
+  /*
+   * iOS is excluded by name as well as by build. It is a native build and
+   * passes `isDesktop`, but `machine_memory` shells out to `sysctl` and iOS
+   * forbids spawning a process at all — so the command exists, compiles, and
+   * fails at runtime. There is also nothing to size: no model runs beside the
+   * app on a phone.
+   */
+  if (!isDesktop() || isIos()) return { gb: 0 };
   try {
     const memory = await invoke<MachineMemory | null>('machine_memory');
     if (!memory) return { gb: 0 };

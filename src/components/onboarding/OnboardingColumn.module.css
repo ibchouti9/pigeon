@@ -17,3 +17,20 @@
   margin-top: auto;
   margin-bottom: auto;
 }
+
+/*
+ * On a phone this is the whole app — there is no shell around it yet — so it
+ * pays the insets itself. The 80px top offset also goes: it exists to keep the
+ * column off the top of a tall window, and on an 812px screen it is simply
+ * eighty pixels the five steps do not have.
+ */
+@media (max-width: 719px) {
+  .page {
+    min-height: auto;
+    /* Not `100%`: the page scrolls when the keyboard is up, and a percentage
+       height would keep the column centred in a box taller than what is left
+       of the screen. */
+    padding: calc(var(--space-8) + var(--safe-top)) calc(var(--space-5) + var(--safe-left))
+      calc(var(--space-8) + var(--safe-bottom)) calc(var(--space-5) + var(--safe-right));
+  }
+}

@@ -1,4 +1,5 @@
-import { useRef, type CSSProperties } from 'react';
+import { useMemo, useRef, type CSSProperties } from 'react';
+import { canRunLocalModel } from '../../lib/desktop';
 import { cn } from '../../lib/cn';
 import { PROVIDER_LABELS } from '../../store/settings';
 import styles from './ProviderCard.module.css';
@@ -51,16 +52,27 @@ export function ProviderRadioGroup({
 }) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
+  /*
+   * No Local row on a phone. Nothing can be listening on `localhost:11434`
+   * beside an app iOS suspends the moment you leave it, so the row would offer
+   * a connection that cannot be made — and it is the row this screen otherwise
+   * points at hardest, since it costs no key and sends nothing anywhere.
+   */
+  const options = useMemo(
+    () => (canRunLocalModel() ? PROVIDER_OPTIONS : PROVIDER_OPTIONS.filter((o) => o.id !== 'local')),
+    [],
+  );
+
   function onKeyDown(e: React.KeyboardEvent) {
     // Both axes: visually this is a column, but §8.1 users arrive from either.
     const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
     const backward = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
     if (!forward && !backward) return;
-    const currentIndex = PROVIDER_OPTIONS.findIndex((o) => o.id === value);
+    const currentIndex = options.findIndex((o) => o.id === value);
     const base = currentIndex === -1 ? 0 : currentIndex;
     const delta = forward ? 1 : -1;
-    const nextIndex = (base + delta + PROVIDER_OPTIONS.length) % PROVIDER_OPTIONS.length;
-    const next = PROVIDER_OPTIONS[nextIndex];
+    const nextIndex = (base + delta + options.length) % options.length;
+    const next = options[nextIndex];
     onChange(next.id);
     e.preventDefault();
     refs.current[nextIndex]?.focus();
@@ -73,7 +85,7 @@ export function ProviderRadioGroup({
       className={styles.list}
       onKeyDown={onKeyDown}
     >
-      {PROVIDER_OPTIONS.map((opt, i) => {
+      {options.map((opt, i) => {
         const selected = opt.id === value;
         const isTabbable = selected || (value === null && i === 0);
         return (

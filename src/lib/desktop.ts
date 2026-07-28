@@ -16,6 +16,37 @@ export function isDesktop(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
+/**
+ * Whether the native build is the iOS one.
+ *
+ * Two things turn on this and neither is cosmetic. A phone cannot run a local
+ * model, so offering to point Pigeon at `localhost:11434` offers a connection
+ * that cannot exist; and `machine_memory` shells out to `sysctl`, which iOS
+ * forbids outright.
+ *
+ * Read off the user agent rather than asked of the platform, because
+ * `@tauri-apps/plugin-os` is a plugin this app does not otherwise need and the
+ * webview's own answer is not in doubt. iPadOS is the one catch — it reports
+ * itself as a Mac, and the touch-point count is what tells the two apart.
+ */
+export function isIos(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return true;
+  return navigator.userAgent.includes('Macintosh') && navigator.maxTouchPoints > 1;
+}
+
+/**
+ * Whether anything could be listening on this device's loopback.
+ *
+ * Not `isDesktop() && !isIos()`: a desktop *browser* reaches a local runtime
+ * perfectly well, and `npm run dev` beside a running Ollama is how most of the
+ * assistant was built. The only platform that cannot is the one that suspends
+ * every app which is not in front, which is iOS.
+ */
+export function canRunLocalModel(): boolean {
+  return !isIos();
+}
+
 export async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke: call } = await import('@tauri-apps/api/core');
   return call<T>(command, args);

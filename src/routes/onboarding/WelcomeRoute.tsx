@@ -162,12 +162,18 @@ export function WelcomeRoute() {
 
         <p className={`t-xs ink-tertiary ${styles.legal}`}>
           Pigeon reads and sends mail on your behalf. It never sends anything you haven&apos;t
-          seen.{desktop && ' The password stays in your Mac’s Keychain and goes only to Gmail.'}
+          {/*
+            "your Mac's Keychain" was true of the only native build there was.
+            The Keychain on an iPhone is the same Keychain and is not on a Mac,
+            and the sentence is about where the password stays rather than what
+            it is stored in — so it says that instead.
+          */}
+          seen.{desktop && ' The password stays in this device’s Keychain and goes only to Gmail.'}
         </p>
         {!desktop && (
           <p className={`t-xs ink-tertiary ${styles.demoNote}`}>
             This is the web build, which can&apos;t hold mail credentials, so it shows the
-            demo account. The macOS app connects real Gmail.
+            demo account. The Mac and iPhone apps connect real Gmail.
           </p>
         )}
       </div>
