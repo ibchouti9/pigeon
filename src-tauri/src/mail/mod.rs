@@ -8,8 +8,9 @@
 //!
 //! Layout: `session` owns the connection and the Keychain; `fetch` reads,
 //! `act` writes, `send` speaks SMTP; `parse` turns RFC 2822 into the JSON the
-//! webview maps into Pigeon's domain. Commands do no work of their own —
-//! each wraps one blocking call so the webview never waits on the wire.
+//! webview maps into Pigeon's domain; `watch` holds a second connection open
+//! and says when the inbox changed. Commands do no work of their own — each
+//! wraps one blocking call so the webview never waits on the wire.
 
 mod act;
 mod fetch;
@@ -17,6 +18,7 @@ mod parse;
 mod send;
 mod session;
 mod types;
+mod watch;
 
 use types::{ListPage, SentRecipient, ThreadJson};
 
@@ -48,17 +50,36 @@ pub fn mail_status() -> MailStatus {
 /// Verifies the sign-in end to end before storing anything: a wrong password
 /// fails here, in words, not later as a broken inbox.
 #[tauri::command]
-pub async fn mail_connect(email: String, password: String) -> Result<(), String> {
-    blocking(move || session::connect(&email, &password)).await
+pub async fn mail_connect(
+    app: tauri::AppHandle,
+    email: String,
+    password: String,
+) -> Result<(), String> {
+    blocking(move || session::connect(&email, &password)).await?;
+    // Only once the credentials are known good. Starting the watcher on the
+    // way in would have it retrying a password Gmail just refused.
+    watch::start(app);
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn mail_disconnect() {
+    watch::stop();
     let _ = blocking(|| {
         session::forget_credentials();
         Ok(())
     })
     .await;
+}
+
+/// Starts the inbox watch for an account that was already connected.
+///
+/// Called from `setup`, where the credentials are in the Keychain from a
+/// previous run and nothing has gone through `mail_connect` this launch.
+pub fn resume_watch(app: tauri::AppHandle) {
+    if session::is_connected() {
+        watch::start(app);
+    }
 }
 
 /// `offset`/`limit` window what the listing *renders*; `ListPage::total` still

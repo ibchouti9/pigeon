@@ -131,6 +131,20 @@ fn open(creds: &Credentials) -> Result<ImapSession, String> {
         .map_err(|(e, _client)| explain_login(&e.to_string()))
 }
 
+/// A connection of its own, from the stored credentials.
+///
+/// `with_mailbox` holds one session behind a lock, which is right for commands
+/// — they are short, and serialising them keeps the SELECTed mailbox honest.
+/// It is exactly wrong for IDLE, which holds the connection open for minutes at
+/// a time and would block every read and every archive behind it. The watcher
+/// gets its own. Gmail allows fifteen simultaneous IMAP connections per
+/// account; this makes two.
+pub fn open_stored() -> Result<ImapSession, String> {
+    let creds =
+        stored_credentials().ok_or_else(|| "Pigeon isn't connected to Gmail.".to_string())?;
+    open(&creds)
+}
+
 /// Verifies a fresh sign-in end to end, then stores it. Called from O1.
 pub fn connect(email: &str, password: &str) -> Result<(), String> {
     let creds = Credentials {

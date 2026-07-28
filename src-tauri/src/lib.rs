@@ -14,6 +14,11 @@ pub fn run() {
                         .build(),
                 )?;
             }
+            // An account connected on a previous run is connected now: the
+            // credentials are in the Keychain and nothing will call
+            // `mail_connect` this launch, so nothing else would start the
+            // watch.
+            mail::resume_watch(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
