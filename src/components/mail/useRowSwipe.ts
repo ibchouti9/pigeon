@@ -97,9 +97,29 @@ export function useRowSwipe(onCommit: () => void, enabled: boolean): RowSwipe {
         if (axis.current !== 'x') return;
 
         /*
-         * Left only. A right-swipe on a row means nothing here, and letting
-         * the row travel right anyway would promise a second action that does
-         * not exist.
+         * Left only, and not for want of trying.
+         *
+         * A rightward swipe to leave a thread unread — `Shift+U`, on a device
+         * with neither shift nor U — was built twice and reverted twice. It
+         * fires correctly in a browser at phone width, with real `Touch`
+         * events: the row translates, the backing panel arms, the release
+         * commits. In the Tauri iOS webview it does nothing at all, while the
+         * leftward swipe on the same row in the same build archives every
+         * time.
+         *
+         * Ruled out, each on a device: the webview's back-forward navigation
+         * gestures (off by default in wry), interference from the pull-to-
+         * refresh handlers on the scrolling ancestor (disabled, no change),
+         * and a horizontally scrollable ancestor claiming the drag
+         * (`overflow-x` computed to `auto`; pinned to `hidden`, no change).
+         * A plain page served to the same simulator logs rightward
+         * `touchmove`s and a `touchend` with no `touchcancel`, so iOS is
+         * delivering the events — something between them and this handler is
+         * eating them, and I could not find what.
+         *
+         * Anyone picking this up: start by proving the handler is entered at
+         * all on a rightward drag, with something that survives a re-render —
+         * a global read from the console, not a React state variable.
          */
         const travel = Math.min(0, dx);
         // Past MAX_PX the row keeps moving at a third of the finger's speed,
