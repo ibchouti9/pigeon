@@ -156,6 +156,8 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
   const [revealed, setRevealed] = useState(false);
   const [saving, setSaving] = useState(false);
   const revealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Whether the found-runtime test below has already fired for this choice. */
+  const autoTested = useRef(false);
 
   useEffect(
     () => () => {
@@ -191,6 +193,9 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     setTestMs(undefined);
     setLocalModels(null);
     setRevealed(false);
+    // Leaving Local and coming back is a fresh ask, and the runtime may have
+    // stopped in between.
+    autoTested.current = false;
     if (revealTimer.current) clearTimeout(revealTimer.current);
     if (id === 'local') {
       setApiKey('');
@@ -323,6 +328,29 @@ export function ProviderPanel({ mount, onSaved, onSkip, onCancel }: ProviderPane
     ? buildCatalog(machine.gb, localModels ?? [], machine.chip)
     : null;
   const otherInstalled = isLocal ? uncuratedInstalled(localModels ?? []) : [];
+
+  /*
+   * Picking Local when a runtime was found runs the test instead of waiting to
+   * be asked for it.
+   *
+   * Detection is not a test and this does not pretend otherwise — `/api/tags`
+   * proves something answers and lists models, and a listed model can still
+   * fail to load. The round trip is worth keeping. What it is not worth is a
+   * button press: Pigeon already knows the endpoint, the model and that the
+   * two go together, so the press carries no information the user has and the
+   * screen doesn't.
+   *
+   * Only when the URL is still the one that was found. Typing a different one
+   * is a new claim, and it goes back to being tested on request.
+   */
+  useEffect(() => {
+    if (!isLocal || !found || autoTested.current) return;
+    if (baseUrl.trim() !== found.baseUrl || status !== 'entered' || !model) return;
+    autoTested.current = true;
+    void handleTest();
+    // handleTest is re-made every render and closes over exactly these.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLocal, found, baseUrl, status, model]);
 
   return (
     <div>
