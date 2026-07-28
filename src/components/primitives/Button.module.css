@@ -56,8 +56,10 @@
   color: var(--color-text-inverse);
 }
 
-.primary:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--color-accent-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .primary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-accent-hover);
+  }
 }
 
 .primary:active:not(:disabled):not([aria-disabled="true"]) {
@@ -77,8 +79,10 @@
   color: var(--color-text-primary);
 }
 
-.secondary:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-surface-hover);
+  }
 }
 
 .secondary:active:not(:disabled):not([aria-disabled="true"]) {
@@ -98,9 +102,11 @@
   color: var(--color-text-destructive);
 }
 
-.secondaryDestructive:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--color-destructive-subtle);
-  border-color: var(--color-destructive);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .secondaryDestructive:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-destructive-subtle);
+    border-color: var(--color-destructive);
+  }
 }
 
 .secondaryDestructive:active:not(:disabled):not([aria-disabled="true"]) {
@@ -123,8 +129,10 @@
   padding-right: 0;
 }
 
-.tertiary:hover:not(:disabled):not([aria-disabled="true"]) {
-  text-decoration: underline;
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .tertiary:hover:not(:disabled):not([aria-disabled="true"]) {
+    text-decoration: underline;
+  }
 }
 
 .tertiary:active:not(:disabled):not([aria-disabled="true"]) {
@@ -159,9 +167,11 @@
   height: 28px;
 }
 
-.icon:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .icon:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+  }
 }
 
 .icon:active:not(:disabled):not([aria-disabled="true"]) {

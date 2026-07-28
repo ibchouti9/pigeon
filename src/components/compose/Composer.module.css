@@ -136,9 +136,11 @@
   color: var(--color-text-tertiary);
 }
 
-.attachmentRemove:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .attachmentRemove:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+  }
 }
 
 /* ---------- inline reply (§5.6) ---------- */

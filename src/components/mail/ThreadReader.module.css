@@ -151,8 +151,10 @@
   text-align: left;
 }
 
-.replyAffordance:hover {
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .replyAffordance:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 .replyAffordance[aria-disabled='true'] {

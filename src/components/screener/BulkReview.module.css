@@ -40,8 +40,10 @@
   border-bottom: none;
 }
 
-.row:hover {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .row:hover {
+    background: var(--color-surface-hover);
+  }
 }
 
 /*

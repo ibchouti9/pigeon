@@ -84,8 +84,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.row:hover {
-  text-decoration: none;
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .row:hover {
+    text-decoration: none;
+  }
 }
 
 .row + .row {

@@ -108,8 +108,10 @@
   text-align: left;
 }
 
-.open:hover {
-  text-decoration: underline;
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .open:hover {
+    text-decoration: underline;
+  }
 }
 
 .empty {

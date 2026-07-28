@@ -63,9 +63,11 @@
   cursor: pointer;
 }
 
-.cite:hover {
-  background: var(--color-accent);
-  color: var(--color-surface);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .cite:hover {
+    background: var(--color-accent);
+    color: var(--color-surface);
+  }
 }
 
 .sources {
@@ -92,9 +94,11 @@
   cursor: pointer;
 }
 
-.source:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .source:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+  }
 }
 
 .sourceNum {

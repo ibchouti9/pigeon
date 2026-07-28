@@ -125,8 +125,17 @@ a {
   text-decoration: none;
 }
 
-a:hover {
-  text-decoration: underline;
+/*
+ * The underline is a pointer's affordance, and this is the rule the rest of
+ * the app spends its `text-decoration: none` overrides cancelling. Guarded at
+ * the source, a tab tapped on a phone no longer keeps an underline it was
+ * never meant to have. See ThreadRow.module.css for why the width rides along
+ * with the capability in every one of these queries.
+ */
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  a:hover {
+    text-decoration: underline;
+  }
 }
 
 /* ---------- Focus (D40, §8.2) ----------

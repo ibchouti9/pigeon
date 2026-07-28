@@ -204,8 +204,10 @@
   cursor: pointer;
 }
 
-.suggestion:hover {
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .suggestion:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 .composer {

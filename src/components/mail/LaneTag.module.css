@@ -18,9 +18,14 @@
   font: inherit;
 }
 
-.tag:hover,
 .tagOpen {
   color: var(--color-text-primary);
+}
+
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .tag:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 .chevron {
@@ -80,8 +85,10 @@
   cursor: pointer;
 }
 
-.item:hover {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .item:hover {
+    background: var(--color-surface-hover);
+  }
 }
 
 .check {

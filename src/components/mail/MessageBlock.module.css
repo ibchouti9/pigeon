@@ -35,8 +35,10 @@
   width: 100%;
 }
 
-.headerButton:hover .senderName {
-  text-decoration: underline;
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .headerButton:hover .senderName {
+    text-decoration: underline;
+  }
 }
 
 .senderLine {
@@ -93,8 +95,10 @@
   color: var(--color-text-tertiary);
 }
 
-.quotedToggle:hover {
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .quotedToggle:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 .quoted {
@@ -127,8 +131,10 @@
   color: var(--color-text-primary);
 }
 
-.attachment:hover {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .attachment:hover {
+    background: var(--color-surface-hover);
+  }
 }
 
 .attachmentIcon {
@@ -154,8 +160,10 @@
   min-width: 0;
 }
 
-.collapsedButton:hover {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .collapsedButton:hover {
+    background: var(--color-surface-hover);
+  }
 }
 
 .collapsedMonogram {

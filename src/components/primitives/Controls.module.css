@@ -74,9 +74,11 @@
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
-.chipFilter:hover:not(:disabled):not([aria-disabled="true"]),
-.chipTone:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .chipFilter:hover:not(:disabled):not([aria-disabled="true"]),
+  .chipTone:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-surface-hover);
+  }
 }
 
 .chipSelected {
@@ -114,8 +116,10 @@
   color: var(--color-text-tertiary);
 }
 
-.chipRemove:hover {
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .chipRemove:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 /* ---------- C-4 Badge ---------- */

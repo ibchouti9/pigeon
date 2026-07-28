@@ -110,8 +110,10 @@
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
-.senderRow:hover {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .senderRow:hover {
+    background: var(--color-surface-hover);
+  }
 }
 
 .senderText {
@@ -141,8 +143,10 @@
   color: var(--color-text-primary);
 }
 
-.recent:hover {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .recent:hover {
+    background: var(--color-surface-hover);
+  }
 }
 
 .recentIcon {

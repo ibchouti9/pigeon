@@ -38,8 +38,10 @@
   cursor: pointer;
 }
 
-.row:hover {
-  background: var(--color-surface-hover);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .row:hover {
+    background: var(--color-surface-hover);
+  }
 }
 
 .rowSelected {
@@ -56,8 +58,10 @@
   cursor: not-allowed;
 }
 
-.rowTooLarge:hover {
-  background: transparent;
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .rowTooLarge:hover {
+    background: transparent;
+  }
 }
 
 .top {
@@ -120,8 +124,10 @@
   cursor: pointer;
 }
 
-.toggle:hover {
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .toggle:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 /* Download progress, inside the row being downloaded. */
@@ -164,8 +170,10 @@
   cursor: pointer;
 }
 
-.cancel:hover {
-  color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .cancel:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 .error {

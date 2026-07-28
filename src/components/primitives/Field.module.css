@@ -30,8 +30,10 @@
   color: var(--color-text-tertiary);
 }
 
-.input:hover:not(:disabled):not([aria-disabled="true"]) {
-  border-color: var(--color-text-tertiary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .input:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--color-text-tertiary);
+  }
 }
 
 /* C-27 — "accent border + 3px accent glow at 16% opacity". Only the border
@@ -89,8 +91,10 @@
     border-color var(--duration-fast) var(--ease-standard);
 }
 
-.checkbox:hover:not(:disabled):not([aria-disabled="true"]) {
-  border-color: var(--color-text-primary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .checkbox:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--color-text-primary);
+  }
 }
 
 .checkbox::before {
@@ -149,8 +153,10 @@
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
-.switch:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--color-text-tertiary);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .switch:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-text-tertiary);
+  }
 }
 
 .switch[aria-checked='true'] {

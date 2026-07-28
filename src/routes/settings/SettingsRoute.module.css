@@ -28,10 +28,12 @@
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
-.navItem:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
-  text-decoration: none;
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .navItem:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+    text-decoration: none;
+  }
 }
 
 .navItemSelected {
@@ -119,8 +121,10 @@
   border-top: var(--border-hairline);
 }
 
-.sectionRow:hover {
-  text-decoration: none;
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .sectionRow:hover {
+    text-decoration: none;
+  }
 }
 
 .sectionRow:active {

@@ -49,9 +49,11 @@
   text-decoration: none;
 }
 
-.link:hover {
-  background: var(--color-surface-hover);
-  text-decoration: none;
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .link:hover {
+    background: var(--color-surface-hover);
+    text-decoration: none;
+  }
 }
 
 .linkRoute {

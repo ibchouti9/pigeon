@@ -20,8 +20,10 @@
     background-color var(--duration-fast) var(--ease-standard);
 }
 
-.row:hover {
-  border-color: var(--color-border-control);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .row:hover {
+    border-color: var(--color-border-control);
+  }
 }
 
 .rowSelected {
@@ -29,8 +31,10 @@
   border-color: var(--color-accent);
 }
 
-.rowSelected:hover {
-  border-color: var(--color-accent);
+@media (hover: hover) and (min-width: 720px) and (min-height: 450px) {
+  .rowSelected:hover {
+    border-color: var(--color-accent);
+  }
 }
 
 .markTile {
