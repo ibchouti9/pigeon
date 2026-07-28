@@ -124,6 +124,13 @@ interface MessageSeed {
    * real account rather than falling through to matching words in the body.
    */
   listUnsubscribe?: boolean;
+  /**
+   * The message as its sender designed it. Real receipts, newsletters and
+   * booking confirmations are HTML; a demo made entirely of plain text
+   * showed none of what C-8 renders, and made the reader look like a
+   * different product from the one a real account gets.
+   */
+  bodyHtml?: string;
   attachments?: { filename: string; size: number; mimeType: string }[];
 }
 
@@ -149,6 +156,7 @@ function thread(
     quoted: s.quoted?.trim(),
     date: s.date,
     listUnsubscribe: s.listUnsubscribe,
+    bodyHtml: s.bodyHtml,
     attachments: (s.attachments ?? []).map((a, i) => ({
       id: `a${messageCounter}-${i}`,
       ...a,
@@ -412,6 +420,25 @@ Atlasgrid Cloud, Team plan
 €248.00 paid on Visa ending 4419.
 
 This is an automatic receipt. Nothing is owed.`,
+        bodyHtml: `<div style="font-family:-apple-system,sans-serif;max-width:520px">
+  <p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6B7280;margin:0 0 4px">Receipt #2471-0093</p>
+  <h2 style="margin:0 0 16px;font-size:22px;color:#111827">€248.00 paid</h2>
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px">
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #E5E7EB;color:#6B7280">Atlasgrid Cloud, Team plan</td>
+      <td align="right" style="padding:10px 0;border-bottom:1px solid #E5E7EB;color:#111827">€248.00</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #E5E7EB;color:#6B7280">VAT (0%)</td>
+      <td align="right" style="padding:10px 0;border-bottom:1px solid #E5E7EB;color:#111827">€0.00</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 0;font-weight:600;color:#111827">Total</td>
+      <td align="right" style="padding:10px 0;font-weight:600;color:#111827">€248.00</td>
+    </tr>
+  </table>
+  <p style="font-size:13px;color:#6B7280;margin:16px 0 0">Paid on Visa ending 4419. This is an automatic receipt — nothing is owed.</p>
+</div>`,
       },
     ]),
 
@@ -463,6 +490,20 @@ You are receiving this because you subscribed. Unsubscribe.`,
         from: rivet,
         date: at(0, 8, 30),
         listUnsubscribe: true,
+        bodyHtml: `<div style="font-family:-apple-system,sans-serif;max-width:520px;text-align:center">
+  <div style="background:linear-gradient(135deg,#4F46E5,#9333EA);border-radius:8px;padding:36px 20px;color:#fff">
+    <div style="font-size:34px;font-weight:700;letter-spacing:-0.02em">30% off</div>
+    <div style="font-size:15px;opacity:0.9;margin-top:4px">every annual plan</div>
+  </div>
+  <h1 style="font-size:22px;margin:20px 0 8px;color:#111827">Ends tonight</h1>
+  <p style="font-size:15px;color:#4B5563;margin:0 0 20px">Ends tonight at midnight. Upgrade to Pro and keep your current seat count.</p>
+  <a href="https://rivet.app/upgrade" style="display:inline-block;background:#4F46E5;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600">Upgrade to Pro</a>
+  <p style="font-size:12px;color:#9CA3AF;margin:24px 0 0">
+    <a href="https://rivet.app/unsubscribe" style="color:#9CA3AF">Unsubscribe</a> ·
+    <a href="https://rivet.app/prefs" style="color:#9CA3AF">Manage your preferences</a>
+  </p>
+  <img src="https://track.rivet.app/open.gif?u=marc" width="1" height="1" alt="">
+</div>`,
         body: `Last chance. 30% off every annual plan, until midnight.
 
 Upgrade to Pro and keep your current seat count.

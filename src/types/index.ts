@@ -33,8 +33,19 @@ export interface Message {
   to: Address[];
   cc: Address[];
   subject: string;
-  /** Plain text. Pigeon renders text, never remote HTML (§5.9). */
+  /**
+   * The message as text. Still the canonical body: previews, search, the lane
+   * classifier and every AI prompt read this, and none of them wants markup.
+   */
   body: string;
+  /**
+   * The message as the sender wrote it, when it was written in HTML.
+   *
+   * Rendered by C-8 inside a sandboxed frame with its own CSP — see
+   * `data/sanitize.ts` for why that is three layers rather than one. Absent
+   * for a plain-text message, which is most personal mail.
+   */
+  bodyHtml?: string;
   /** Quoted history, split off from `body` so it can collapse (§5.6). */
   quoted?: string;
   /** ISO 8601. */

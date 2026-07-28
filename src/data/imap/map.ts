@@ -21,6 +21,10 @@ function mapMessage(raw: BridgeMessage, userEmail: string): Message {
     to: raw.to,
     cc: raw.cc,
     body: split.body,
+    // The quoted-history split (§5.6) is a text operation and stays one. The
+    // HTML keeps its own quoted history, which mail clients mark up as a
+    // blockquote and the frame's stylesheet already indents.
+    bodyHtml: raw.html ?? undefined,
     quoted: split.quoted,
     date: raw.date,
     listUnsubscribe: raw.listUnsubscribe,

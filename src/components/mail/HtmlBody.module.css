@@ -1,0 +1,46 @@
+/* C-8's HTML body: a sandboxed frame sized to its own content. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: var(--measure-read);
+}
+
+/*
+ * A sheet of paper, deliberately.
+ *
+ * The document inside is always light — a sender writes their mail against a
+ * white background, so theming it to match a dark app produces dark text on
+ * dark. Making the frame look like paper is what stops that reading as a
+ * rendering bug in dark mode; Gmail and Apple Mail land in the same place.
+ */
+.frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  /* Until the first measurement lands. A message shorter than this simply
+     reports less on load; a taller one grows. */
+  min-height: 24px;
+  color-scheme: light;
+}
+
+/* C-8 blocked-images: a 28px strip above the body. */
+.blocked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+}
+
+.fallback {
+  margin: 0;
+  white-space: pre-wrap;
+  max-width: var(--measure-read);
+}

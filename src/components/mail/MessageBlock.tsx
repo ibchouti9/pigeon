@@ -5,6 +5,7 @@ import { toast } from '../../store/toast';
 import { downloadBase64 } from '../../lib/download';
 import { cn } from '../../lib/cn';
 import { linkifyBody } from '../../lib/linkify';
+import { HtmlBody } from './HtmlBody';
 import { formatBytes, formatMessageTimestamp, formatTimestampSpoken } from '../../lib/format';
 import type { Attachment, Message } from '../../types';
 import { Button } from '../primitives/Button';
@@ -31,6 +32,13 @@ export interface MessageBlockProps {
   loading?: boolean;
   error?: boolean;
   onRetry?: () => void;
+  /**
+   * C-8 blocks remote images "only for senders approved less than 24 hours
+   * ago; approved senders' images load normally". A stranger's mail is the
+   * case the rule is about: an image request is a read receipt, and the
+   * Screener's whole promise is that an unapproved sender learns nothing.
+   */
+  blockImages?: boolean;
 }
 
 /** C-8 Message block — expanded and collapsed forms of one message in a thread. */
@@ -47,6 +55,7 @@ export function MessageBlock({
   loading,
   error,
   onRetry,
+  blockImages = false,
 }: MessageBlockProps) {
   const spokenTimestamp = formatTimestampSpoken(message.date);
   const label = `Message from ${senderName}, ${spokenTimestamp}`;
@@ -172,7 +181,15 @@ export function MessageBlock({
         )}
         <p className={cn('t-xs', styles.recipients)}>{recipientsLabel}</p>
         <hr className={styles.hairline} />
-        <p className={cn('t-md', styles.messageBody)}>{linkifyBody(message.body)}</p>
+        {message.bodyHtml ? (
+          <HtmlBody
+            html={message.bodyHtml}
+            allowImages={!blockImages}
+            fallbackText={message.body}
+          />
+        ) : (
+          <p className={cn('t-md', styles.messageBody)}>{linkifyBody(message.body)}</p>
+        )}
 
         {message.quoted && (
           <>

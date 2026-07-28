@@ -17,7 +17,17 @@ const SRC = join(process.cwd(), 'src');
  * who writes "Just floating this back to the top of your inbox" is exactly
  * right, and sanding that down would make the demo read like nobody wrote it.
  */
-const NOT_PRODUCT_COPY = [/data[/\\]mock[/\\]seed\.ts$/, /ai[/\\]adapters[/\\]demo\.ts$/];
+const NOT_PRODUCT_COPY = [
+  /data[/\\]mock[/\\]seed\.ts$/,
+  /ai[/\\]adapters[/\\]demo\.ts$/,
+  /*
+   * A CSP header and the stylesheet for the reader's iframe. Every string in
+   * it is machine-readable and none of it is ever shown to anyone — and the
+   * `!important` it needs is not an exclamation mark but the only declaration
+   * that outranks the inline styles an arbitrary HTML email arrives with.
+   */
+  /data[/\\]sanitize\.ts$/,
+];
 
 const ALLOWED = [
   // A timestamp idiom, not the filler word.

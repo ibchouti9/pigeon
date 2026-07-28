@@ -84,6 +84,17 @@ const HEADER_ICONS: { mode: ReplyMode; icon: IconName; label: string }[] = [
 ];
 
 /** §5.6 — read one conversation and act on it without leaving the pane. */
+/**
+ * §4.2's 24-hour window, the same one the arrival ring uses. Shared with
+ * MailListColumn by copy rather than by import only because that one is about
+ * a ring on a row; if a third caller appears it belongs in lib.
+ */
+function isNewlyApproved(approvedAt: string | undefined): boolean {
+  if (!approvedAt) return false;
+  const age = Date.now() - new Date(approvedAt).getTime();
+  return age >= 0 && age < 24 * 60 * 60 * 1000;
+}
+
 export function ThreadReader({
   status,
   thread,
@@ -217,6 +228,20 @@ export function ThreadReader({
   }
 
   const messages = thread.messages;
+
+  /*
+   * C-8: "only for senders approved less than 24 hours ago; approved senders'
+   * images load normally".
+   *
+   * The rule is about what an image request tells the sender. Fetching one is
+   * a read receipt — it reports that the address is live and the mail was
+   * opened, at a known minute — and the Screener's promise is that a sender
+   * the user has only just let through learns nothing they didn't already
+   * know. After a day of ordinary correspondence there is nothing left to
+   * protect, and blocking images forever would just make the product worse
+   * than the one it replaces.
+   */
+  const blockImages = isNewlyApproved(thread.approvedAt);
   const defaults = defaultCollapse(messages);
   const participants = collectParticipants(messages, selfEmail);
 
@@ -358,6 +383,7 @@ export function ThreadReader({
               onToggleCollapse={() =>
                 setCollapsedOverrides((s) => ({ ...s, [m.id]: !collapsed }))
               }
+              blockImages={blockImages && !m.isFromUser}
               quotedOpen={Boolean(quotedOpen[m.id])}
               onToggleQuoted={() =>
                 setQuotedOpen((s) => ({ ...s, [m.id]: !s[m.id] }))
