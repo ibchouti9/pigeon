@@ -63,8 +63,18 @@ export function MobileShell() {
    * question the screen is not asking.
    */
   const MAIL_PLACES = ['/inbox', '/archive', '/sent', '/drafts', '/search'];
+  /*
+   * And not while a thread is open. At that width the reader has replaced the
+   * list, the conversation's own reply affordance sits at the foot of it, and
+   * a button for writing to somebody else was landing on top of it.
+   */
+  const inThread = pathname.includes('/t/');
   const showCompose =
-    MAIL_PLACES.some((p) => pathname.startsWith(p)) && !hasDraft && online && !revoked;
+    MAIL_PLACES.some((p) => pathname.startsWith(p)) &&
+    !inThread &&
+    !hasDraft &&
+    online &&
+    !revoked;
 
   return (
     <div className={styles.shell}>

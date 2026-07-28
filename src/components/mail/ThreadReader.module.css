@@ -38,6 +38,26 @@
   }
 }
 
+/*
+ * Three rows below 720px — back and actions, then the subject, then the meta
+ * line — so the fixed 72px becomes whatever they need. At that height the
+ * subject was clipped mid-word and the back link was pushed off the top of
+ * its own header.
+ */
+@media (max-width: 719px) {
+  .header {
+    height: auto;
+    padding: var(--space-2) var(--space-4);
+  }
+}
+
+.backRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .headerRow1 {
   display: flex;
   align-items: flex-start;
@@ -65,13 +85,15 @@
 }
 
 .back {
-  align-self: flex-start;
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  height: 32px;
+  /* Apple's floor. 32px was fine as a pointer target and is the one control
+     on this screen a thumb has to hit to get back out of it. */
+  min-height: var(--layout-touch-target);
+  padding-right: var(--space-2);
   color: var(--color-text-secondary);
-  margin-bottom: 2px;
 }
 
 /* ---------- body ---------- */
@@ -98,6 +120,17 @@
 @media (max-width: 1079px) {
   .body {
     padding: var(--space-8) var(--space-6);
+  }
+}
+
+/*
+ * Narrower gutters, and enough room at the foot for the thread to scroll clear
+ * of the tab bar — otherwise the last message and the reply affordance end
+ * underneath it.
+ */
+@media (max-width: 719px) {
+  .body {
+    padding: var(--space-5) var(--space-4) var(--space-12);
   }
 }
 

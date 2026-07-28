@@ -77,6 +77,9 @@ function collectParticipants(messages: Message[], selfEmail: string): string[] {
   return Array.from(seen.values());
 }
 
+/** C-28's reason, on the tooltip and — where nothing hovers — in the name. */
+const SUMMARIZE_OFF = 'Connect a provider in Settings → Assistant';
+
 const HEADER_ICONS: { mode: ReplyMode; icon: IconName; label: string }[] = [
   { mode: 'reply', icon: 'reply', label: 'Reply' },
   { mode: 'reply-all', icon: 'reply-all', label: 'Reply all' },
@@ -253,6 +256,8 @@ export function ThreadReader({
   const laneSender = lastOther?.from ?? messages[messages.length - 1]?.from ?? { name: '', email: '' };
 
   const showBack = isSingleColumn(breakpoint) && backLabel;
+  // A phone's action row: five controls and a back link in 375px.
+  const compact = breakpoint === 'phone';
   const showSummaryBlock =
     !hiddenSummaryFor[thread.id] && (summary !== undefined || summaryState !== undefined);
   // C-28 — with no provider the button is rendered *disabled* with a tooltip,
@@ -271,14 +276,25 @@ export function ThreadReader({
   return (
     <div className={styles.pane}>
       <header className={styles.header}>
-        {showBack && (
-          <button type="button" className={cn('t-sm', styles.back)} onClick={onBack}>
-            <Icon name="chevron-left" size={16} />
-            {backLabel}
-          </button>
-        )}
-        <div className={styles.headerRow1}>
-          <h1 className={cn('t-display-sm', styles.subject)}>{thread.subject}</h1>
+        {/*
+          Single column: the back link and the actions share the top row, and
+          the subject gets the next one to itself.
+
+          Beside the subject — where they sit on a desktop — five controls left
+          a 375px screen roughly forty pixels of subject, so every conversation
+          in the reader was called "Re: w…". The row above is empty on exactly
+          the widths where the subject has no room, which is what makes it the
+          right place to put them.
+        */}
+        <div className={showBack ? styles.backRow : styles.headerRow1}>
+          {showBack ? (
+            <button type="button" className={cn('t-sm', styles.back)} onClick={onBack}>
+              <Icon name="chevron-left" size={16} />
+              {backLabel}
+            </button>
+          ) : (
+            <h1 className={cn('t-display-sm', styles.subject)}>{thread.subject}</h1>
+          )}
           <div className={styles.actions}>
             {showSummarizeButton &&
               (summarizeDisabled ? (
@@ -287,16 +303,34 @@ export function ThreadReader({
                 // the only thing that says *why* it is off — could not be
                 // reached by pointer or by keyboard. This way the control keeps
                 // its tab stop, and the reason is one hover or Tab away.
-                <Tooltip label="Connect a provider in Settings → Assistant">
+                //
+                // On a phone there is no hover to reach it with either, which
+                // is why the reason is also the accessible name.
+                <Tooltip label={SUMMARIZE_OFF}>
                   <Button
-                    variant="tertiary"
+                    variant={compact ? 'icon' : 'tertiary'}
                     size="sm"
                     aria-disabled="true"
+                    aria-label={compact ? `Summarize thread. ${SUMMARIZE_OFF}` : undefined}
                     onClick={(e) => e.preventDefault()}
                   >
-                    Summarize thread
+                    {compact ? <Icon name="sparkle" size={16} /> : 'Summarize thread'}
                   </Button>
                 </Tooltip>
+              ) : compact ? (
+                /*
+                 * The label costs half the action row at 375px. As an icon it
+                 * costs a quarter of one control, and the sparkle is what
+                 * every other AI surface in the app is already marked with.
+                 */
+                <Button
+                  variant="icon"
+                  size="sm"
+                  aria-label="Summarize thread"
+                  onClick={onSummarize}
+                >
+                  <Icon name="sparkle" size={16} />
+                </Button>
               ) : (
                 <Button variant="tertiary" size="sm" onClick={onSummarize}>
                   Summarize thread
@@ -332,6 +366,9 @@ export function ThreadReader({
             </Tooltip>
           </div>
         </div>
+        {showBack && (
+          <h1 className={cn('t-display-sm', styles.subject)}>{thread.subject}</h1>
+        )}
         <p className={cn('t-sm', styles.meta)}>
           {plural(messages.length, 'message')} · {joinNames(participants)}
           {lane && onCorrectLane && onClearLaneCorrection && (
