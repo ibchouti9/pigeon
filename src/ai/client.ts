@@ -348,7 +348,11 @@ function makeClient(config: ProviderConfig): AiClient {
       };
     },
 
-    async agentTurn(system: string, history: AgentMessage[]): Promise<string> {
+    async agentTurn(
+      system: string,
+      history: AgentMessage[],
+      onPartial?: (soFar: string) => void,
+    ): Promise<string> {
       /*
        * The history is flattened into one user turn rather than sent as a
        * message array. `Adapter.complete` takes a system and a user string —
@@ -359,7 +363,23 @@ function makeClient(config: ProviderConfig): AiClient {
       const transcript = history
         .map((m) => (m.role === 'user' ? `USER: ${m.content}` : m.content))
         .join('\n\n');
-      return run(system, transcript, MAX_TOKENS.agent);
+      /*
+       * Streamed only past the point where the turn has committed to being an
+       * answer. Until `SAY:` appears the tokens are a tool name and its
+       * argument — machinery the user did not ask to watch, and which would
+       * flicker on screen for a moment before being replaced by the action it
+       * describes.
+       */
+      return runStreaming(
+        system,
+        transcript,
+        MAX_TOKENS.agent,
+        onPartial &&
+          ((soFar) => {
+            const said = /\bSAY\s*:\s*([\s\S]*)$/i.exec(soFar);
+            if (said) onPartial(said[1].trim());
+          }),
+      );
     },
 
     async extractObligations(items: ObligationRequest[]): Promise<ObligationAnswer[]> {

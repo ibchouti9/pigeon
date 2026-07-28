@@ -2,6 +2,7 @@ import type { AgentAutonomy } from '../store/settings';
 import { useMail } from '../store/mail';
 import { useCompose } from '../store/compose';
 import { parseQuery } from '../data/query';
+import { useLedger as useLedgerStore } from '../store/ledger';
 
 /**
  * What the agent can do to a mailbox.
@@ -53,6 +54,15 @@ export interface Tool {
    * using the setting — and both of those defeat the point of asking.
    */
   describe?: (argument: string) => string;
+  /**
+   * What this is doing, shown while it runs.
+   *
+   * Reads change nothing and so leave no trace in the transcript, which on a
+   * local model means a minute of silence for a three-step question. Saying
+   * "Searching for Dana" is not decoration: it is the difference between an
+   * agent that is working and one that has hung.
+   */
+  narrate?: (argument: string) => string;
 }
 
 /** Whether this may run without stopping to ask, at this autonomy level. */
@@ -72,6 +82,7 @@ export const TOOLS: Tool[] = [
     name: 'search',
     risk: 'read',
     usage: 'search <words> — find conversations. Returns id, sender and subject.',
+    narrate: (argument) => `Searching for ${argument.trim()}`,
     run: async (argument) => {
       const parsed = parseQuery(argument);
       const results = await useMail.getState().search(parsed.raw, false);
@@ -91,6 +102,12 @@ export const TOOLS: Tool[] = [
     name: 'read',
     risk: 'read',
     usage: 'read <id> — the messages in one conversation.',
+    narrate: (argument) => {
+      const t = [...useMail.getState().inbox, ...useMail.getState().sent].find(
+        (x) => x.id === argument.trim(),
+      );
+      return t ? `Reading "${t.subject}"` : `Reading ${argument.trim()}`;
+    },
     run: async (argument) => {
       const id = argument.trim();
       try {
@@ -104,6 +121,36 @@ export const TOOLS: Tool[] = [
       } catch {
         return { observation: `No conversation with id ${id}.` };
       }
+    },
+  },
+  {
+    name: 'ledger',
+    risk: 'read',
+    usage: 'ledger — what is still outstanding: asked of you, promised, waited on.',
+    narrate: () => 'Checking what is outstanding',
+    /*
+     * The agent reads the ledger rather than re-deriving it. "What needs me
+     * today?" would otherwise mean searching blind and reading a dozen
+     * conversations, at several seconds each — and arriving at a worse answer
+     * than the pass that has already read all of them.
+     */
+    run: async () => {
+      const { found, done } = useLedgerStore.getState();
+      const doneSet = new Set(done);
+      const open = Object.values(found)
+        .flat()
+        .filter((o) => !doneSet.has(o.id));
+      if (open.length === 0) {
+        return { observation: 'Nothing is outstanding. The ledger is empty.' };
+      }
+      return {
+        observation: open
+          .map(
+            (o) =>
+              `${o.threadId} · ${o.kind} · ${o.what} · with ${o.who}${o.due ? ` · due ${o.due}` : ''}`,
+          )
+          .join('\n'),
+      };
     },
   },
   {

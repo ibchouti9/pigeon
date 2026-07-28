@@ -60,7 +60,16 @@ export interface AiClient {
    * a model cannot choose the second action without the first one's result in
    * front of it.
    */
-  agentTurn(system: string, history: AgentMessage[]): Promise<string>;
+  agentTurn(
+    system: string,
+    history: AgentMessage[],
+    /**
+     * Called with the answer so far, once the turn has committed to being an
+     * answer rather than an action. Never fires for a `DO:` turn — there is
+     * nothing to show a user in a tool call they did not ask to watch.
+     */
+    onPartial?: (soFar: string) => void,
+  ): Promise<string>;
 }
 
 export interface AgentMessage {

@@ -113,10 +113,12 @@ export function AgentPanel() {
               );
             }
             if (entry.kind === 'did') {
+              // A read says what it is looking for and carries no tick; a
+              // write says what it changed and does.
               return (
-                <p key={i} className={cn('t-xs', styles.did)}>
-                  <Icon name="check" size={16} />
-                  {entry.effect}
+                <p key={i} className={cn('t-xs', entry.effect ? styles.did : styles.looking)}>
+                  {entry.effect ? <Icon name="check" size={16} /> : null}
+                  {entry.effect ?? entry.looking}
                 </p>
               );
             }

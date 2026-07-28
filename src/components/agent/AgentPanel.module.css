@@ -62,6 +62,16 @@
   color: var(--color-text-tertiary);
 }
 
+/* A read in progress: quieter than a change, because nothing happened. */
+.looking {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-left: var(--space-1);
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
 .ask {
   padding: var(--space-3);
   background: var(--color-surface-sunken);

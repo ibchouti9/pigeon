@@ -10,8 +10,11 @@ const MAX_STEPS = 8;
 export type AgentEntry =
   | { kind: 'you'; text: string }
   | { kind: 'pigeon'; text: string }
-  /** A tool that ran. `effect` is absent for a read. */
-  | { kind: 'did'; tool: string; effect?: string }
+  /**
+   * A tool that ran. `effect` is what changed; a read has none, and says what
+   * it was looking for instead.
+   */
+  | { kind: 'did'; tool: string; effect?: string; looking?: string }
   /** Waiting on the user, because autonomy does not cover this one. */
   | { kind: 'ask'; tool: string; argument: string; risk: ToolRisk; describe: string };
 
@@ -76,13 +79,45 @@ export function useAgent(): AgentView {
           );
 
           for (let step = 0; step < MAX_STEPS; step++) {
-            const turn = await live.agentTurn(system, historyRef.current);
+            /*
+             * The streamed answer replaces itself in place: one `pigeon`
+             * entry, growing. Appending would leave a column of partial
+             * sentences behind the finished one.
+             */
+            let streamed = false;
+            const turn = await live.agentTurn(system, historyRef.current, (soFar) => {
+              if (!soFar) return;
+              setEntries((prev) => {
+                const next = [...prev];
+                if (streamed && next[next.length - 1]?.kind === 'pigeon') {
+                  next[next.length - 1] = { kind: 'pigeon', text: soFar };
+                  return next;
+                }
+                streamed = true;
+                return [...next, { kind: 'pigeon', text: soFar }];
+              });
+            });
             const parsed = parseAgentTurn(turn);
 
             if (parsed.kind === 'say') {
               historyRef.current.push({ role: 'assistant', content: `SAY: ${parsed.text}` });
-              add({ kind: 'pigeon', text: parsed.text });
+              // Already on screen if it streamed; correct it to the parsed
+              // text either way, which is what strips a trailing protocol line.
+              setEntries((prev) => {
+                if (streamed && prev[prev.length - 1]?.kind === 'pigeon') {
+                  const next = [...prev];
+                  next[next.length - 1] = { kind: 'pigeon', text: parsed.text };
+                  return next;
+                }
+                return [...prev, { kind: 'pigeon', text: parsed.text }];
+              });
               return;
+            }
+
+            if (streamed) {
+              setEntries((prev) =>
+                prev[prev.length - 1]?.kind === 'pigeon' ? prev.slice(0, -1) : prev,
+              );
             }
 
             const tool = findTool(parsed.tool);
@@ -127,8 +162,28 @@ export function useAgent(): AgentView {
               }
             }
 
+            /*
+             * Shown before it runs, not after.
+             *
+             * A local 32B takes several seconds a turn, so a three-step
+             * question is most of a minute during which the panel said only
+             * "Working…". An agent that has gone quiet is indistinguishable
+             * from one that has hung, and the user's mailbox may be being
+             * changed inside that silence. Every step is legible as it
+             * happens; reads say what they are looking for and writes say
+             * what they changed.
+             */
+            const pendingEntry: AgentEntry = {
+              kind: 'did',
+              tool: tool.name,
+              looking: tool.narrate?.(parsed.argument),
+            };
+            if (pendingEntry.looking) add(pendingEntry);
+
             const result = await tool.run(parsed.argument);
-            if (result.effect) add({ kind: 'did', tool: tool.name, effect: result.effect });
+            if (result.effect) {
+              add({ kind: 'did', tool: tool.name, effect: result.effect });
+            }
             historyRef.current.push({ role: 'user', content: result.observation });
           }
 
