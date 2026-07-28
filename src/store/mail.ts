@@ -47,6 +47,18 @@ interface MailState {
   loadSenders: () => Promise<void>;
   loadContacts: () => Promise<void>;
 
+  /**
+   * Re-reads the inbox and the Screener without the screen saying so.
+   *
+   * Every other loader drops its place to 'loading' first, which is right when
+   * a screen opens onto nothing and wrong on a timer — the inbox would blink
+   * to a skeleton every minute underneath someone who is reading. This one
+   * only ever publishes a result, and a failure leaves the working screen
+   * exactly as it was: a refresh nobody asked for must not be able to break
+   * the app it is running behind.
+   */
+  refresh: () => Promise<void>;
+
   markRead: (threadId: string) => Promise<void>;
   setPlace: (threadId: string, place: 'inbox' | 'archive') => Promise<void>;
 
@@ -283,6 +295,44 @@ export const useMail = create<MailState>((set, get) => ({
         status: { ...s.status, senders: 'error' },
         revoked: s.revoked || isRevoked(error),
       }));
+    }
+  },
+
+  refresh: async () => {
+    const epoch = get().providerEpoch;
+    // A locked shell has one action, and it is not this one. Polling a token
+    // Google has withdrawn just burns requests against a certain refusal.
+    if (get().revoked) return;
+
+    const [inbox, held] = await Promise.allSettled([
+      get().provider.listThreads('inbox'),
+      get().provider.listHeld(),
+    ]);
+    if (get().providerEpoch !== epoch) return;
+
+    /*
+     * 'ready' on success even when the place was in its error state: a first
+     * load that failed on a flaky connection heals itself on the next tick
+     * instead of leaving §7.6's error block up until the user reloads.
+     */
+    if (inbox.status === 'fulfilled') {
+      set((s) => ({
+        inbox: inbox.value,
+        status: { ...s.status, inbox: 'ready' },
+        hasOlder: { ...s.hasOlder, inbox: get().provider.hasOlder('inbox') },
+      }));
+    }
+    if (held.status === 'fulfilled') {
+      set((s) => ({ held: held.value, status: { ...s.status, held: 'ready' } }));
+    }
+
+    // The one failure worth acting on: §5.5 locks the shell, and a background
+    // read is as good a place to learn it as any. Everything else is left for
+    // the next tick — a poll does not get to raise a toast.
+    for (const result of [inbox, held]) {
+      if (result.status === 'rejected' && isRevoked(result.reason)) {
+        set({ revoked: true });
+      }
     }
   },
 

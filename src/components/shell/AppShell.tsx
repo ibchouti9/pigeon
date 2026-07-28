@@ -10,6 +10,7 @@ import { useMail } from '../../store/mail';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
+import { useMailRefresh } from '../../hooks/useMailRefresh';
 import { useRouteFocus } from '../../hooks/useRouteFocus';
 import { useComposeParam } from '../../hooks/useComposeParam';
 import { toast } from '../../store/toast';
@@ -40,6 +41,7 @@ export function AppShell() {
   const loadContacts = useMail((s) => s.loadContacts);
 
   useGlobalShortcuts(searchRef);
+  useMailRefresh();
 
   useEffect(() => {
     void loadAccount();
