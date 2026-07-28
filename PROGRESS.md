@@ -726,6 +726,50 @@ Cost on a 40,000-thread account: one SEARCH, two membership SEARCHes, ~70
 metadata FETCHes and one enrichment FETCH. Seconds. **Still unverified against a
 real account** — see item 6.
 
+## Running the prompts against a real model (July 27)
+
+`npm run ai:probe` drives every AI surface — summary, lanes, triage, answer,
+draft, all three tones — against a live endpoint with the demo mail, and writes
+what came back to `probe-transcript.txt`. `PROBE_MODEL` and `PROBE_BASE` select
+the model; it defaults to `qwen2.5:32b` on localhost. It is not part of
+`npm test`: the assertions only check that the model answered, and the point of
+the file is the transcript.
+
+Nothing had ever done this. The prompts were tuned against `llama3.2:3b` — the
+comments in `prompts.ts` are full of findings from those runs — and every test
+in the suite checks that output *parses*, not that it is any good. One run
+found four defects, three of them invisible to any static check:
+
+- **Drafts could not say "I".** §7.9's Universal block bans the first person and
+  its Draft Replies block asks the model to match the register of the reader's
+  own sent mail, which is first person by construction. Applied to both, the ban
+  won: "Agreed to push back on the tooling clause per Sana's note. On the
+  liability cap, willing to accept $750K as compromise." The ban now scopes to
+  Pigeon describing mail; a reply is written *as* the reader.
+- **Tone controls made a finished draft unsendable.** "Keep every [confirm:]
+  placeholder" reads as an instruction to produce one, and all three tones added
+  a bare `[confirm:]` to a draft that had none — which D26 blocks Send on, with
+  a helper line asking the user to replace something that never said what it
+  wanted. Reworded, and `dropEmptyPlaceholders` enforces it.
+- **A citation pointed at the wrong number.** The superscript printed the
+  model's own numbering, the sources list numbered by citation order, so an
+  answer leaning on the fourth email showed "4" over a source labelled "1".
+- **The Screener read was a label, not a sentence.** "Personal work-related
+  inquiry" where §7.9 asks for one sentence answering "why might this matter to
+  me". Now "Sana Sethi reaches out about an integration project with Atlas."
+
+And one the probe caught immediately after, which is the reason to keep it:
+asking for that sentence cost the caution. A "verify your billing details
+within 24 hours" notice from a `billing-notice@` address moved from `unsure` to
+**approve** — the worst answer the Screener can give. The decision rules now sit
+last in the prompt, closest to the answer, and refuse outright to approve mail
+that asks the reader to act on an account. Re-run before and after; that is
+what the harness is for.
+
+**A prompt change is a behaviour change and has no type checker.** Both
+regressions above were introduced by an improvement to the same prompt, and
+neither would have failed a single test in the suite.
+
 ## Deliberate deviations from the spec
 
 Each is a considered call, not an oversight.

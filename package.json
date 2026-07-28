@@ -13,6 +13,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "ai:probe": "vitest run --config vitest.probe.config.ts",
     "check": "npm run typecheck && npm run lint && npm run test",
     "app": "tauri dev",
     "app:build": "tauri build",

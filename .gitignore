@@ -30,3 +30,4 @@ dist-ssr
 # local env
 .env.local
 .env
+probe-transcript.txt
