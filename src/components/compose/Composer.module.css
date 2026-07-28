@@ -187,3 +187,31 @@
 .fillHeight .actions {
   flex: none;
 }
+
+/*
+ * The action row on a phone.
+ *
+ * Send, "Draft with Pigeon", a sentence explaining why one of them is off, and
+ * two icon buttons do not share 402pt. The sentence lost: it wrapped into a
+ * four-line column wedged between the button and the icons, which is the one
+ * arrangement that makes a helper harder to read than no helper.
+ *
+ * It takes its own line instead, below the controls it is about. The spacer
+ * goes with it — on a wrapped row it was pushing the icons onto a third line
+ * of their own.
+ */
+@media (max-width: 719px), (max-height: 449px) {
+  .actions {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+
+  .helper {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  .actionsSpacer {
+    display: none;
+  }
+}
