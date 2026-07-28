@@ -15,6 +15,8 @@ import { formatCount } from '../../lib/format';
 import type { SyncProgress } from '../../types';
 import { useMail } from '../../store/mail';
 import { useSettings } from '../../store/settings';
+import { MockMailProvider } from '../../data/mock/mockProvider';
+import { disconnectGmail } from '../../data/imap/connect';
 import styles from './SyncRoute.module.css';
 
 const STEP_ORDER: SyncProgress['step'][] = ['connect', 'contacts', 'history', 'senders', 'complete'];
@@ -40,6 +42,22 @@ export function SyncRoute() {
     startSync();
     return subscribeSync(setProgress);
   }, []);
+
+  /**
+   * Leaves the account that failed and carries on with the demo.
+   *
+   * The credentials are dropped as well as the provider: `mail_status` reports
+   * connected on the mere presence of a Keychain entry, so leaving a bad one
+   * in place means the next launch restores this same broken account and lands
+   * back on this same screen.
+   */
+  async function useDemoInstead() {
+    await disconnectGmail().catch(() => {
+      // Already gone, or never stored. Either way the demo is still reachable.
+    });
+    useMail.getState().setProvider(new MockMailProvider());
+    navigate('/setup/senders');
+  }
 
   const total = progress.total;
   const complete = progress.step === 'complete';
@@ -160,17 +178,32 @@ export function SyncRoute() {
 
       {progress.error ? (
         <div className={styles.errorBlock} role="alert">
+          {/*
+           * The reason, not a description of the category.
+           *
+           * This branch already had the error in hand and rendered a fixed
+           * sentence instead — "Gmail returned an error" — while the engine
+           * was writing lines like "In Gmail's label settings, enable Show in
+           * IMAP for All Mail". The one screen where a real account fails was
+           * the one screen that threw away what to do about it.
+           */}
           <p className="t-sm">
-            Pigeon couldn't finish setting up. Gmail returned an error. Nothing has
-            been changed in your mailbox — start again.
+            Pigeon couldn&apos;t finish setting up. {progress.error} Nothing has been
+            changed in your mailbox.
           </p>
           <div className={styles.errorActions}>
             <Button variant="primary" onClick={retrySync}>
               Start sync again
             </Button>
-            <a className={cn('t-sm', styles.contactLink)} href="mailto:support@pigeon.mail">
-              Contact support
-            </a>
+            {/*
+             * A way out that isn't the thing that just failed. Retry was the
+             * only action here, and a retry of a mailbox Pigeon cannot read
+             * fails identically every time — with Settings gated behind
+             * onboarding, that was the whole product for that user.
+             */}
+            <Button variant="tertiary" onClick={useDemoInstead}>
+              Use the demo account
+            </Button>
           </div>
         </div>
       ) : (

@@ -11,7 +11,7 @@ const PIGEON_VERSION = __APP_VERSION__;
  * on this page, and a link that 404s is worse than an honest one — change this
  * and the README together when the repo exists.
  */
-const REPO_URL = 'https://github.com/pigeon-mail/pigeon';
+const REPO_URL = 'https://github.com/ibchouti9/pigeon';
 
 export function AboutSettings() {
   return (

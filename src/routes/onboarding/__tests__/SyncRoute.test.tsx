@@ -23,9 +23,12 @@ class StubSyncProvider implements MailProvider {
   async getAccount(): Promise<Account> {
     return { email: 'marc@ferrum.dev', name: 'Marc Ferrum', connectedAt: new Date().toISOString() };
   }
+  reject: ((e: Error) => void) | null = null;
   sync(onProgress: (p: SyncProgress) => void): Promise<void> {
     this.onProgress = onProgress;
-    return new Promise(() => {});
+    return new Promise((_resolve, reject) => {
+      this.reject = reject;
+    });
   }
   known: Sender[] = [];
   approved: string[] = [];
@@ -100,6 +103,45 @@ describe('O3 sync progress (§5.2b)', () => {
    * gone, and reporting the window against the total would announce the mail
    * ready at half a percent.
    */
+  /**
+   * The one screen where a real account fails was the one screen that threw
+   * away why. This branch already had the error and rendered a fixed sentence
+   * over it, while the engine was writing lines that said what to go and fix.
+   */
+  it('says what actually went wrong, not that something did', async () => {
+    const provider = new StubSyncProvider();
+    useMail.setState({ provider });
+    renderRoute();
+
+    await act(async () => {
+      provider.onProgress?.({ total: null, done: 0, step: 'connect' });
+    });
+    await act(async () => {
+      provider.reject?.(
+        new Error("In Gmail's label settings, enable Show in IMAP for All Mail."),
+      );
+      await Promise.resolve();
+    });
+
+    expect(
+      await screen.findByText(/enable Show in IMAP for All Mail/),
+    ).toBeInTheDocument();
+  });
+
+  it('offers a way out that is not the thing that just failed', async () => {
+    const provider = new StubSyncProvider();
+    useMail.setState({ provider });
+    renderRoute();
+
+    await act(async () => {
+      provider.reject?.(new Error('Gmail refused the connection.'));
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByRole('button', { name: 'Start sync again' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Use the demo account' })).toBeInTheDocument();
+  });
+
   it('names the size of the mailbox once the engine has counted it', async () => {
     const provider = new StubSyncProvider();
     useMail.setState({
