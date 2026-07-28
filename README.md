@@ -21,10 +21,11 @@ your mail with exactly as much freedom as you give it.
 Pigeon ships no inference of its own. You bring your own model: an API key for
 Anthropic, OpenAI or Google, or a local endpoint. If Ollama or LM Studio is
 already running when you open the assistant screen, Pigeon finds it and fills
-the fields in — no key, and nothing leaves your Mac. (A phone has no loopback
-to find one on, so the iPhone build offers the three hosted providers and the
-demo.) The key, if you use one,
-is stored on your machine and sent to no origin except the provider you pick.
+the fields in — no key, and nothing leaves your Mac. On a phone the model is
+across the room rather than under your hand: point Pigeon at the Mac running
+Ollama (`http://192.168.1.x:11434`) and nothing leaves your *network*. The key,
+if you use one, is stored on your machine and sent to no origin except the
+provider you pick.
 
 **There is no Pigeon server.** Nothing to bill through, no shared credential to
 leak, and nothing between you and Google — Pigeon talks to Gmail's own IMAP and
@@ -229,10 +230,19 @@ On the phone, the first launch of a free-tier build needs Settings → General �
 VPN & Device Management → trust the developer.
 
 **What is different on a phone.** The app password goes into the iOS Keychain
-rather than the Mac one, and is still sent only to Gmail. The local-model
-provider is not offered: iOS suspends every app that is not in front, so
-nothing can be listening on loopback for Pigeon to talk to. Bring a key from
-Anthropic, OpenAI or Google, or run the demo.
+rather than the Mac one, and is still sent only to Gmail.
+
+The local model still works, but it lives somewhere else. Nothing can be
+listening on a phone's own loopback — iOS suspends every app that is not in
+front — so Pigeon does not probe for one and does not pre-fill `localhost`,
+which on a phone is the phone. Give it the address of the machine that *is*
+running Ollama, on the same wifi. Two things have to be true for that to
+answer: the address is right, and Ollama was started with
+`OLLAMA_HOST=0.0.0.0 ollama serve`, because it listens only to itself
+otherwise.
+
+Verified on the simulator against a Mac running `qwen2.5:32b`: connection in
+46ms, and the Screener's triage returning real generated reads.
 
 ### Background mail on the phone
 
