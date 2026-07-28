@@ -44,6 +44,7 @@ base64 = "0.22"
 
 # The app password belongs in the macOS Keychain, not in web storage.
 keyring = { version = "3", features = ["apple-native"] }
+tauri-plugin-notification = "2.3.3"
 
 [features]
 # Used for production builds, where the frontend is served from the bundle

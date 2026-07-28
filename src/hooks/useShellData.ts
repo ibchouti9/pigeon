@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useMail } from '../store/mail';
 import { useOnline } from './useOnline';
 import { useMailRefresh } from './useMailRefresh';
+import { useNewMailNotice } from './useNewMailNotice';
 import { toast } from '../store/toast';
 
 /**
@@ -25,6 +26,7 @@ export function useShellData(): void {
   const loadContacts = useMail((s) => s.loadContacts);
 
   useMailRefresh();
+  useNewMailNotice();
 
   useEffect(() => {
     void loadAccount();
