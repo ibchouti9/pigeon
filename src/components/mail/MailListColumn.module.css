@@ -73,6 +73,15 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /*
+   * Explicit, because `overflow-x` would otherwise compute to `auto` on its
+   * own: CSS turns a `visible` axis into `auto` as soon as the other one is
+   * scrollable. Nothing overflows sideways today, so nothing scrolls — but it
+   * leaves the list one over-wide row away from panning horizontally, and a
+   * mail list that can be pushed off its own left edge is a bug waiting for
+   * the first long unbroken subject line.
+   */
+  overflow-x: hidden;
   /* A phone's list ends under a floating compose button and a tab bar. Keep
      scrolling past the last row until it clears both. */
   scroll-padding-bottom: var(--space-16);
