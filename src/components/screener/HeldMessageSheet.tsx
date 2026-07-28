@@ -9,7 +9,7 @@ import { displayName, formatBytes, formatMessageTimestamp, formatPostmarkDate, p
 import { Button } from '../primitives/Button';
 import { Icon } from '../primitives/Icon';
 import { SkeletonBar } from '../primitives/Feedback';
-import { linkifyBody } from './linkify';
+import { linkifyBody } from '../../lib/linkify';
 import styles from './HeldMessageSheet.module.css';
 
 const FOCUSABLE =

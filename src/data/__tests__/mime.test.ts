@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRawMessage, splitQuoted } from '../mime';
+import { buildRawMessage, htmlToText, splitQuoted } from '../mime';
 
 /**
  * Decodes what `buildRawMessage` emits (base64url, UTF-8), so the assertions
@@ -335,4 +335,67 @@ describe('smaller real-mail details', () => {
     expect(decoded).not.toMatch(/[^\r]\nSecond/);
   });
 
+});
+
+/**
+ * The flattener had no tests at all, which is how it shipped throwing away
+ * every link destination in every HTML-only message.
+ */
+describe('htmlToText', () => {
+  it('keeps a link destination the text does not already carry', () => {
+    const text = htmlToText(
+      '<p><a href="https://accounts.example.com/reset?token=abc">Reset your password</a></p>',
+    );
+    expect(text).toBe('Reset your password (https://accounts.example.com/reset?token=abc)');
+  });
+
+  it('does not repeat a URL that is its own link text', () => {
+    const text = htmlToText('<a href="https://example.com/x">https://example.com/x</a>');
+    expect(text).toBe('https://example.com/x');
+  });
+
+  it('drops destinations that go nowhere useful', () => {
+    expect(htmlToText('<a href="#top">Back to top</a>')).toBe('Back to top');
+    expect(htmlToText('<a href="javascript:void(0)">Menu</a>')).toBe('Menu');
+  });
+
+  it('keeps a mailto so a reply address survives', () => {
+    expect(htmlToText('<a href="mailto:dana@example.com">Dana</a>')).toBe(
+      'Dana (mailto:dana@example.com)',
+    );
+  });
+
+  it('separates block elements instead of welding them together', () => {
+    expect(htmlToText('<p>Hi Ibrahim,</p><p>Someone reset your password.</p>')).toBe(
+      'Hi Ibrahim,\nSomeone reset your password.',
+    );
+  });
+
+  it('gives list items a line and a marker each', () => {
+    expect(htmlToText('<ul><li>Item one</li><li>Item two</li></ul>')).toBe(
+      '- Item one\n- Item two',
+    );
+  });
+
+  it('honours a line break', () => {
+    expect(htmlToText('<p>Thanks,<br>The team</p>')).toBe('Thanks,\nThe team');
+  });
+
+  it('keeps table cells on one line, since mail uses tables to lay out', () => {
+    expect(htmlToText('<table><tr><td>Total</td><td>$42.00</td></tr></table>')).toBe(
+      'Total $42.00',
+    );
+  });
+
+  it('collapses the source formatting a browser would collapse', () => {
+    expect(htmlToText('<p>one\n   two\t\tthree</p>')).toBe('one two three');
+  });
+
+  it('preserves whitespace inside a pre', () => {
+    expect(htmlToText('<pre>line one\n  indented</pre>')).toBe('line one\n  indented');
+  });
+
+  it('strips script and style content rather than reading it aloud', () => {
+    expect(htmlToText('<style>p{color:red}</style><p>Body</p><script>x()</script>')).toBe('Body');
+  });
 });

@@ -4,6 +4,7 @@ import { useMail } from '../../store/mail';
 import { toast } from '../../store/toast';
 import { downloadBase64 } from '../../lib/download';
 import { cn } from '../../lib/cn';
+import { linkifyBody } from '../../lib/linkify';
 import { formatBytes, formatMessageTimestamp, formatTimestampSpoken } from '../../lib/format';
 import type { Attachment, Message } from '../../types';
 import { Button } from '../primitives/Button';
@@ -171,7 +172,7 @@ export function MessageBlock({
         )}
         <p className={cn('t-xs', styles.recipients)}>{recipientsLabel}</p>
         <hr className={styles.hairline} />
-        <p className={cn('t-md', styles.messageBody)}>{message.body}</p>
+        <p className={cn('t-md', styles.messageBody)}>{linkifyBody(message.body)}</p>
 
         {message.quoted && (
           <>

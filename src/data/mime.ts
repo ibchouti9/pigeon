@@ -14,14 +14,110 @@ function encodeBase64Url(text: string): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** Last-resort conversion when a message carries no text/plain alternative. */
-/** HTML mail, flattened to the text Pigeon renders (§5.9: never remote HTML). */
+/**
+ * Elements that start and end a line when HTML is flattened. `textContent`
+ * knows about none of them, which is what ran every paragraph of a newsletter
+ * into one another.
+ */
+const BLOCK = new Set([
+  'ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'DD', 'DIV', 'DL', 'DT',
+  'FIELDSET', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'FORM', 'H1', 'H2', 'H3',
+  'H4', 'H5', 'H6', 'HEADER', 'HR', 'LI', 'MAIN', 'NAV', 'OL', 'P',
+  'SECTION', 'TABLE', 'TR', 'UL',
+]);
+
+/** Links worth keeping. `#anchor` and `javascript:` carry nothing here. */
+function isReachable(href: string): boolean {
+  return /^(https?:\/\/|mailto:)/i.test(href);
+}
+
+/**
+ * HTML mail, flattened to the text Pigeon renders (§5.9: never remote HTML).
+ *
+ * This used to be `body.textContent`, which throws away two things a reader
+ * needs. Structure was one: block elements have no text of their own, so
+ * "Hi Ibrahim," and the paragraph after it came out welded together, and a
+ * list became "Item oneItem two".
+ *
+ * The destinations were the other, and worse. Every `href` was discarded, so
+ * an HTML-only password reset flattened to the words "Reset your password"
+ * with nothing behind them — the mail Pigeon has to handle *best*, because a
+ * transactional sender is exactly who never sends a text/plain alternative,
+ * arrived unusable. The URL is appended in parentheses after the link text so
+ * it survives as text and `linkifyBody` can make it clickable again.
+ */
 export function htmlToText(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('script, style, head').forEach((el) => el.remove());
-  return (doc.body?.textContent ?? '')
+  doc.querySelectorAll('script, style, head, noscript').forEach((el) => el.remove());
+
+  let out = '';
+  /*
+   * <pre> is held out of the whitespace pass below and put back afterwards.
+   * Its indentation is the content, and the pass exists to destroy exactly
+   * that kind of whitespace everywhere else.
+   */
+  const preserved: string[] = [];
+
+  /**
+   * One newline between blocks, never two. Mail wraps each visual line in its
+   * own `<div>`, so emitting a break on both the open and the close tag
+   * double-spaces an entire message. `<br>` is separate and does stack, which
+   * is how a deliberate blank line survives.
+   */
+  function boundary(): void {
+    if (out && !out.endsWith('\n')) out += '\n';
+  }
+
+  function walk(node: Node): void {
+    if (node.nodeType === 3 /* TEXT_NODE */) {
+      // HTML collapses runs of whitespace and `textContent` does not, so the
+      // source's own indentation would otherwise arrive as gaps in the body.
+      out += (node.textContent ?? '').replace(/\s+/g, ' ');
+      return;
+    }
+    if (node.nodeType !== 1 /* ELEMENT_NODE */) return;
+
+    const el = node as Element;
+    const tag = el.tagName;
+
+    if (tag === 'BR') {
+      out += '\n';
+      return;
+    }
+    if (tag === 'PRE') {
+      boundary();
+      // A Private Use codepoint delimits the placeholder: nothing in real mail
+      // contains one, so it cannot collide with what a message actually says.
+      // A bare number could, and would corrupt the body it turned up in.
+      out += `\uE000${preserved.push(el.textContent ?? '') - 1}\uE000\n`;
+      return;
+    }
+
+    if (BLOCK.has(tag)) boundary();
+    if (tag === 'LI') out += '- ';
+
+    for (const child of Array.from(el.childNodes)) walk(child);
+
+    if (tag === 'A') {
+      const href = el.getAttribute('href') ?? '';
+      const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+      // A link whose text is already its own URL needs no second copy.
+      if (isReachable(href) && !text.includes(href)) out += ` (${href})`;
+    }
+
+    if (BLOCK.has(tag)) boundary();
+    // Cells are a layout device in mail, not a table — keep them on one line.
+    if (tag === 'TD' || tag === 'TH') out += ' ';
+  }
+
+  walk(doc.body ?? doc);
+
+  return out
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ *\n */g, '\n')
     .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .trim()
+    .replace(/\uE000(\d+)\uE000/g, (_, i: string) => preserved[Number(i)]);
 }
 
 /** Splits a reply's quoted history off the top-level body (§5.6). */
