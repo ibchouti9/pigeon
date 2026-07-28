@@ -1,20 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NavRail } from './NavRail';
 import { RevokedState } from '../mail/RevokedState';
-import { ToastStack } from './ToastStack';
-import { ShortcutsDialog } from './ShortcutsDialog';
-import { ComposeDock } from '../compose/ComposeDock';
-import { HeldMessageSheet } from '../screener/HeldMessageSheet';
+import { ShellLayers } from './ShellLayers';
 import { useMail } from '../../store/mail';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
-import { useMailRefresh } from '../../hooks/useMailRefresh';
-import { AgentPanel } from '../agent/AgentPanel';
+import { useShellData } from '../../hooks/useShellData';
 import { useRouteFocus } from '../../hooks/useRouteFocus';
 import { useComposeParam } from '../../hooks/useComposeParam';
-import { toast } from '../../store/toast';
 import { cn } from '../../lib/cn';
 import styles from './AppShell.module.css';
 
@@ -33,33 +28,9 @@ export function AppShell() {
   useRouteFocus(regionRef);
   useComposeParam();
   const searchRef = useRef<HTMLInputElement>(null);
-  const wasOffline = useRef(false);
-
-  const loadAccount = useMail((s) => s.loadAccount);
-  const loadThreads = useMail((s) => s.loadThreads);
-  const loadHeld = useMail((s) => s.loadHeld);
-  const loadSenders = useMail((s) => s.loadSenders);
-  const loadContacts = useMail((s) => s.loadContacts);
 
   useGlobalShortcuts(searchRef);
-  useMailRefresh();
-
-  useEffect(() => {
-    void loadAccount();
-    void loadThreads('inbox');
-    void loadHeld();
-    void loadSenders();
-    void loadContacts();
-  }, [loadAccount, loadThreads, loadHeld, loadSenders, loadContacts]);
-
-  useEffect(() => {
-    if (!online) {
-      wasOffline.current = true;
-    } else if (wasOffline.current) {
-      wasOffline.current = false;
-      toast.confirm('Back online.');
-    }
-  }, [online]);
+  useShellData();
 
   return (
     <div className={styles.shell}>
@@ -91,22 +62,7 @@ export function AppShell() {
         </div>
       </div>
 
-      <div className={cn('t-md', styles.tooNarrow)}>
-        Pigeon needs a wider window. Open Pigeon on a screen at least 720 pixels wide.
-      </div>
-
-      <ComposeDock />
-      {/*
-        A global layer, like the dock and the toasts. It used to be mounted by
-        the Screener alone, so a held result in Search opened nothing — and
-        because an open sheet blocks every single-key shortcut, the whole app's
-        keyboard went dead until the user pressed Esc on a sheet they could not
-        see.
-      */}
-      <HeldMessageSheet />
-      <ShortcutsDialog />
-      <AgentPanel />
-      <ToastStack />
+      <ShellLayers />
     </div>
   );
 }

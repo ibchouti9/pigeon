@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
+import { MobileShell } from './components/shell/MobileShell';
+import { useBreakpoint } from './hooks/useBreakpoint';
 import { useTheme } from './hooks/useTheme';
 import { useScenario } from './hooks/useScenario';
 import { useRestoreProvider } from './hooks/useRestoreProvider';
@@ -19,6 +21,9 @@ const LedgerRoute = lazy(() => import('./routes/LedgerRoute').then((m) => ({ def
 const BriefRoute = lazy(() => import('./routes/BriefRoute').then((m) => ({ default: m.BriefRoute })));
 import { DraftsRoute } from './routes/DraftsRoute';
 const ScreenerRoute = lazy(() => import('./routes/ScreenerRoute').then((m) => ({ default: m.ScreenerRoute })));
+// Reachable only from the phone's tab bar, so it has no business in the chunk
+// a desktop build downloads before its first paint.
+const MoreRoute = lazy(() => import('./routes/MoreRoute').then((m) => ({ default: m.MoreRoute })));
 const SearchRoute = lazy(() => import('./routes/SearchRoute').then((m) => ({ default: m.SearchRoute })));
 const SettingsRoute = lazy(() => import('./routes/settings/SettingsRoute').then((m) => ({ default: m.SettingsRoute })));
 const AccountSettings = lazy(() => import('./routes/settings/AccountSettings').then((m) => ({ default: m.AccountSettings })));
@@ -53,10 +58,20 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Which shell, and whether the account has earned one yet.
+ *
+ * The two shells are chosen at the top rather than swapped inside one, so a
+ * rotation from portrait to landscape on a small phone unmounts one and mounts
+ * the other. That costs the screen's scroll position and is the right trade:
+ * a half-applied shell — a tab bar under a rail, or a reader beside nothing —
+ * is the failure mode a shared component tree would produce instead.
+ */
 function ShellGate() {
   const onboarded = useSettings((s) => s.onboarded);
+  const phone = useBreakpoint() === 'phone';
   if (!onboarded) return <Navigate to="/welcome" replace />;
-  return <AppShell />;
+  return phone ? <MobileShell /> : <AppShell />;
 }
 
 export default function App() {
@@ -133,6 +148,12 @@ export default function App() {
         <Route path="/screener" element={<ScreenerRoute />} />
         <Route path="/screener/s/:senderId" element={<ScreenerRoute />} />
         <Route path="/search" element={<SearchRoute />} />
+        {/*
+          Routed on every build, not only the phone: a desktop window dragged
+          below 720px becomes the phone shell mid-session, and a tab bar whose
+          fifth destination 404s is worse than one extra route definition.
+        */}
+        <Route path="/more" element={<MoreRoute />} />
         <Route path="/search/t/:threadId" element={<SearchRoute />} />
         <Route path="/settings" element={<SettingsRoute />}>
           <Route index element={<Navigate to="/settings/account" replace />} />

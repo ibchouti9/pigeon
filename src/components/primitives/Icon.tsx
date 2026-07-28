@@ -32,7 +32,8 @@ export type IconName =
   | 'warning'
   | 'external-link'
   | 'expand'
-  | 'minimize';
+  | 'minimize'
+  | 'more';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   inbox: (
@@ -183,6 +184,18 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M14 10h6V4" />
       <path d="M10 14H4v6" />
       <path d="M20 4l-6 6M4 20l6-6" />
+    </>
+  ),
+  /*
+   * The phone's fifth tab. Filled dots rather than the set's 1.5px stroke:
+   * three 1.5px rings at 24px read as three smudges, and this is the one glyph
+   * in the set with no shape of its own to carry the weight.
+   */
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none" />
     </>
   ),
 };

@@ -1,0 +1,84 @@
+/*
+ * The bar sits on the bottom edge and pads itself past the home indicator, so
+ * its background reaches the physical bottom of the screen while nothing
+ * touchable does.
+ */
+.bar {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  height: calc(var(--layout-tabbar-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  background: var(--color-bg);
+  border-top: var(--border-hairline);
+}
+
+.tab {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding-top: var(--space-1);
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  /* A grey flash on every tap is the webview's default and reads as a bug. */
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.tab:hover {
+  text-decoration: none;
+}
+
+/*
+ * `:active` rather than `:hover` for the pressed look. A phone has no hover,
+ * and a webview will happily leave a hover state stuck on the last thing
+ * tapped — which puts a permanent highlight under a tab the user has since
+ * navigated away from.
+ */
+.tab:active {
+  opacity: 0.6;
+}
+
+.tabSelected {
+  color: var(--color-accent);
+}
+
+.iconWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The touch target is the whole tab; this is only the icon's own box. */
+  height: 24px;
+}
+
+.label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  /* 11px: iOS's own tab label size, and the point below which the count of
+     characters in "Screener" stops fitting a fifth of a 375px screen. */
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  /* Against the bar, not the icon, so it reads as a mark on the tab rather
+     than part of the glyph. */
+  box-shadow: 0 0 0 2px var(--color-bg);
+}

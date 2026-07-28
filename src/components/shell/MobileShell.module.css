@@ -1,0 +1,65 @@
+/*
+ * The top inset is paid once, here, so the notch is app background and every
+ * screen below starts at a coordinate it can trust. Screens that want to run
+ * their own content under the status bar would have to opt out — none do, and
+ * a mail list sliding under the clock is not a look worth the exception.
+ */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-top: var(--safe-top);
+  background: var(--color-bg);
+}
+
+.banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: var(--space-1) var(--space-4);
+  text-align: center;
+  background: var(--color-destructive-subtle);
+  color: var(--color-text-primary);
+}
+
+.region {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  /* The horizontal insets land here rather than on `.shell` so the tab bar
+     can paint its background into the corners while its tabs stay clear. */
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  background: var(--color-surface);
+}
+
+/*
+ * Compose, floating above the tab bar on the mail places.
+ *
+ * `bottom` counts up from the physical edge: the bar's height, then the home
+ * indicator, then a gap. Written against the same tokens the bar uses, so the
+ * two cannot drift apart.
+ */
+.compose {
+  position: fixed;
+  right: calc(var(--space-4) + var(--safe-right));
+  bottom: calc(var(--layout-tabbar-height) + var(--safe-bottom) + var(--space-4));
+  z-index: var(--z-dock);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-overlay);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.compose:active {
+  background: var(--color-accent-active);
+}

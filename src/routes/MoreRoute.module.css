@@ -1,0 +1,110 @@
+.screen {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+.header {
+  flex: none;
+  height: var(--layout-header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+}
+
+.title {
+  min-width: 0;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: var(--space-8);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: none;
+  border-top: var(--border-hairline);
+  border-bottom: var(--border-hairline);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.account:active,
+.row:active {
+  background: var(--color-surface-active);
+}
+
+.accountText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.accountName {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.accountEmail {
+  color: var(--color-text-tertiary);
+}
+
+.group {
+  margin-top: var(--space-6);
+  background: var(--color-surface);
+  border-top: var(--border-hairline);
+  border-bottom: var(--border-hairline);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  /* Apple's 44pt floor. The rail's rows are 36px, which is a comfortable
+     mouse target and a miss with a thumb. */
+  min-height: var(--layout-touch-target);
+  padding: var(--space-2) var(--space-4);
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  text-align: left;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.row:hover {
+  text-decoration: none;
+}
+
+.row + .row {
+  border-top: var(--border-hairline);
+}
+
+.rowIcon {
+  flex: none;
+  color: var(--color-text-secondary);
+}
+
+.rowLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The only chevron in the icon set points left; a disclosure points right. */
+.chevron {
+  flex: none;
+  color: var(--color-text-tertiary);
+  transform: rotate(180deg);
+}

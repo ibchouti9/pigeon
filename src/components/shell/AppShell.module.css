@@ -30,22 +30,8 @@
   color: var(--color-text-primary);
 }
 
-/* §5.14 — below 720px the app renders a single centered block. */
-.tooNarrow {
-  display: none;
-}
-
-@media (max-width: 719px) {
-  .body {
-    display: none;
-  }
-
-  .tooNarrow {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-8);
-    text-align: center;
-  }
-}
+/*
+ * §5.14's "below 720px, one centred block asking for a wider window" is gone,
+ * and so is the media query that hid the body to show it. Below 720px this
+ * component is not mounted at all — `ShellGate` renders `MobileShell` instead.
+ */
