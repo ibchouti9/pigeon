@@ -6,7 +6,7 @@ import { useMail } from '../store/mail';
 import { shortcutsBlocked, useUi } from '../store/ui';
 import { useOnline } from '../hooks/useOnline';
 import { useMinimumVisible } from '../hooks/useMinimumVisible';
-import { useBreakpoint } from '../hooks/useBreakpoint';
+import { isSingleColumn, useBreakpoint } from '../hooks/useBreakpoint';
 import { useThreadSummary } from '../ai/useThreadSummary';
 import { useAssistant } from '../ai/useAssistant';
 import { Button } from '../components/primitives/Button';
@@ -355,7 +355,7 @@ export function SearchRoute() {
   const metaPlaces = includeHeld ? 'Inbox, Archive and held mail' : 'Inbox and Archive';
 
   const listColumn = (
-    <div className={cn(styles.column, bp === 'narrow' && !threadId && styles.fullWidth)}>
+    <div className={cn(styles.column, isSingleColumn(bp) && !threadId && styles.fullWidth)}>
       <div className={styles.queryBar}>
         <Icon name="search" size={16} className={styles.queryIcon} />
         <input
@@ -552,8 +552,8 @@ export function SearchRoute() {
 
   return (
     <div className={styles.screen}>
-      {(bp !== 'narrow' || !threadId) && listColumn}
-      {(bp !== 'narrow' || Boolean(threadId)) && (
+      {(!isSingleColumn(bp) || !threadId) && listColumn}
+      {(!isSingleColumn(bp) || Boolean(threadId)) && (
         <div className={styles.reader}>
           <ThreadReader
             status={thread ? 'ready' : 'none'}

@@ -4,7 +4,7 @@ import { defaultCollapse, firstExpandedId, readerStartOffset } from './readerLay
 import { cn } from '../../lib/cn';
 import { displayName, joinNames, plural } from '../../lib/format';
 import type { Address, MailView, Message, Thread } from '../../types';
-import type { Breakpoint } from '../../hooks/useBreakpoint';
+import { isSingleColumn, type Breakpoint } from '../../hooks/useBreakpoint';
 import { AiBlock, type AiBlockState } from '../primitives/AiBlock';
 import { Button } from '../primitives/Button';
 import { Icon, type IconName } from '../primitives/Icon';
@@ -252,7 +252,7 @@ export function ThreadReader({
   // the user's own, which is the same sender the row and the classifier used.
   const laneSender = lastOther?.from ?? messages[messages.length - 1]?.from ?? { name: '', email: '' };
 
-  const showBack = breakpoint === 'narrow' && backLabel;
+  const showBack = isSingleColumn(breakpoint) && backLabel;
   const showSummaryBlock =
     !hiddenSummaryFor[thread.id] && (summary !== undefined || summaryState !== undefined);
   // C-28 — with no provider the button is rendered *disabled* with a tooltip,

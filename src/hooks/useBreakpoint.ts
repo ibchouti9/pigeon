@@ -2,9 +2,16 @@ import { useEffect, useState } from 'react';
 
 /**
  * §5 — desktop ≥ 1080px, tablet 880–1079 (compact rail),
- * narrow tablet 720–879 (single mail column), below 720 the width message.
+ * narrow tablet 720–879 (single mail column), below 720 a phone.
+ *
+ * `phone` was `too-narrow`, and the name was the whole of the design: under
+ * 720px the shell rendered a sentence asking for a wider window. That is the
+ * right answer for a desktop window someone has dragged too small and the
+ * wrong one for the only width an iPhone has, so the band keeps its boundary
+ * and changes its meaning — below 720px is a phone, and a phone gets a shell
+ * of its own.
  */
-export type Breakpoint = 'desktop' | 'tablet' | 'narrow' | 'too-narrow';
+export type Breakpoint = 'desktop' | 'tablet' | 'narrow' | 'phone';
 
 /**
  * Deliberately `matchMedia` rather than `window.innerWidth`.
@@ -16,7 +23,7 @@ export type Breakpoint = 'desktop' | 'tablet' | 'narrow' | 'too-narrow';
  * construction.
  */
 const QUERIES: { bp: Breakpoint; query: string }[] = [
-  { bp: 'too-narrow', query: '(max-width: 719px)' },
+  { bp: 'phone', query: '(max-width: 719px)' },
   { bp: 'narrow', query: '(min-width: 720px) and (max-width: 879px)' },
   { bp: 'tablet', query: '(min-width: 880px) and (max-width: 1079px)' },
   { bp: 'desktop', query: '(min-width: 1080px)' },
@@ -25,6 +32,20 @@ const QUERIES: { bp: Breakpoint; query: string }[] = [
 function current(): Breakpoint {
   if (typeof window === 'undefined' || !window.matchMedia) return 'desktop';
   return QUERIES.find(({ query }) => window.matchMedia(query).matches)?.bp ?? 'desktop';
+}
+
+/**
+ * Whether the list and the reader share one column, so opening a thread
+ * replaces the list rather than filling a pane beside it.
+ *
+ * Two widths answer yes for different reasons — a narrow tablet has no room
+ * for both, a phone has no room for either at full size — and every caller
+ * cares only about the answer. Written as `bp === 'narrow'` in four places
+ * before the phone existed, which is four places that would each have had to
+ * remember the new width.
+ */
+export function isSingleColumn(bp: Breakpoint): boolean {
+  return bp === 'narrow' || bp === 'phone';
 }
 
 export function useBreakpoint(): Breakpoint {

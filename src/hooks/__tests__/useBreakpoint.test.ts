@@ -1,14 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useBreakpoint } from '../useBreakpoint';
+import { isSingleColumn, useBreakpoint } from '../useBreakpoint';
 import { setViewportWidth } from '../../test/setup';
 
 afterEach(() => setViewportWidth(1440));
 
 describe('useBreakpoint (§5)', () => {
   it.each([
-    [640, 'too-narrow'],
-    [719, 'too-narrow'],
+    [375, 'phone'],
+    [430, 'phone'],
+    [719, 'phone'],
     [720, 'narrow'],
     [879, 'narrow'],
     [880, 'tablet'],
@@ -33,5 +34,17 @@ describe('useBreakpoint (§5)', () => {
 
     const { result } = renderHook(() => useBreakpoint());
     expect(result.current).toBe('narrow');
+  });
+
+  describe('isSingleColumn', () => {
+    it('is true at both widths that stack the list and the reader', () => {
+      expect(isSingleColumn('phone')).toBe(true);
+      expect(isSingleColumn('narrow')).toBe(true);
+    });
+
+    it('is false wherever the reader has a column of its own', () => {
+      expect(isSingleColumn('tablet')).toBe(false);
+      expect(isSingleColumn('desktop')).toBe(false);
+    });
   });
 });

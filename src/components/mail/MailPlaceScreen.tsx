@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { isSingleColumn, useBreakpoint } from '../../hooks/useBreakpoint';
 import { useOnline } from '../../hooks/useOnline';
 import { useCompose } from '../../store/compose';
 import { LOCAL_DRAFT_ID, useHeldCount, useMail, useUnreadCount } from '../../store/mail';
@@ -328,7 +328,7 @@ export function MailPlaceScreen({ place }: { place: MailView }) {
           break;
         case 'Escape':
           // §5.0 narrow tablet — Esc also returns to the list at this width.
-          if (threadId && bp === 'narrow') {
+          if (threadId && isSingleColumn(bp)) {
             closeThread(true);
             e.preventDefault();
           }
@@ -343,9 +343,11 @@ export function MailPlaceScreen({ place }: { place: MailView }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, threads, openThread, bp, online, reply.mode, lanes.enabled, lanes.counts]);
 
-  // §5.0 narrow tablet (720–879px) — list and reader are a single column.
-  const showList = bp !== 'narrow' || !threadId;
-  const showReader = bp !== 'narrow' || Boolean(threadId);
+  // §5.0 narrow tablet (720–879px) and every phone — list and reader are a
+  // single column, and opening a thread replaces the list with it.
+  const single = isSingleColumn(bp);
+  const showList = !single || !threadId;
+  const showReader = !single || Boolean(threadId);
 
   return (
     <div className={styles.screen}>
@@ -362,7 +364,7 @@ export function MailPlaceScreen({ place }: { place: MailView }) {
           heldCount={heldCount}
           unreadCount={place === 'inbox' ? unreadCount : undefined}
           hasArchivedAny={place === 'inbox' ? otherPlaceHasThreads : undefined}
-          fullWidth={bp === 'narrow'}
+          fullWidth={single}
           onOpenThread={goTo}
           onArchiveThread={archiveOne}
           onArchiveMany={archiveMany}

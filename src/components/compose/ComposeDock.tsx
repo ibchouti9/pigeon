@@ -4,7 +4,7 @@ import { useUi } from '../../store/ui';
 import { MailError } from '../../data/provider';
 import { useMail } from '../../store/mail';
 import { useOnline } from '../../hooks/useOnline';
-import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { isSingleColumn, useBreakpoint } from '../../hooks/useBreakpoint';
 import { toast } from '../../store/toast';
 import { textToHtml } from '../../data/mime';
 import { Button } from '../primitives/Button';
@@ -55,9 +55,9 @@ export function ComposeDock() {
   const provider = useMail((s) => s.provider);
   const loadThreads = useMail((s) => s.loadThreads);
   const online = useOnline();
-  // §5.12's full-screen sheet starts below 880px, which is the 'narrow'
-  // breakpoint the rest of the shell already uses.
-  const isSheet = useBreakpoint() === 'narrow';
+  // §5.12's full-screen sheet starts below 880px — the narrow tablet and the
+  // phone, which is every width where the dock has nothing to dock beside.
+  const isSheet = isSingleColumn(useBreakpoint());
   const [sending, setSending] = useState(false);
 
   const [sendError, setSendError] = useState<string | null>(null);
