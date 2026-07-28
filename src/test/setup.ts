@@ -1,6 +1,40 @@
 import '@testing-library/jest-dom/vitest';
 
 /**
+ * Node 26 ships its own `localStorage` global, and it wins.
+ *
+ * It is a getter on `globalThis` that returns `undefined` unless node is run
+ * with `--localstorage-file`. Under vitest's jsdom environment `window` *is*
+ * `globalThis`, so jsdom's own Storage never gets installed over it and every
+ * `localStorage.clear()` in a `beforeEach` throws — 271 tests at the point this
+ * was found, none of them about storage.
+ *
+ * `sessionStorage` is untouched because node defines only the one global.
+ *
+ * Replacing it rather than passing the node flag: the flag writes to a real
+ * file, which would carry state between runs, and a test suite that shares a
+ * mailbox across files is worse than one that cannot run.
+ */
+if (typeof globalThis.localStorage === 'undefined') {
+  const entries = new Map<string, string>();
+  const storage: Storage = {
+    get length() {
+      return entries.size;
+    },
+    key: (index: number) => [...entries.keys()][index] ?? null,
+    getItem: (key: string) => entries.get(String(key)) ?? null,
+    setItem: (key: string, value: string) => void entries.set(String(key), String(value)),
+    removeItem: (key: string) => void entries.delete(String(key)),
+    clear: () => entries.clear(),
+  };
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: storage,
+    configurable: true,
+    writable: true,
+  });
+}
+
+/**
  * jsdom ships no matchMedia, and the app reads breakpoints through it. A stub
  * that always returns false would put every test at the fallback breakpoint;
  * this one actually evaluates min-width/max-width against the window, so a
