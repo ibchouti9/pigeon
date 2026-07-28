@@ -23,6 +23,21 @@ const SUGGESTIONS = [
  * that changed while the user was reading a paragraph is the failure mode of
  * every agent, and the only defence is that the change is as legible as the
  * prose around it.
+ *
+ * ## Known: it overlaps the composer dock
+ *
+ * Both are fixed to the right edge, so with a composer open the panel covers
+ * it — measured at 1280px, an overlap of 372px. It matters because the
+ * agent's own `draft` tool opens the composer, so asking it to write a reply
+ * puts the reply behind the panel that wrote it.
+ *
+ * An attempt to move the dock left while the panel is open did not land, and
+ * is worth knowing about before trying again: with the class applied, the
+ * media query matching, and `right` set as an inline style — which nothing in
+ * the sheets marks `!important` — `getComputedStyle(dock).right` stayed at
+ * 24px and the element did not move. Not a specificity problem and not an
+ * invalid `calc()`; both were ruled out directly in the browser. Something
+ * else is deciding that box, and finding it is the actual task.
  */
 export function AgentPanel() {
   const open = useUi((s) => s.agentOpen);
@@ -38,12 +53,6 @@ export function AgentPanel() {
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
-
-  // Follow the conversation down as it grows.
-  useEffect(() => {
-    const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [agent.entries, agent.thinking]);
 
   if (!open) return null;
 

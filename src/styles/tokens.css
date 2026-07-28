@@ -129,6 +129,7 @@
   --duration-base:  180ms;   /* row departure, inline expand, crossfade */
   --duration-slow:  280ms;   /* sheet, view crossfade                */
   --duration-panel: 320ms;   /* composer dock open/close             */
+  --layout-agent-width: 420px;   /* the docked assistant panel           */
   --duration-stamp: 420ms;   /* postmark only                        */
   --duration-toast-in:  180ms;
   --duration-toast-out: 120ms;
