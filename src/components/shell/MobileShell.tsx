@@ -7,6 +7,7 @@ import { useCompose } from '../../store/compose';
 import { useOnline } from '../../hooks/useOnline';
 import { useShellData } from '../../hooks/useShellData';
 import { useComposeParam } from '../../hooks/useComposeParam';
+import { useKeyboardOpen } from '../../hooks/useKeyboardOpen';
 import { Icon } from '../primitives/Icon';
 import { cn } from '../../lib/cn';
 import styles from './MobileShell.module.css';
@@ -41,6 +42,7 @@ export function MobileShell() {
   const { pathname } = useLocation();
   const openCompose = useCompose((s) => s.open);
   const hasDraft = useCompose((s) => Boolean(s.draft));
+  const typing = useKeyboardOpen();
 
   useComposeParam();
   useShellData();
@@ -74,6 +76,7 @@ export function MobileShell() {
     !inThread &&
     !hasDraft &&
     online &&
+    !typing &&
     !revoked;
 
   return (
@@ -108,7 +111,13 @@ export function MobileShell() {
         </button>
       )}
 
-      <TabBar locked={revoked} />
+      {/*
+        Gone while the keyboard is up. It is behind the keys either way, so
+        nothing here is reachable — but left mounted it shows through the
+        accessory bar as a row of ghost labels, and it holds a tab bar's worth
+        of height that the field being typed into could be using instead.
+      */}
+      {!typing && <TabBar locked={revoked} />}
       <ShellLayers />
     </div>
   );

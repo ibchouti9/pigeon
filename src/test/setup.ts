@@ -97,3 +97,11 @@ export function setViewportWidth(width: number, height = 900): void {
 }
 
 setViewportWidth(1440);
+
+/*
+ * jsdom lays nothing out, so it ships no `scrollIntoView` at all — not a stub
+ * that does nothing, an element property that is simply absent. Any code that
+ * reveals a focused field throws here. A no-op is the honest stand-in: there
+ * is no scrollport to move. Tests that care spy on it per element.
+ */
+Element.prototype.scrollIntoView ??= () => {};
