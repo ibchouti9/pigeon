@@ -141,6 +141,35 @@ mod as_pairs {
 
 const CACHE_FILE: &str = "listing-cache.json";
 
+/// How many preview lines to keep.
+///
+/// `placed` is bounded by the mailbox — every message counts once, and that is
+/// the whole point of it. Previews are not: one accrues per row ever drawn, so
+/// paging back through years of mail would grow the file without limit, and it
+/// is the fat half (a subject and 400 characters against a number and a date).
+///
+/// Ten thousand is several times more than anyone scrolls in a session and a
+/// few megabytes on disk.
+const PREVIEW_CACHE_CAP: usize = 10_000;
+
+impl Remembered {
+    /// Drops the oldest previews once there are too many.
+    ///
+    /// Oldest by UID, which needs no bookkeeping to know: UIDs ascend with
+    /// arrival, so the lowest are the least recent mail and the least likely to
+    /// be drawn again. `placed` is left alone — dropping from it would cost a
+    /// re-sweep of exactly the messages that were dropped.
+    fn trim_previews(&mut self) {
+        if self.previews.len() <= PREVIEW_CACHE_CAP {
+            return;
+        }
+        let mut uids: Vec<u32> = self.previews.keys().copied().collect();
+        uids.sort_unstable_by(|a, b| b.cmp(a));
+        let keep: HashSet<u32> = uids.into_iter().take(PREVIEW_CACHE_CAP).collect();
+        self.previews.retain(|uid, _| keep.contains(uid));
+    }
+}
+
 /// Reads the cache back, once per process.
 ///
 /// UIDVALIDITY is not checked here and does not need to be: nothing has been
@@ -182,6 +211,7 @@ fn persist(dir: &Path) {
         return;
     }
     cache.dirty = false;
+    cache.trim_previews();
     let _ = write_cache(dir, &cache);
 }
 
@@ -1318,6 +1348,41 @@ mod tests {
         assert_eq!(read.placed.len(), 2);
         assert_eq!(read.previews.get(&9).map(|p| p.from.email.as_str()), Some("sana@example.com"));
         assert_eq!(read.previews.get(&9).and_then(|p| p.text.as_deref()), Some("The window moved"));
+    }
+
+    /// One preview per row ever drawn, kept forever, is a file that grows for
+    /// as long as the account is used. The newest survive, because a UID
+    /// ascends with arrival and old mail is what nobody scrolls back to.
+    #[test]
+    fn the_preview_cache_keeps_the_newest_and_drops_the_rest() {
+        let mut cache = Remembered::default();
+        for uid in 1..=(PREVIEW_CACHE_CAP as u32 + 500) {
+            cache.previews.insert(
+                uid,
+                Preview {
+                    from: crate::mail::types::AddressJson {
+                        name: String::new(),
+                        email: String::new(),
+                    },
+                    subject: String::new(),
+                    text: None,
+                    html: None,
+                    list_unsubscribe: false,
+                },
+            );
+            cache.placed.insert(uid, (u64::from(uid), String::new()));
+        }
+
+        cache.trim_previews();
+
+        assert_eq!(cache.previews.len(), PREVIEW_CACHE_CAP);
+        assert!(cache.previews.contains_key(&(PREVIEW_CACHE_CAP as u32 + 500)), "newest kept");
+        assert!(!cache.previews.contains_key(&1), "oldest dropped");
+        assert_eq!(
+            cache.placed.len(),
+            PREVIEW_CACHE_CAP + 500,
+            "placed is untouched — dropping from it would re-sweep what was dropped"
+        );
     }
 
     /// Nothing on disk, and rubbish on disk, are the same answer: remember

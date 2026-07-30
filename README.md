@@ -233,6 +233,19 @@ stays out of the repo:
 export APPLE_DEVELOPMENT_TEAM=XXXXXXXXXX
 ```
 
+Setting it is not quite enough on its own: the build writes the id back into
+the generated Xcode project, which is committed, so it turns up in `git
+status` afterwards wanting to be committed. Turn on the filter that strips it,
+once per clone:
+
+```bash
+git config filter.strip-apple-team.clean "sed '/DEVELOPMENT_TEAM = /d'"
+git config filter.strip-apple-team.smudge cat
+```
+
+The file still diffs normally for everything else; only that line never
+reaches a commit. See `.gitattributes`.
+
 On the phone, the first launch of a free-tier build needs Settings → General →
 VPN & Device Management → trust the developer.
 

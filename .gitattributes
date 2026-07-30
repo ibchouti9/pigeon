@@ -1,0 +1,15 @@
+# A device build writes DEVELOPMENT_TEAM into the generated Xcode project from
+# APPLE_DEVELOPMENT_TEAM, and that project is committed — so an Apple team id
+# lands in the working tree every time anyone builds for a phone, in a public
+# repo, waiting to be committed by accident.
+#
+# A clean filter strips it on the way into the index. The file still diffs
+# normally for every other change; only this one line never reaches a commit.
+# Turn it on once per clone:
+#
+#     git config filter.strip-apple-team.clean "sed '/DEVELOPMENT_TEAM = /d'"
+#     git config filter.strip-apple-team.smudge cat
+#
+# Without that config git leaves the file alone, so a clone that never builds
+# for iOS needs nothing.
+src-tauri/gen/apple/pigeon.xcodeproj/project.pbxproj filter=strip-apple-team
