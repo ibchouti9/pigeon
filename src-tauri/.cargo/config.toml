@@ -1,0 +1,13 @@
+# `tauri dev` runs the app through `cargo run`, so a runner is the one hook
+# that sits between building the binary and executing it — which is exactly
+# where it has to be signed for the Keychain to recognise it. See
+# scripts/dev-sign-and-run.sh for why an unsigned dev build re-asks for the
+# password on every restart.
+#
+# Release builds do not come through here; `tauri build` signs the bundle.
+
+[target.aarch64-apple-darwin]
+runner = "../scripts/dev-sign-and-run.sh"
+
+[target.x86_64-apple-darwin]
+runner = "../scripts/dev-sign-and-run.sh"
