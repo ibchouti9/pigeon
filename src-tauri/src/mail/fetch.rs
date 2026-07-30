@@ -24,7 +24,7 @@
 use std::collections::HashMap;
 
 use super::parse::parse_message;
-use super::session::{refused, with_mailbox, ImapSession, Special, WorkError};
+use super::session::{refused, timed, with_mailbox, ImapSession, Special, WorkError};
 use super::types::{ListPage, MessageJson, ThreadJson, ThreadStub};
 
 /// How much of one message's body a preview line reads. Two kilobytes is more
@@ -415,14 +415,19 @@ fn page(
     offset: u32,
     limit: u32,
 ) -> Result<ListPage, WorkError> {
-    let uids = search_uids(session, query)?;
-    let all = group_stubs(run_meta_fetch(session, &uids)?);
+    let uids = timed("list: SEARCH", || search_uids(session, query))?;
+    let metas = timed(&format!("list: metadata ×{}", uids.len()), || {
+        run_meta_fetch(session, &uids)
+    })?;
+    let all = group_stubs(metas);
     let total = all.len() as u32;
 
     let start = (offset as usize).min(all.len());
     let end = start.saturating_add(limit as usize).min(all.len());
     let mut window = all[start..end].to_vec();
-    enrich(session, &mut window)?;
+    timed(&format!("list: enrich ×{}", window.len()), || {
+        enrich(session, &mut window)
+    })?;
 
     Ok(ListPage { total, threads: window })
 }
@@ -464,7 +469,9 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
 
     with_mailbox(Special::AllMail, |session| {
         let uids = {
-            let mut u = search_uids(session, &format!("X-GM-THRID {thrid}"))?;
+            let mut u = timed("thread: SEARCH", || {
+                search_uids(session, &format!("X-GM-THRID {thrid}"))
+            })?;
             u.sort_unstable(); // oldest first — reading order
             u
         };
@@ -472,7 +479,7 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
             return Err(refused("This thread didn't load. It's still in Gmail."));
         }
 
-        let metas: HashMap<u32, Meta> = run_meta_fetch(session, &uids)?
+        let metas: HashMap<u32, Meta> = timed("thread: metadata", || run_meta_fetch(session, &uids))?
             .into_iter()
             .map(|m| (m.uid, m))
             .collect();
@@ -492,10 +499,14 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
                 .map(|u| u.to_string())
                 .collect::<Vec<_>>()
                 .join(",");
-            let fetched = session.uid_fetch(set, "(UID BODY.PEEK[])")?;
+            let fetched = timed(&format!("thread: bodies ×{}", chunk.len()), || {
+                session.uid_fetch(set, "(UID BODY.PEEK[])")
+            })?;
+            let mut bytes = 0usize;
             for fetch in fetched.iter() {
                 let Some(uid) = fetch.uid else { continue };
                 let raw = fetch.body().unwrap_or_default();
+                bytes += raw.len();
                 let meta = metas.get(&uid);
                 messages.push(parse_message(
                     raw,
@@ -506,6 +517,10 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
                     meta.map(|m| m.from_user).unwrap_or(false),
                 ));
             }
+            // `BODY.PEEK[]` is the whole message, attachments included, and
+            // the attachment bytes are parsed and dropped. If reading a
+            // conversation is slow and this number is large, that is why.
+            timed(&format!("thread: {}KB of body", bytes / 1024), || ());
         }
         messages.sort_by(|a, b| a.uid.cmp(&b.uid));
 

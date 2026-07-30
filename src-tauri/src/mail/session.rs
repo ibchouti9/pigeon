@@ -185,6 +185,29 @@ pub fn is_connected() -> bool {
 /* Running commands                                                            */
 /* -------------------------------------------------------------------------- */
 
+/// Wall time for one IMAP round trip, on stderr, in debug builds only.
+///
+/// Which step is slow is not a thing this code can be read to find out. It
+/// depends on what Gmail indexes and how much mail the account holds, and the
+/// two are unrelated: a SEARCH the IMAP index answers is instant on forty
+/// thousand threads, while the same question asked through `X-GM-RAW` is
+/// seconds. Guessing wrong means optimising the wrong round trip, so every
+/// step names itself and says what it cost.
+///
+/// `#[cfg]` rather than a flag, because the numbers are for whoever is running
+/// `npm run app` and nobody has to remember to turn them on.
+pub fn timed<T>(label: &str, work: impl FnOnce() -> T) -> T {
+    #[cfg(debug_assertions)]
+    {
+        let start = std::time::Instant::now();
+        let out = work();
+        eprintln!("[pigeon] {label} — {}ms", start.elapsed().as_millis());
+        out
+    }
+    #[cfg(not(debug_assertions))]
+    work()
+}
+
 /// Well-known Gmail mailboxes. Names go through SPECIAL-USE discovery because
 /// they are localised — "[Gmail]/All Mail" is "[Gmail]/Tous les messages" for
 /// a French account, and hardcoding the English broke non-English accounts of
@@ -277,7 +300,9 @@ pub fn with_mailbox<T>(
                 }
             };
             if live.selected.as_deref() != Some(&name) {
-                live.session.select(&name)?;
+                // Alternating between two mailboxes re-SELECTs on every switch,
+                // and a listing and a thread read want different ones.
+                timed(&format!("SELECT {name}"), || live.session.select(&name))?;
                 live.selected = Some(name);
             }
             work(&mut live.session)
