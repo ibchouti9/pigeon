@@ -21,7 +21,7 @@
 //! 0.16 upgrade is what made this file work at all; the pin in Cargo.toml and
 //! `gmails_own_metadata_answer_survives_the_response_reader` both guard it.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use super::parse::parse_message;
 use super::session::{refused, with_mailbox, ImapSession, Special, WorkError};
@@ -47,6 +47,13 @@ pub struct Meta {
     /// ISO 8601, converted from INTERNALDATE.
     pub date: String,
     pub unread: bool,
+    /// Gmail's `\Inbox` label. The inbox is a view, so this is per *message*;
+    /// a thread is in the inbox if any of it is.
+    pub in_inbox: bool,
+    /// Gmail's `\Sent` label — the user's own send, including anything posted
+    /// through an alias or "send mail as", which comparing From addresses
+    /// never catches.
+    pub from_user: bool,
 }
 
 /// `* 5 FETCH (UID 123 X-GM-THRID 17512 X-GM-MSGID 17513 FLAGS (\Seen)
@@ -67,11 +74,82 @@ pub fn parse_meta_line(line: &str) -> Option<Meta> {
         .and_then(internal_date_to_iso)
         .unwrap_or_default();
 
-    // FLAGS (\Seen \Flagged) — unread is the absence of \Seen. `\Seen` cannot
-    // appear anywhere else on this line: no ENVELOPE means no free text.
-    let unread = !line.contains("\\Seen");
+    let labels = atoms_of(line, "X-GM-LABELS (");
 
-    Some(Meta { uid: uid as u32, thrid, msgid, date, unread })
+    Some(Meta {
+        uid: uid as u32,
+        thrid,
+        msgid,
+        date,
+        // Unread is the absence of \Seen, read out of FLAGS specifically. It
+        // used to be a search of the whole line, which was sound while the line
+        // held no free text — and stopped being sound the moment X-GM-LABELS
+        // joined it, because a user is allowed to name a label `\Seen`.
+        unread: !atoms_of(line, "FLAGS (").contains(&r"\Seen"),
+        in_inbox: labels.contains(&r"\Inbox"),
+        from_user: labels.contains(&r"\Sent"),
+    })
+}
+
+/// The unquoted atoms of a parenthesised FETCH item — `FLAGS (\Seen)`,
+/// `X-GM-LABELS (\Inbox "Work/2024")`.
+///
+/// Quoted runs are skipped whole rather than decoded, which is both the
+/// simplest thing that is correct and the entire reason this is safe: a user
+/// label may be named `\Inbox`, and it arrives quoted as `"\\Inbox"`. Reading
+/// only atoms means Gmail's own labels are the only ones that can match, so
+/// nobody can rename their way into someone else's inbox.
+///
+/// The first occurrence of `key` is always the item name. A user label could
+/// contain the text `X-GM-LABELS (` and still not fool this, because a label
+/// can only ever appear *inside* the item it would have to precede.
+fn atoms_of<'a>(line: &'a str, key: &str) -> Vec<&'a str> {
+    let Some((_, rest)) = line.split_once(key) else {
+        return Vec::new();
+    };
+
+    let bytes = rest.as_bytes();
+    let mut atoms = Vec::new();
+    let mut depth = 1usize;
+    let mut start: Option<usize> = None;
+    let mut i = 0;
+
+    while i < bytes.len() {
+        let end_atom = |atoms: &mut Vec<&'a str>, start: &mut Option<usize>, at: usize| {
+            if let Some(from) = start.take() {
+                atoms.push(&rest[from..at]);
+            }
+        };
+        match bytes[i] {
+            b'"' => {
+                end_atom(&mut atoms, &mut start, i);
+                i += 1;
+                while i < bytes.len() && bytes[i] != b'"' {
+                    // A backslash escapes the next byte, quote included.
+                    i += if bytes[i] == b'\\' { 2 } else { 1 };
+                }
+            }
+            b'(' => {
+                end_atom(&mut atoms, &mut start, i);
+                depth += 1;
+            }
+            b')' => {
+                end_atom(&mut atoms, &mut start, i);
+                depth -= 1;
+                if depth == 0 {
+                    break;
+                }
+            }
+            b' ' => end_atom(&mut atoms, &mut start, i),
+            _ => {
+                if start.is_none() {
+                    start = Some(i);
+                }
+            }
+        }
+        i += 1;
+    }
+    atoms
 }
 
 fn capture_number(line: &str, key: &str) -> Option<u64> {
@@ -137,7 +215,7 @@ fn run_meta_fetch(session: &mut ImapSession, uids: &[u32]) -> Result<Vec<Meta>, 
             .collect::<Vec<_>>()
             .join(",");
         let response = session.run_command_and_read_response(&format!(
-            "UID FETCH {set} (UID X-GM-THRID X-GM-MSGID FLAGS INTERNALDATE)"
+            "UID FETCH {set} (UID X-GM-THRID X-GM-MSGID X-GM-LABELS FLAGS INTERNALDATE)"
         ))?;
         let text = String::from_utf8_lossy(&response);
         metas.extend(text.lines().filter_map(parse_meta_line));
@@ -145,15 +223,13 @@ fn run_meta_fetch(session: &mut ImapSession, uids: &[u32]) -> Result<Vec<Meta>, 
     Ok(metas)
 }
 
-/// Groups per-message metadata into newest-first thread stubs. `sent` is the
-/// place's `in:sent` UIDs, which is how a thread's newest *incoming* message is
-/// found — Gmail's own verdict, so aliases and "send mail as" identities count
-/// as the user the same way they do inside a conversation.
-pub fn group_stubs(
-    metas: Vec<Meta>,
-    sent: &HashSet<u32>,
-    inbox: &HashSet<u32>,
-) -> Vec<ThreadStub> {
+/// Groups per-message metadata into newest-first thread stubs.
+///
+/// Membership — is this the user's own send, is it still in the inbox — rides
+/// in on each `Meta` from its own labels. It used to arrive as two sets of
+/// UIDs from two `X-GM-RAW` searches of the entire account, run on every
+/// listing to answer a pair of booleans per message.
+pub fn group_stubs(metas: Vec<Meta>) -> Vec<ThreadStub> {
     let mut by_thread: HashMap<u64, Vec<Meta>> = HashMap::new();
     for meta in metas {
         by_thread.entry(meta.thrid).or_default().push(meta);
@@ -164,7 +240,7 @@ pub fn group_stubs(
         .map(|(thrid, mut messages)| {
             messages.sort_by(|a, b| a.uid.cmp(&b.uid));
             let last = messages.last().unwrap();
-            let incoming = messages.iter().rev().find(|m| !sent.contains(&m.uid));
+            let incoming = messages.iter().rev().find(|m| !m.from_user);
             let dates = || messages.iter().map(|m| m.date.as_str()).filter(|d| !d.is_empty());
             ThreadStub {
                 id: thrid.to_string(),
@@ -172,7 +248,7 @@ pub fn group_stubs(
                 first_message_at: dates().min().unwrap_or_default().to_string(),
                 unread: messages.iter().any(|m| m.unread),
                 message_count: messages.len() as u32,
-                in_inbox: messages.iter().any(|m| inbox.contains(&m.uid)),
+                in_inbox: messages.iter().any(|m| m.in_inbox),
                 last_uid: last.uid,
                 preview_uid: incoming.unwrap_or(last).uid,
                 from_user: incoming.is_none(),
@@ -326,16 +402,13 @@ fn enrich(session: &mut ImapSession, stubs: &mut [ThreadStub]) -> Result<(), ima
     Ok(())
 }
 
-/// The UIDs matching one Gmail search, as a set. Two of these answer questions
-/// every stub in a listing needs — is this message the user's own send, and is
-/// it still in the inbox — for one round trip each, against one `mail_get_thread`
-/// per thread before.
-fn uid_set(session: &mut ImapSession, query: &str) -> Result<HashSet<u32>, imap::Error> {
-    Ok(session.uid_search(query)?.into_iter().collect())
-}
-
 /// One SEARCH and one metadata pass over the whole place, then enrichment of
 /// the requested window only.
+///
+/// It was three searches. Two of them asked the whole account for `in:sent`
+/// and `in:inbox` on every listing — the second of which, when the place *was*
+/// the inbox, was the first search run a second time — and both are answered
+/// now by labels on the metadata pass that already had to happen.
 fn page(
     session: &mut ImapSession,
     query: &str,
@@ -343,9 +416,7 @@ fn page(
     limit: u32,
 ) -> Result<ListPage, WorkError> {
     let uids = search_uids(session, query)?;
-    let sent = uid_set(session, "X-GM-RAW \"in:sent\"")?;
-    let inbox = uid_set(session, "X-GM-RAW \"in:inbox\"")?;
-    let all = group_stubs(run_meta_fetch(session, &uids)?, &sent, &inbox);
+    let all = group_stubs(run_meta_fetch(session, &uids)?);
     let total = all.len() as u32;
 
     let start = (offset as usize).min(all.len());
@@ -406,12 +477,13 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
             .map(|m| (m.uid, m))
             .collect();
 
-        // Membership, not labels: asking Gmail "which of this thread is in
-        // the inbox" (and "which is the user's own send") avoids parsing
-        // X-GM-LABELS' quoting rules at all. in:sent covers alias and "send
-        // mail as" sends, which comparing From addresses never can.
-        let inbox_uids = session.uid_search(format!("X-GM-THRID {thrid} X-GM-RAW \"in:inbox\""))?;
-        let sent_uids = session.uid_search(format!("X-GM-THRID {thrid} X-GM-RAW \"in:sent\""))?;
+        // Membership comes off the labels the metadata pass just read. It used
+        // to be two more `X-GM-RAW` searches, run against All Mail, per email
+        // opened — Gmail evaluates those through its search backend rather than
+        // the IMAP index, and they were the slowest part of reading a message.
+        // Parsing X-GM-LABELS' quoting is what they bought, and `atoms_of`
+        // costs thirty lines and a test.
+        let in_inbox = metas.values().any(|m| m.in_inbox);
 
         let mut messages: Vec<MessageJson> = Vec::with_capacity(uids.len());
         for chunk in uids.chunks(20) {
@@ -431,7 +503,7 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
                     meta.and_then(|m| m.msgid),
                     meta.map(|m| m.date.clone()).filter(|d| !d.is_empty()),
                     meta.map(|m| m.unread).unwrap_or(false),
-                    sent_uids.contains(&uid),
+                    meta.map(|m| m.from_user).unwrap_or(false),
                 ));
             }
         }
@@ -444,7 +516,7 @@ pub fn get_thread(thread_id: String) -> Result<ThreadJson, String> {
                 .map(|m| m.subject.clone())
                 .find(|s| !s.is_empty())
                 .unwrap_or_default(),
-            in_inbox: !inbox_uids.is_empty(),
+            in_inbox,
             unread: messages.iter().any(|m| m.unread),
             last_message_at: messages
                 .iter()
@@ -491,7 +563,11 @@ mod tests {
     use super::*;
     use std::io::{Cursor, Read, Write};
 
-    const LINE: &str = r#"* 5 FETCH (UID 123 X-GM-THRID 1751234567890 X-GM-MSGID 1751234567999 FLAGS (\Seen \Flagged) INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
+    /// Gmail's own answer to the metadata FETCH, X-GM-LABELS included — the
+    /// item is on this line precisely because the module's warning applies to
+    /// it too: imap-proto has to have a grammar for it, or the whole command
+    /// fails and the failure is reported as an unreachable network.
+    const LINE: &str = r#"* 5 FETCH (UID 123 X-GM-THRID 1751234567890 X-GM-MSGID 1751234567999 X-GM-LABELS (\Inbox \Important) FLAGS (\Seen \Flagged) INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
 
     /// A socket that replays one canned server response.
     struct Canned {
@@ -603,6 +679,59 @@ mod tests {
         assert_eq!(parse_meta_line(""), None);
     }
 
+    /// The two booleans that used to cost two searches of the whole account,
+    /// each time, read off the line the metadata pass was already reading.
+    #[test]
+    fn membership_comes_off_the_labels() {
+        let line = r#"* 5 FETCH (UID 123 X-GM-THRID 90 X-GM-LABELS (\Inbox \Important "Work/2024") FLAGS () INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
+        let meta = parse_meta_line(line).expect("no meta");
+        assert!(meta.in_inbox);
+        assert!(!meta.from_user);
+
+        let sent = line.replace(r"\Inbox \Important", r"\Sent");
+        assert!(parse_meta_line(&sent).unwrap().from_user);
+        assert!(!parse_meta_line(&sent).unwrap().in_inbox);
+    }
+
+    /// A message with no labels at all is in no place, and says so rather than
+    /// inheriting whatever the last line had.
+    #[test]
+    fn no_labels_means_no_membership() {
+        let line = r#"* 5 FETCH (UID 123 X-GM-THRID 90 X-GM-LABELS () FLAGS () INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
+        let meta = parse_meta_line(line).expect("no meta");
+        assert!(!meta.in_inbox);
+        assert!(!meta.from_user);
+    }
+
+    /// Gmail lets a user name a label anything, `\Inbox` included — it arrives
+    /// quoted, and quoted is exactly what tells it apart from Gmail's own. Read
+    /// as a substring of the line, this thread joins an inbox it was never in.
+    #[test]
+    fn a_user_label_cannot_impersonate_a_system_one() {
+        let line = r#"* 5 FETCH (UID 123 X-GM-THRID 90 X-GM-LABELS ("\\Inbox" "\\Sent") FLAGS () INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
+        let meta = parse_meta_line(line).expect("no meta");
+        assert!(!meta.in_inbox);
+        assert!(!meta.from_user);
+    }
+
+    /// The same trap one field over. `unread` was the whole line's business
+    /// until labels joined it, and a label may be called `\Seen`.
+    #[test]
+    fn a_label_named_seen_does_not_mark_a_message_read() {
+        let line = r#"* 5 FETCH (UID 123 X-GM-THRID 90 X-GM-LABELS ("\\Seen") FLAGS () INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
+        assert!(parse_meta_line(line).expect("no meta").unread);
+    }
+
+    /// A quoted label may hold anything at all, delimiters included, and the
+    /// scan has to ride over the lot to find the atoms after it.
+    #[test]
+    fn quoted_labels_do_not_end_the_list_early() {
+        let line = r#"* 5 FETCH (UID 123 X-GM-THRID 90 X-GM-LABELS ("a) (b" "say \"hi\"" \Inbox) FLAGS (\Seen) INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
+        let meta = parse_meta_line(line).expect("no meta");
+        assert!(meta.in_inbox);
+        assert!(!meta.unread);
+    }
+
     #[test]
     fn a_missing_msgid_is_tolerated() {
         let line = r#"* 5 FETCH (UID 123 X-GM-THRID 90 FLAGS () INTERNALDATE "01-Jul-2024 10:00:05 +0000")"#;
@@ -611,7 +740,25 @@ mod tests {
     }
 
     fn meta(uid: u32, thrid: u64, date: &str, unread: bool) -> Meta {
-        Meta { uid, thrid, msgid: None, date: date.into(), unread }
+        Meta {
+            uid,
+            thrid,
+            msgid: None,
+            date: date.into(),
+            unread,
+            in_inbox: false,
+            from_user: false,
+        }
+    }
+
+    /// The same message, wearing Gmail's `\Sent` label.
+    fn sent(meta: Meta) -> Meta {
+        Meta { from_user: true, ..meta }
+    }
+
+    /// The same message, wearing Gmail's `\Inbox` label.
+    fn inboxed(meta: Meta) -> Meta {
+        Meta { in_inbox: true, ..meta }
     }
 
     #[test]
@@ -622,8 +769,6 @@ mod tests {
                 meta(9, 100, "2024-03-01T00:00:00+00:00", true),
                 meta(5, 200, "2024-02-01T00:00:00+00:00", false),
             ],
-            &HashSet::new(),
-            &HashSet::new(),
         );
 
         assert_eq!(stubs.len(), 2);
@@ -646,8 +791,6 @@ mod tests {
                 meta(7, 100, "2026-07-20T09:00:00+00:00", false),
                 meta(6, 100, "2023-01-01T09:00:00+00:00", false),
             ],
-            &HashSet::new(),
-            &HashSet::new(),
         );
         assert_eq!(stubs[0].first_message_at, "2021-05-02T09:00:00+00:00");
         assert_eq!(stubs[0].last_message_at, "2026-07-20T09:00:00+00:00");
@@ -659,15 +802,10 @@ mod tests {
     /// and, through §2.3, into their own Screener.
     #[test]
     fn the_preview_is_the_newest_message_that_is_not_the_users_own() {
-        let sent = HashSet::from([9]);
-        let stubs = group_stubs(
-            vec![
-                meta(3, 100, "2026-07-01T00:00:00+00:00", false),
-                meta(9, 100, "2026-07-02T00:00:00+00:00", false),
-            ],
-            &sent,
-            &HashSet::new(),
-        );
+        let stubs = group_stubs(vec![
+            meta(3, 100, "2026-07-01T00:00:00+00:00", false),
+            sent(meta(9, 100, "2026-07-02T00:00:00+00:00", false)),
+        ]);
         assert_eq!(stubs[0].last_uid, 9);
         assert_eq!(stubs[0].preview_uid, 3);
         assert!(!stubs[0].from_user);
@@ -677,15 +815,10 @@ mod tests {
     /// to fall back to, and says so rather than pretending the send was one.
     #[test]
     fn a_thread_with_nothing_incoming_is_marked_as_the_users_own() {
-        let sent = HashSet::from([3, 9]);
-        let stubs = group_stubs(
-            vec![
-                meta(3, 100, "2026-07-01T00:00:00+00:00", false),
-                meta(9, 100, "2026-07-02T00:00:00+00:00", false),
-            ],
-            &sent,
-            &HashSet::new(),
-        );
+        let stubs = group_stubs(vec![
+            sent(meta(3, 100, "2026-07-01T00:00:00+00:00", false)),
+            sent(meta(9, 100, "2026-07-02T00:00:00+00:00", false)),
+        ]);
         assert_eq!(stubs[0].preview_uid, 9);
         assert!(stubs[0].from_user);
     }
@@ -700,8 +833,6 @@ mod tests {
                 meta(1, 100, "", false),
                 meta(2, 100, "2026-07-20T09:00:00+00:00", false),
             ],
-            &HashSet::new(),
-            &HashSet::new(),
         );
         assert_eq!(stubs[0].first_message_at, "2026-07-20T09:00:00+00:00");
     }
@@ -839,11 +970,12 @@ mod tests {
                 meta(2, 100, "2026-07-02T00:00:00+00:00", false),
             ]
         };
-        let archived = group_stubs(metas(), &HashSet::new(), &HashSet::new());
+        let archived = group_stubs(metas());
         assert!(!archived[0].in_inbox);
 
-        let one_labelled = group_stubs(metas(), &HashSet::new(), &HashSet::from([2]));
-        assert!(one_labelled[0].in_inbox);
+        let mut one_labelled = metas();
+        one_labelled[1] = inboxed(one_labelled[1].clone());
+        assert!(group_stubs(one_labelled)[0].in_inbox);
     }
 
     #[test]
