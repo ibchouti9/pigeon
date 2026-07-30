@@ -22,6 +22,7 @@
 //! `gmails_own_metadata_answer_survives_the_response_reader` both guard it.
 
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::sync::{LazyLock, Mutex};
 
 use super::parse::parse_message;
@@ -60,25 +61,134 @@ const PREVIEW_HTML_CHARS: usize = 4000;
 /// That split is what makes the counting honest at the same time. Every
 /// message is still accounted for, so D34's totals are exact — they are just
 /// counted from what we already know instead of asked for again.
-#[derive(Default)]
+/// Because it survives the process, this is also the difference between
+/// launching into a spinner and launching into mail. Nothing here is derived
+/// from the network state of a particular run, so there is nothing to warm up:
+/// the file is read once and the first listing is as cheap as the hundredth.
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 struct Remembered {
     uid_validity: Option<u32>,
     /// uid → (thread id, ISO date). Immutable.
+    ///
+    /// Stored as triples rather than a map: JSON object keys are strings, and
+    /// forty thousand of them is a megabyte of quotation marks.
+    #[serde(with = "as_triples")]
     placed: HashMap<u32, (u64, String)>,
     /// uid → the row bits `enrich` reads from a header and 2 KB of body. Also
     /// immutable: a message's sender, subject and opening lines are written
     /// once.
+    #[serde(with = "as_pairs")]
     previews: HashMap<u32, Preview>,
+    /// Whether anything has been learned since the last write.
+    #[serde(skip)]
+    dirty: bool,
 }
 
 /// The row bits for one message, as `enrich` produces them.
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 struct Preview {
     from: super::types::AddressJson,
     subject: String,
     text: Option<String>,
     html: Option<String>,
     list_unsubscribe: bool,
+}
+
+/// `{uid: [thrid, date]}` costs a megabyte in quoted keys at this size;
+/// `[[uid, thrid, date]]` does not.
+mod as_triples {
+    use super::HashMap;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S: Serializer>(
+        map: &HashMap<u32, (u64, String)>,
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        map.iter()
+            .map(|(uid, (thrid, date))| (*uid, *thrid, date))
+            .collect::<Vec<_>>()
+            .serialize(s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<HashMap<u32, (u64, String)>, D::Error> {
+        Ok(Vec::<(u32, u64, String)>::deserialize(d)?
+            .into_iter()
+            .map(|(uid, thrid, date)| (uid, (thrid, date)))
+            .collect())
+    }
+}
+
+/// The same trick for the previews.
+mod as_pairs {
+    use super::{HashMap, Preview};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S: Serializer>(
+        map: &HashMap<u32, Preview>,
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        map.iter().collect::<Vec<_>>().serialize(s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<HashMap<u32, Preview>, D::Error> {
+        Ok(Vec::<(u32, Preview)>::deserialize(d)?.into_iter().collect())
+    }
+}
+
+const CACHE_FILE: &str = "listing-cache.json";
+
+/// Reads the cache back, once per process.
+///
+/// UIDVALIDITY is not checked here and does not need to be: nothing has been
+/// selected yet, so there is nothing to check against, and `remembered()`
+/// throws the lot away the moment the first SELECT disagrees with what the
+/// file claimed. A stale file costs one sweep, which is what not having the
+/// file costs anyway.
+fn prime(dir: &Path) {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let Some(stored) = read_cache(dir) else { return };
+        let learned = stored.placed.len();
+        *REMEMBERED.lock().unwrap() = stored;
+        timed(&format!("list: cache read ×{learned}"), || ());
+    });
+}
+
+/// A missing file and an unreadable one are the same answer: nothing is
+/// remembered, so sweep. A format that changed under an upgrade lands here
+/// too, which is why it is not an error — the next listing rewrites it.
+fn read_cache(dir: &Path) -> Option<Remembered> {
+    let bytes = std::fs::read(dir.join(CACHE_FILE)).ok()?;
+    serde_json::from_slice(&bytes).ok()
+}
+
+fn write_cache(dir: &Path, cache: &Remembered) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir)?;
+    std::fs::write(dir.join(CACHE_FILE), serde_json::to_vec(cache)?)
+}
+
+/// Writes the cache back if a listing learned anything.
+///
+/// Failure is ignored on purpose. This is a cache: not being able to write it
+/// costs a slow first listing next launch, which is not worth failing a
+/// listing that has already succeeded.
+fn persist(dir: &Path) {
+    let mut cache = REMEMBERED.lock().unwrap();
+    if !cache.dirty {
+        return;
+    }
+    cache.dirty = false;
+    let _ = write_cache(dir, &cache);
+}
+
+/// Forgets everything, on disk included — for signing out.
+pub fn forget_cache(dir: &Path) {
+    *REMEMBERED.lock().unwrap() = Remembered::default();
+    let _ = std::fs::remove_file(dir.join(CACHE_FILE));
 }
 
 static REMEMBERED: LazyLock<Mutex<Remembered>> =
@@ -88,11 +198,16 @@ static REMEMBERED: LazyLock<Mutex<Remembered>> =
 /// mailbox underneath it.
 fn remembered() -> std::sync::MutexGuard<'static, Remembered> {
     let mut cache = REMEMBERED.lock().unwrap();
-    let now = selected_uid_validity();
-    if cache.uid_validity != now {
-        cache.placed.clear();
-        cache.previews.clear();
-        cache.uid_validity = now;
+    // Before the first SELECT there is nothing to judge the cache against, and
+    // a cache read off disk arrives in exactly that state. Judge it when the
+    // server actually says something, not on the absence of an answer.
+    if let Some(now) = selected_uid_validity() {
+        if cache.uid_validity != Some(now) {
+            cache.placed.clear();
+            cache.previews.clear();
+            cache.uid_validity = Some(now);
+            cache.dirty = true;
+        }
     }
     cache
 }
@@ -477,7 +592,9 @@ fn enrich(session: &mut ImapSession, stubs: &mut [ThreadStub]) -> Result<(), ima
             for &i in targets {
                 apply_preview(&mut stubs[i], &preview);
             }
-            remembered().previews.insert(uid, preview);
+            let mut cache = remembered();
+            cache.previews.insert(uid, preview);
+            cache.dirty = true;
         }
     }
     Ok(())
@@ -521,6 +638,7 @@ fn page(
         for meta in learned {
             cache.placed.insert(meta.uid, (meta.thrid, meta.date));
         }
+        cache.dirty = true;
     }
 
     // Every thread in the place, newest first, counted from what is known
@@ -602,20 +720,31 @@ fn search_uids(session: &mut ImapSession, query: &str) -> Result<Vec<u32>, imap:
 /// one line-per-message FETCH per thousand messages, which is cheap in bytes
 /// and is what keeps D34's totals honest. Only the window is enriched, and no
 /// bodies are read at all: the caller opens a conversation to get those.
-pub fn list_threads(place: String, offset: u32, limit: u32) -> Result<ListPage, String> {
-    with_mailbox(Special::AllMail, |session| {
+pub fn list_threads(
+    dir: &Path,
+    place: String,
+    offset: u32,
+    limit: u32,
+) -> Result<ListPage, String> {
+    prime(dir);
+    let listed = with_mailbox(Special::AllMail, |session| {
         let query = format!("X-GM-RAW {}", quote_imap(place_query(&place)));
         page(session, &query, offset, limit)
-    })
+    });
+    persist(dir);
+    listed
 }
 
 /// D7's third place runs on Gmail's own query language, quoted straight
 /// through to X-GM-RAW.
-pub fn search_threads(query: String, limit: u32) -> Result<ListPage, String> {
-    with_mailbox(Special::AllMail, |session| {
+pub fn search_threads(dir: &Path, query: String, limit: u32) -> Result<ListPage, String> {
+    prime(dir);
+    let found = with_mailbox(Special::AllMail, |session| {
         let query = format!("X-GM-RAW {}", quote_imap(&query));
         page(session, &query, 0, limit)
-    })
+    });
+    persist(dir);
+    found
 }
 
 /// One whole conversation, bodies included.
@@ -1148,6 +1277,60 @@ mod tests {
         let mut one_labelled = metas();
         one_labelled[1] = inboxed(one_labelled[1].clone());
         assert!(group_stubs(one_labelled)[0].in_inbox);
+    }
+
+    /// A directory of this test's own, so a round trip is not reading what the
+    /// last run left behind.
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir()
+            .join(format!("pigeon-listing-cache-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        dir
+    }
+
+    /// The cache is only worth having if it survives the process, and it only
+    /// survives if what is written reads back as the same thing.
+    #[test]
+    fn the_cache_round_trips_through_a_file() {
+        let dir = temp_dir("round-trip");
+        let mut written = Remembered { uid_validity: Some(42), ..Default::default() };
+        written.placed.insert(7, (100, "2026-07-01T00:00:00+00:00".into()));
+        written.placed.insert(9, (100, "2026-07-02T00:00:00+00:00".into()));
+        written.previews.insert(
+            9,
+            Preview {
+                from: crate::mail::types::AddressJson {
+                    name: "Sana Sethi".into(),
+                    email: "sana@example.com".into(),
+                },
+                subject: "Reconcile window change".into(),
+                text: Some("The window moved".into()),
+                html: None,
+                list_unsubscribe: false,
+            },
+        );
+
+        write_cache(&dir, &written).expect("could not write");
+        let read = read_cache(&dir).expect("could not read");
+
+        assert_eq!(read.uid_validity, Some(42));
+        assert_eq!(read.placed.get(&7), Some(&(100, "2026-07-01T00:00:00+00:00".into())));
+        assert_eq!(read.placed.len(), 2);
+        assert_eq!(read.previews.get(&9).map(|p| p.from.email.as_str()), Some("sana@example.com"));
+        assert_eq!(read.previews.get(&9).and_then(|p| p.text.as_deref()), Some("The window moved"));
+    }
+
+    /// Nothing on disk, and rubbish on disk, are the same answer: remember
+    /// nothing and sweep. A cache that could fail a listing would be worse than
+    /// no cache at all.
+    #[test]
+    fn an_unreadable_cache_is_simply_no_cache() {
+        let dir = temp_dir("unreadable");
+        assert!(read_cache(&dir).is_none(), "a missing file is not an error");
+
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(CACHE_FILE), b"{ this is not the file we wrote").unwrap();
+        assert!(read_cache(&dir).is_none(), "a corrupt file is not an error");
     }
 
     #[test]

@@ -107,6 +107,10 @@ pub async fn mail_disconnect(app: tauri::AppHandle) {
     // it is allowed to announce.
     if let Ok(dir) = data_dir(&app) {
         allowlist::clear(&dir);
+        // The listing cache is one account's mail, by UID. Leaving it for
+        // whoever signs in next would be leaving their subjects and preview
+        // lines on disk under someone else's session.
+        fetch::forget_cache(&dir);
     }
     let _ = blocking(|| {
         session::forget_credentials();
@@ -141,13 +145,24 @@ pub fn resume_watch(app: tauri::AppHandle) {
 /// reports the whole place. A mailbox with 40,000 conversations is listed, not
 /// walked — see `ThreadStub`.
 #[tauri::command]
-pub async fn mail_list_threads(place: String, offset: u32, limit: u32) -> Result<ListPage, String> {
-    blocking(move || fetch::list_threads(place, offset, limit)).await
+pub async fn mail_list_threads(
+    app: tauri::AppHandle,
+    place: String,
+    offset: u32,
+    limit: u32,
+) -> Result<ListPage, String> {
+    let dir = data_dir(&app)?;
+    blocking(move || fetch::list_threads(&dir, place, offset, limit)).await
 }
 
 #[tauri::command]
-pub async fn mail_search(query: String, limit: u32) -> Result<ListPage, String> {
-    blocking(move || fetch::search_threads(query, limit)).await
+pub async fn mail_search(
+    app: tauri::AppHandle,
+    query: String,
+    limit: u32,
+) -> Result<ListPage, String> {
+    let dir = data_dir(&app)?;
+    blocking(move || fetch::search_threads(&dir, query, limit)).await
 }
 
 #[tauri::command]

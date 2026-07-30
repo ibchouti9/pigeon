@@ -10,7 +10,9 @@ pub struct Credentials {
     pub password: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+/// Deserialize as well as Serialize: this one also goes into the listing
+/// cache on disk, which has to read back what it wrote.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddressJson {
     pub name: String,
