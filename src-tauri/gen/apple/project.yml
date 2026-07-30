@@ -30,7 +30,12 @@ targets:
     sources:
       - path: Sources
       - path: Assets.xcassets
+      # Not a build phase: libapp.a is linked via the `framework: libapp.a`
+      # dependency below. Left as a resource, XcodeGen globs whichever
+      # configuration happens to exist at generation time and hardcodes it,
+      # so a release build goes looking for Externals/arm64/debug/libapp.a.
       - path: Externals
+        buildPhase: none
       - path: pigeon_iOS
       - path: assets
         buildPhase: resources

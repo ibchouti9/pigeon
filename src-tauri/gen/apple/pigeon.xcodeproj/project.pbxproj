@@ -286,7 +286,6 @@
 				81BCAEC2542A2A990D4E1EC7 /* Assets.xcassets in Resources */,
 				445D12AE4DF8552F8ACD46EC /* LaunchScreen.storyboard in Resources */,
 				26BCD4FB1BD491E7FE48726B /* assets in Resources */,
-				2C4CE56BBF06B6E949BCA337 /* libapp.a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -359,6 +358,7 @@
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
+				DEVELOPMENT_TEAM = "S8GMM2PGCP";
 			};
 			name = debug;
 		};
@@ -453,6 +453,7 @@
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
+				DEVELOPMENT_TEAM = "S8GMM2PGCP";
 			};
 			name = release;
 		};

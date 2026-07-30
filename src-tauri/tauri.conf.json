@@ -52,7 +52,8 @@
       "minimumSystemVersion": "10.15"
     },
     "iOS": {
-      "minimumSystemVersion": "14.0"
+      "minimumSystemVersion": "14.0",
+      "developmentTeam": "S8GMM2PGCP"
     }
   }
 }
