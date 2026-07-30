@@ -21,10 +21,13 @@
 //! 0.16 upgrade is what made this file work at all; the pin in Cargo.toml and
 //! `gmails_own_metadata_answer_survives_the_response_reader` both guard it.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::sync::{LazyLock, Mutex};
 
 use super::parse::parse_message;
-use super::session::{refused, timed, with_mailbox, ImapSession, Special, WorkError};
+use super::session::{
+    refused, selected_uid_validity, timed, with_mailbox, ImapSession, Special, WorkError,
+};
 use super::types::{ListPage, MessageJson, ThreadJson, ThreadStub};
 
 /// How much of one message's body a preview line reads. Two kilobytes is more
@@ -37,6 +40,62 @@ const PREVIEW_TEXT_CHARS: usize = 400;
 /// Html has to survive `htmlToText` before anything is readable, so it gets
 /// more room — most of it is markup.
 const PREVIEW_HTML_CHARS: usize = 4000;
+
+/// What a listing remembers between calls, and why it is safe to.
+///
+/// Drawing a page of rows used to read the metadata of every message in the
+/// place, every time: on a 42,000-message account that is 17 seconds of FETCH
+/// to render 200 rows, repeated on every poll, every window focus and every
+/// IDLE wake — and it holds the one connection while it runs, so opening an
+/// email lands behind it and waits. That is the whole of "why does it take
+/// half a minute to read a message".
+///
+/// Only the half of a message that cannot change is kept here: which
+/// conversation it belongs to, and when it arrived. Both are fixed for the
+/// life of a UID, so this cache cannot serve a stale answer — there is no
+/// staleness to serve. Flags and labels change constantly and are deliberately
+/// absent; the rows actually being rendered fetch those fresh on every listing,
+/// which is a few hundred UIDs rather than forty thousand.
+///
+/// That split is what makes the counting honest at the same time. Every
+/// message is still accounted for, so D34's totals are exact — they are just
+/// counted from what we already know instead of asked for again.
+#[derive(Default)]
+struct Remembered {
+    uid_validity: Option<u32>,
+    /// uid → (thread id, ISO date). Immutable.
+    placed: HashMap<u32, (u64, String)>,
+    /// uid → the row bits `enrich` reads from a header and 2 KB of body. Also
+    /// immutable: a message's sender, subject and opening lines are written
+    /// once.
+    previews: HashMap<u32, Preview>,
+}
+
+/// The row bits for one message, as `enrich` produces them.
+#[derive(Clone)]
+struct Preview {
+    from: super::types::AddressJson,
+    subject: String,
+    text: Option<String>,
+    html: Option<String>,
+    list_unsubscribe: bool,
+}
+
+static REMEMBERED: LazyLock<Mutex<Remembered>> =
+    LazyLock::new(|| Mutex::new(Remembered::default()));
+
+/// Hands back the cache, emptied first if the server has renumbered the
+/// mailbox underneath it.
+fn remembered() -> std::sync::MutexGuard<'static, Remembered> {
+    let mut cache = REMEMBERED.lock().unwrap();
+    let now = selected_uid_validity();
+    if cache.uid_validity != now {
+        cache.placed.clear();
+        cache.previews.clear();
+        cache.uid_validity = now;
+    }
+    cache
+}
 
 /// One message's cheap metadata, from the single-line pass.
 #[derive(Debug, Clone, PartialEq)]
@@ -362,9 +421,27 @@ fn enrich(session: &mut ImapSession, stubs: &mut [ThreadStub]) -> Result<(), ima
     for (i, stub) in stubs.iter().enumerate() {
         index.entry(stub.preview_uid).or_default().push(i);
     }
-    let uids: Vec<u32> = index.keys().copied().collect();
 
-    for chunk in uids.chunks(200) {
+    // A row already drawn is a row already read. What this pulls out — a
+    // sender, a subject, the opening lines — is written once when the message
+    // is sent and never again, so listing the same page twice costs nothing the
+    // second time.
+    let mut missing: Vec<u32> = Vec::new();
+    {
+        let cache = remembered();
+        for (uid, targets) in &index {
+            match cache.previews.get(uid) {
+                Some(preview) => {
+                    for &i in targets {
+                        apply_preview(&mut stubs[i], preview);
+                    }
+                }
+                None => missing.push(*uid),
+            }
+        }
+    }
+
+    for chunk in missing.chunks(200) {
         let set = chunk
             .iter()
             .map(|u| u.to_string())
@@ -390,16 +467,28 @@ fn enrich(session: &mut ImapSession, stubs: &mut [ThreadStub]) -> Result<(), ima
                 None => parsed.html.as_deref().and_then(|h| cut(h, PREVIEW_HTML_CHARS)),
             };
 
+            let preview = Preview {
+                from: parsed.from,
+                subject: parsed.subject,
+                text,
+                html,
+                list_unsubscribe: parsed.list_unsubscribe,
+            };
             for &i in targets {
-                stubs[i].from = Some(parsed.from.clone());
-                stubs[i].subject = Some(parsed.subject.clone());
-                stubs[i].snippet_text = text.clone();
-                stubs[i].snippet_html = html.clone();
-                stubs[i].list_unsubscribe = parsed.list_unsubscribe;
+                apply_preview(&mut stubs[i], &preview);
             }
+            remembered().previews.insert(uid, preview);
         }
     }
     Ok(())
+}
+
+fn apply_preview(stub: &mut ThreadStub, preview: &Preview) {
+    stub.from = Some(preview.from.clone());
+    stub.subject = Some(preview.subject.clone());
+    stub.snippet_text = preview.text.clone();
+    stub.snippet_html = preview.html.clone();
+    stub.list_unsubscribe = preview.list_unsubscribe;
 }
 
 /// One SEARCH and one metadata pass over the whole place, then enrichment of
@@ -416,20 +505,88 @@ fn page(
     limit: u32,
 ) -> Result<ListPage, WorkError> {
     let uids = timed("list: SEARCH", || search_uids(session, query))?;
-    let metas = timed(&format!("list: metadata ×{}", uids.len()), || {
-        run_meta_fetch(session, &uids)
-    })?;
-    let all = group_stubs(metas);
-    let total = all.len() as u32;
 
-    let start = (offset as usize).min(all.len());
-    let end = start.saturating_add(limit as usize).min(all.len());
-    let mut window = all[start..end].to_vec();
+    // Learn where the messages we have never seen belong. On a settled account
+    // this is the mail that arrived since the last listing, and the fetch is
+    // empty far more often than not.
+    let unknown: Vec<u32> = {
+        let cache = remembered();
+        uids.iter().copied().filter(|uid| !cache.placed.contains_key(uid)).collect()
+    };
+    if !unknown.is_empty() {
+        let learned = timed(&format!("list: metadata ×{}", unknown.len()), || {
+            run_meta_fetch(session, &unknown)
+        })?;
+        let mut cache = remembered();
+        for meta in learned {
+            cache.placed.insert(meta.uid, (meta.thrid, meta.date));
+        }
+    }
+
+    // Every thread in the place, newest first, counted from what is known
+    // rather than asked for again.
+    let order = thread_order(&uids);
+    let total = order.len() as u32;
+
+    let start = (offset as usize).min(order.len());
+    let end = start.saturating_add(limit as usize).min(order.len());
+    let wanted: HashSet<u64> = order[start..end].iter().copied().collect();
+
+    // The rows being rendered, read fresh — flags and labels are the half that
+    // changes, and this is the only place that needs them current. Every UID of
+    // a wanted thread comes along, so message counts and the date a
+    // conversation started are whole, not just the part inside the window.
+    let window_uids: Vec<u32> = {
+        let cache = remembered();
+        let mut u: Vec<u32> = uids
+            .iter()
+            .copied()
+            .filter(|uid| cache.placed.get(uid).is_some_and(|(t, _)| wanted.contains(t)))
+            .collect();
+        u.sort_unstable();
+        u
+    };
+    let fresh = timed(&format!("list: rows ×{}", window_uids.len()), || {
+        run_meta_fetch(session, &window_uids)
+    })?;
+
+    let mut by_id: HashMap<u64, ThreadStub> =
+        group_stubs(fresh).into_iter().map(|s| (s.id.parse().unwrap_or(0), s)).collect();
+    let mut window: Vec<ThreadStub> =
+        order[start..end].iter().filter_map(|id| by_id.remove(id)).collect();
+
     timed(&format!("list: enrich ×{}", window.len()), || {
         enrich(session, &mut window)
     })?;
 
     Ok(ListPage { total, threads: window })
+}
+
+/// Every thread among `uids`, newest activity first.
+///
+/// Ordering is by date alone, which is why it can run off the cache: a
+/// message's date is fixed, so the order a listing puts its conversations in
+/// does not depend on anything that could have changed since.
+fn thread_order(uids: &[u32]) -> Vec<u64> {
+    let cache = remembered();
+    let mut newest: HashMap<u64, &str> = HashMap::new();
+    for uid in uids {
+        let Some((thrid, date)) = cache.placed.get(uid) else { continue };
+        newest
+            .entry(*thrid)
+            .and_modify(|held| {
+                if date.as_str() > *held {
+                    *held = date;
+                }
+            })
+            .or_insert(date);
+    }
+
+    let mut order: Vec<(u64, &str)> = newest.into_iter().collect();
+    // Ties broken by thread id so a page boundary lands in the same place
+    // twice running; "Show older" would otherwise skip or repeat a row.
+    order.sort_by(|a, b| b.1.cmp(a.1).then(b.0.cmp(&a.0)));
+    order.into_iter().map(|(thrid, _)| thrid).collect()
 }
 
 fn search_uids(session: &mut ImapSession, query: &str) -> Result<Vec<u32>, imap::Error> {

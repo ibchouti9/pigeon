@@ -185,6 +185,20 @@ pub fn is_connected() -> bool {
 /* Running commands                                                            */
 /* -------------------------------------------------------------------------- */
 
+/// UIDVALIDITY of whatever is selected, for anything that remembers messages
+/// by UID between calls.
+///
+/// A UID means nothing on its own. The server is free to renumber a mailbox
+/// wholesale, and it announces that by changing UIDVALIDITY — at which point
+/// every UID anyone wrote down means a different message, or none. Anything
+/// keyed by UID has to be thrown away when this changes, so it is published
+/// here rather than left inside the select.
+static SELECTED_UIDVALIDITY: std::sync::Mutex<Option<u32>> = std::sync::Mutex::new(None);
+
+pub fn selected_uid_validity() -> Option<u32> {
+    *SELECTED_UIDVALIDITY.lock().unwrap()
+}
+
 /// Wall time for one IMAP round trip, on stderr, in debug builds only.
 ///
 /// Which step is slow is not a thing this code can be read to find out. It
@@ -302,7 +316,8 @@ pub fn with_mailbox<T>(
             if live.selected.as_deref() != Some(&name) {
                 // Alternating between two mailboxes re-SELECTs on every switch,
                 // and a listing and a thread read want different ones.
-                timed(&format!("SELECT {name}"), || live.session.select(&name))?;
+                let mailbox = timed(&format!("SELECT {name}"), || live.session.select(&name))?;
+                *SELECTED_UIDVALIDITY.lock().unwrap() = mailbox.uid_validity;
                 live.selected = Some(name);
             }
             work(&mut live.session)
