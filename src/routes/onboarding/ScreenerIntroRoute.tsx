@@ -18,11 +18,11 @@ export function ScreenerIntroRoute() {
   const navigate = useNavigate();
   const location = useLocation();
   const quietInbox = Boolean((location.state as NavState | null)?.quietInbox);
-  const [pending, setPending] = useState<'inbox' | 'skip' | null>(null);
+  const [pending, setPending] = useState(false);
 
-  async function finish(which: 'inbox' | 'skip') {
+  async function finish() {
     if (pending) return;
-    setPending(which);
+    setPending(true);
 
     let n = useMail.getState().held.length;
     if (useMail.getState().status.held !== 'ready') {
@@ -67,21 +67,8 @@ export function ScreenerIntroRoute() {
         </div>
 
         <div className={styles.actions}>
-          <Button
-            variant="primary"
-            loading={pending === 'inbox'}
-            disabled={pending !== null && pending !== 'inbox'}
-            onClick={() => void finish('inbox')}
-          >
+          <Button variant="primary" loading={pending} onClick={() => void finish()}>
             Go to inbox
-          </Button>
-          <Button
-            variant="tertiary"
-            loading={pending === 'skip'}
-            disabled={pending !== null && pending !== 'skip'}
-            onClick={() => void finish('skip')}
-          >
-            Skip
           </Button>
         </div>
       </div>

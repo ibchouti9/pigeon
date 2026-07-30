@@ -206,7 +206,7 @@ Format: `screen → user action → system response`. Branch points are indented
                       → button becomes "Continue with no approved senders" and a helper line
                         appears: "Everything new will start in the Screener until you approve
                         someone." Button stays enabled.
-5.  O5 Screener intro → user clicks "Go to inbox"  or  "Skip"
+5.  O5 Screener intro → user clicks "Go to inbox"
                       → app shell mounts at /inbox; a one-time toast appears:
                         "Pigeon is holding 12 senders for you." with action [Open Screener]
 6.  /inbox            → first run complete. O1–O5 are never shown again for this account.
@@ -989,13 +989,13 @@ Every wireframe below is drawn at desktop width (1440px reference). Column width
 │      again. You can change your mind any time in Settings.             │
 │                                        ← text-md, secondary, 2 paras   │
 │                                                                        │
-│      ┌──────────────────┐   Skip                                       │
-│      │   Go to inbox    │   ← primary + text button, side by side      │
+│      ┌──────────────────┐                                              │
+│      │   Go to inbox    │   ← primary, alone                           │
 │      └──────────────────┘                                              │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-- Both buttons lead to `/inbox`; "Skip" exists so a returning-feeling user has a fast exit and is styled as a tertiary text button, `--space-4` gap from the primary.
+- One button. There was a "Skip" beside it, on the reasoning that a returning-feeling user wants a fast exit, but it went to `/inbox` and set the same state — the same action twice, offered as a choice. Worse, "Skip" on the screen that explains screening reads as declining the Screener itself, which is not something this screen can do.
 - No dots, no step counter, no second page.
 - **States:** default only. This screen cannot fail or be empty.
 
@@ -1653,7 +1653,7 @@ The link in the digest is the only prompt to connect that appears anywhere in th
 
 | Context | Label |
 |---|---|
-| Onboarding | Connect Gmail · Continue · Start sync again · Approve 342 senders · Continue with no approved senders · Untick all · Tick all · Go to inbox · Skip |
+| Onboarding | Connect Gmail · Continue · Start sync again · Approve 342 senders · Continue with no approved senders · Untick all · Tick all · Go to inbox |
 | Screener | Approve sender · Decline sender · Read message · Read 3 messages · Approve senders · Decline senders · Clear · Select all (12) |
 | Thread | Reply · Reply all · Forward · Archive · Move to inbox · Summarize thread · Hide · Show images |
 | Composer | Send · Draft with Pigeon · Shorter · Friendlier · Firmer · Discard draft · Discard · Cc Bcc · Attach file |
